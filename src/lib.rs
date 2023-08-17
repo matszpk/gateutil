@@ -184,7 +184,7 @@ where
         }
     }
 
-    println!("CVF: {:?} {:?} {:?}", new_input_len, new_gates, new_outputs);
+    //println!("CVF: {:?} {:?} {:?}", new_input_len, new_gates, new_outputs);
     (
         Circuit::new(T::try_from(new_input_len).unwrap(), new_gates, new_outputs).unwrap(),
         output_value_mapping,
@@ -222,6 +222,17 @@ mod tests {
             assign(
                 Circuit::new(4, [], [(0, false), (1, true), (2, false), (3, false)]).unwrap(),
                 [(0, true), (2, true), (3, false)]
+            )
+        );
+        
+        assert_eq!(
+            (
+                Circuit::new(2, [], [(0, true), (1, false)]).unwrap(),
+                vec![(0, true), (2, false)]
+            ),
+            assign(
+                Circuit::new(4, [], [(0, false), (1, true), (2, true), (3, false)]).unwrap(),
+                [(0, true), (2, true)]
             )
         );
     }
