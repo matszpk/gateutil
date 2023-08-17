@@ -8,7 +8,7 @@ use std::iter;
 pub fn assign<T>(
     circuit: Circuit<T>,
     assign: impl IntoIterator<Item = (T, bool)>,
-) -> (Circuit<T>, Vec<(T, bool)>)
+) -> (Circuit<T>, Vec<T>, Vec<(T, bool)>)
 where
     T: Clone + Copy + PartialEq + Eq + Ord + Default + Debug,
     T: TryFrom<usize>,
@@ -44,8 +44,9 @@ where
         .filter(|x| matches!(x, Value::Output(_, _)))
         .count();
 
+    let mut used_inputs = vec![false; input_len];
     let mut new_gates: Vec<Gate<T>> = vec![];
-    let mut new_output_count = input_len;
+    let mut new_output_count = new_input_len;
     for (i, g) in circuit.gates().iter().enumerate() {
         let oi = input_len + i;
         let gi1 = usize::try_from(g.i0).unwrap();
@@ -163,6 +164,12 @@ where
                             assign_map[oi] =
                                 Value::Output(T::try_from(new_output_count).unwrap(), out_n);
                             new_output_count += 1;
+                            if gi1 < input_len {
+                                used_inputs[gi1] = true;
+                            }
+                            if gi2 < input_len {
+                                used_inputs[gi2] = true;
+                            }
                         }
                     }
                 }
@@ -170,6 +177,26 @@ where
         }
     }
 
+    for (orig_idx, _) in circuit.outputs().iter() {
+        let orig_idx = usize::try_from(*orig_idx).unwrap();
+        if matches!(assign_map[orig_idx], Value::Output(_, _)) {
+            used_inputs[orig_idx] = true;
+        }
+    }
+
+    let new_input_len = assign_map[0..input_len]
+        .iter()
+        .enumerate()
+        .filter(|(i, x)| used_inputs[*i] && matches!(x, Value::Output(_, _)))
+        .count();
+    let out_inputs = assign_map[0..input_len]
+        .iter()
+        .enumerate()
+        .filter(|(i, x)| used_inputs[*i] && matches!(x, Value::Output(_, _)))
+        .map(|(i, _)| T::try_from(i).unwrap())
+        .collect::<Vec<_>>();
+
+    //println!("IOM: {:?} {:?}", circuit.outputs(), assign_map);
     let mut output_value_mapping = vec![];
     let mut new_outputs = vec![];
     for (i, (orig_idx, orig_n)) in circuit.outputs().iter().enumerate() {
@@ -187,6 +214,7 @@ where
     //println!("CVF: {:?} {:?} {:?}", new_input_len, new_gates, new_outputs);
     (
         Circuit::new(T::try_from(new_input_len).unwrap(), new_gates, new_outputs).unwrap(),
+        out_inputs,
         output_value_mapping,
     )
 }
@@ -196,27 +224,28 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_assign() {
+    fn test_assign_empty() {
         assert_eq!(
-            (Circuit::new(0, [], []).unwrap(), vec![(0, false)]),
+            (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, false)]),
             assign(Circuit::new(1, [], [(0, false)]).unwrap(), [(0, false)])
         );
         assert_eq!(
-            (Circuit::new(0, [], []).unwrap(), vec![(0, true)]),
+            (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, true)]),
             assign(Circuit::new(1, [], [(0, false)]).unwrap(), [(0, true)])
         );
         assert_eq!(
-            (Circuit::new(0, [], []).unwrap(), vec![(0, true)]),
+            (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, true)]),
             assign(Circuit::new(1, [], [(0, true)]).unwrap(), [(0, false)])
         );
         assert_eq!(
-            (Circuit::new(0, [], []).unwrap(), vec![(0, false)]),
+            (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, false)]),
             assign(Circuit::new(1, [], [(0, true)]).unwrap(), [(0, true)])
         );
 
         assert_eq!(
             (
                 Circuit::new(1, [], [(0, true)]).unwrap(),
+                vec![1],
                 vec![(0, true), (2, true), (3, false)]
             ),
             assign(
@@ -224,15 +253,27 @@ mod tests {
                 [(0, true), (2, true), (3, false)]
             )
         );
-        
+
         assert_eq!(
             (
                 Circuit::new(2, [], [(0, true), (1, false)]).unwrap(),
+                vec![1, 3],
                 vec![(0, true), (2, false)]
             ),
             assign(
                 Circuit::new(4, [], [(0, false), (1, true), (2, true), (3, false)]).unwrap(),
                 [(0, true), (2, true)]
+            )
+        );
+    }
+
+    #[test]
+    fn test_assign() {
+        assert_eq!(
+            (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, false)]),
+            assign(
+                Circuit::new(2, [Gate::new_and(0, 1)], [(2, false)]).unwrap(),
+                [(0, false)]
             )
         );
     }
