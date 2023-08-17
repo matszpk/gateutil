@@ -2,6 +2,7 @@ use gatesim::*;
 
 use std::cmp::Ord;
 use std::fmt::Debug;
+use std::iter;
 
 /// Assign values to inputs. Return new circuit and mapping to output.
 pub fn assign<T>(
@@ -9,7 +10,7 @@ pub fn assign<T>(
     assign: impl IntoIterator<Item = (T, bool)>,
 ) -> (Circuit<T>, Vec<(T, bool)>)
 where
-    T: Clone + Copy + PartialEq + Eq + Ord + Default,
+    T: Clone + Copy + PartialEq + Eq + Ord + Default + Debug,
     T: TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
     usize: TryFrom<T>,
@@ -23,12 +24,21 @@ where
     }
 
     let input_len = usize::try_from(circuit.input_len()).unwrap();
-    let mut assign_map = (0..input_len + circuit.len())
-        .map(|x| Value::Output(T::try_from(x).unwrap(), false))
+    let mut assign_map = iter::repeat(Value::Output(T::default(), false))
+        .take(input_len + circuit.len())
         .collect::<Vec<Value<T>>>();
     for (input_idx, value) in assign {
         assign_map[usize::try_from(input_idx).unwrap()] = Value::Bool(value);
     }
+    // recounting rest of input
+    for (i, o) in assign_map
+        .iter_mut()
+        .filter(|x| matches!(x, Value::Output(_, _)))
+        .enumerate()
+    {
+        *o = Value::Output(T::try_from(i).unwrap(), false);
+    }
+    // count rest of input
     let new_input_len = assign_map[0..input_len]
         .iter()
         .filter(|x| matches!(x, Value::Output(_, _)))
@@ -174,6 +184,7 @@ where
         }
     }
 
+    println!("CVF: {:?} {:?} {:?}", new_input_len, new_gates, new_outputs);
     (
         Circuit::new(T::try_from(new_input_len).unwrap(), new_gates, new_outputs).unwrap(),
         output_value_mapping,
@@ -201,6 +212,17 @@ mod tests {
         assert_eq!(
             (Circuit::new(0, [], []).unwrap(), vec![(0, false)]),
             assign(Circuit::new(1, [], [(0, true)]).unwrap(), [(0, true)])
+        );
+
+        assert_eq!(
+            (
+                Circuit::new(1, [], [(0, true)]).unwrap(),
+                vec![(0, true), (2, true), (3, false)]
+            ),
+            assign(
+                Circuit::new(4, [], [(0, false), (1, true), (2, false), (3, false)]).unwrap(),
+                [(0, true), (2, true), (3, false)]
+            )
         );
     }
 }
