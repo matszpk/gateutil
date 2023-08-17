@@ -3,17 +3,11 @@ use gatesim::*;
 use std::cmp::Ord;
 use std::fmt::Debug;
 
-#[derive(Clone, Copy, Debug)]
-pub enum Value<T> {
-    Bool(bool),
-    // index, negation
-    Output(T, bool),
-}
-
+/// Assign values to inputs. Return new circuit and mapping to output.
 pub fn assign<T>(
     circuit: Circuit<T>,
     assign: impl IntoIterator<Item = (T, bool)>,
-) -> (Circuit<T>, Vec<Value<T>>)
+) -> (Circuit<T>, Vec<(T, bool)>)
 where
     T: Clone + Copy + PartialEq + Eq + Ord + Default,
     T: TryFrom<usize>,
@@ -21,6 +15,13 @@ where
     usize: TryFrom<T>,
     <usize as TryFrom<T>>::Error: Debug,
 {
+    #[derive(Clone, Copy, Debug)]
+    enum Value<T> {
+        Bool(bool),
+        // index, negation
+        Output(T, bool),
+    }
+
     let input_len = usize::try_from(circuit.input_len()).unwrap();
     let mut assign_map = (0..input_len + circuit.len())
         .map(|x| Value::Output(T::try_from(x).unwrap(), false))
@@ -161,15 +162,13 @@ where
 
     let mut output_value_mapping = vec![];
     let mut new_outputs = vec![];
-    for (orig_idx, orig_n) in circuit.outputs() {
+    for (i, (orig_idx, orig_n)) in circuit.outputs().iter().enumerate() {
         let orig_idx = usize::try_from(*orig_idx).unwrap();
         match assign_map[orig_idx] {
             Value::Bool(v) => {
-                output_value_mapping.push(Value::Bool(v ^ orig_n));
+                output_value_mapping.push((T::try_from(i).unwrap(), v ^ orig_n));
             }
             Value::Output(idx, n) => {
-                output_value_mapping
-                    .push(Value::Output(T::try_from(new_outputs.len()).unwrap(), n));
                 new_outputs.push((idx, n ^ orig_n));
             }
         }
@@ -184,4 +183,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_assign() {}
 }
