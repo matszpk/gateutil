@@ -30,19 +30,22 @@ where
     for (input_idx, value) in assign {
         assign_map[usize::try_from(input_idx).unwrap()] = Value::Bool(value);
     }
-    // recounting rest of input
-    for (i, o) in assign_map
-        .iter_mut()
-        .filter(|x| matches!(x, Value::Output(_, _)))
-        .enumerate()
-    {
-        *o = Value::Output(T::try_from(i).unwrap(), false);
-    }
     // count rest of input
     let new_input_len = assign_map[0..input_len]
         .iter()
         .filter(|x| matches!(x, Value::Output(_, _)))
         .count();
+    // recounting rest of input
+    let mut from_new_input = vec![0; new_input_len];
+    for (i, (oi, o)) in assign_map[0..input_len]
+        .iter_mut()
+        .enumerate()
+        .filter(|(_, x)| matches!(x, Value::Output(_, _)))
+        .enumerate()
+    {
+        *o = Value::Output(T::try_from(i).unwrap(), false);
+        from_new_input[i] = oi;
+    }
 
     let mut used_inputs = vec![false; input_len];
     let mut new_gates: Vec<Gate<T>> = vec![];
@@ -179,11 +182,17 @@ where
 
     for (orig_idx, _) in circuit.outputs().iter() {
         let orig_idx = usize::try_from(*orig_idx).unwrap();
-        if matches!(assign_map[orig_idx], Value::Output(_, _)) {
-            used_inputs[orig_idx] = true;
+        //println!("IOM0xx: {} {:?} {:?}", orig_idx, assign_map, used_inputs);
+        //if orig_idx < input_len && matches!(assign_map[orig_idx], Value::Output(_, _)) {
+        if let Value::Output(idx, _) = assign_map[orig_idx] {
+            let old_i = from_new_input[usize::try_from(idx).unwrap()];
+            if old_i < input_len {
+                used_inputs[old_i] = true;
+            }
         }
     }
     
+    //println!("IOM0: {:?} {:?}", assign_map, used_inputs);
     let old_new_input_len = new_input_len;
 
     let new_input_len = assign_map[0..input_len]
@@ -191,6 +200,7 @@ where
         .enumerate()
         .filter(|(i, x)| used_inputs[*i] && matches!(x, Value::Output(_, _)))
         .count();
+    //println!("NewNewInputLen: {}", new_input_len);
     let out_inputs = assign_map[0..input_len]
         .iter()
         .enumerate()
@@ -283,12 +293,22 @@ mod tests {
 
     #[test]
     fn test_assign() {
-        assert_eq!(
-            (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, false)]),
-            assign(
-                Circuit::new(2, [Gate::new_and(0, 1)], [(2, false)]).unwrap(),
-                [(0, false)]
-            )
-        );
+        for (gate, value, exp) in [
+            (Gate::new_and(0, 1),
+             false,
+             (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, false)])
+            ),
+            (Gate::new_and(0, 1),
+             true,
+             (Circuit::new(1, [], [(0, false)]).unwrap(), vec![1], vec![]))
+        ] {
+            assert_eq!(
+                exp,
+                assign(
+                    Circuit::new(2, [gate], [(2, false)]).unwrap(),
+                    [(0, value)]
+                ),
+                "{} {}", gate, value);
+        }
     }
 }
