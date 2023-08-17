@@ -185,5 +185,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_assign() {}
+    fn test_assign() {
+        let circuit = Circuit::new(1, [], [(0, false)]).unwrap();
+        assert_eq!(
+            (Circuit::new(0, [], []).unwrap(), vec![(0, false)]),
+            assign(circuit, [(0, false)])
+        );
+    }
 }
