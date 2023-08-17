@@ -183,6 +183,8 @@ where
             used_inputs[orig_idx] = true;
         }
     }
+    
+    let old_new_input_len = new_input_len;
 
     let new_input_len = assign_map[0..input_len]
         .iter()
@@ -196,6 +198,18 @@ where
         .map(|(i, _)| T::try_from(i).unwrap())
         .collect::<Vec<_>>();
 
+    // fix inputs of new gates
+    for g in new_gates.iter_mut() {
+        let gi1 = usize::try_from(g.i0).unwrap();
+        let gi2 = usize::try_from(g.i1).unwrap();
+        if gi1 >= old_new_input_len {
+            g.i0 = T::try_from(gi1 - (old_new_input_len - new_input_len)).unwrap();
+        }
+        if gi2 >= old_new_input_len {
+            g.i1 = T::try_from(gi2 - (old_new_input_len - new_input_len)).unwrap();
+        }
+    }
+    
     //println!("IOM: {:?} {:?}", circuit.outputs(), assign_map);
     let mut output_value_mapping = vec![];
     let mut new_outputs = vec![];
