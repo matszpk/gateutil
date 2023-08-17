@@ -186,10 +186,21 @@ mod tests {
 
     #[test]
     fn test_assign() {
-        let circuit = Circuit::new(1, [], [(0, false)]).unwrap();
         assert_eq!(
             (Circuit::new(0, [], []).unwrap(), vec![(0, false)]),
-            assign(circuit, [(0, false)])
+            assign(Circuit::new(1, [], [(0, false)]).unwrap(), [(0, false)])
+        );
+        assert_eq!(
+            (Circuit::new(0, [], []).unwrap(), vec![(0, true)]),
+            assign(Circuit::new(1, [], [(0, false)]).unwrap(), [(0, true)])
+        );
+        assert_eq!(
+            (Circuit::new(0, [], []).unwrap(), vec![(0, true)]),
+            assign(Circuit::new(1, [], [(0, true)]).unwrap(), [(0, false)])
+        );
+        assert_eq!(
+            (Circuit::new(0, [], []).unwrap(), vec![(0, false)]),
+            assign(Circuit::new(1, [], [(0, true)]).unwrap(), [(0, true)])
         );
     }
 }
