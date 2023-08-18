@@ -712,6 +712,39 @@ mod tests {
                 false,
                 (Circuit::new(1, [], [(0, true)]).unwrap(), vec![0], vec![]),
             ),
+            // second gate: and(0,2)
+            (
+                Gate::new_nimpl(0, 1),
+                Gate::new_and(0, 2),
+                1,
+                false,
+                false,
+                (Circuit::new(1, [], [(0, false)]).unwrap(), vec![0], vec![]),
+            ),
+            (
+                Gate::new_nimpl(0, 1),
+                Gate::new_and(0, 2),
+                1,
+                true,
+                false,
+                (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, false)]),
+            ),
+            (
+                Gate::new_nimpl(1, 0),
+                Gate::new_and(0, 2),
+                1,
+                false,
+                false,
+                (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, false)]),
+            ),
+            (
+                Gate::new_nimpl(1, 0),
+                Gate::new_and(0, 2),
+                1,
+                true,
+                false,
+                (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, false)]),
+            ),
         ] {
             assert_eq!(
                 exp,
