@@ -47,6 +47,7 @@ where
         from_new_input[i] = oi;
     }
 
+    //println!("Test: {}", circuit);
     let mut used_inputs = vec![false; input_len];
     let mut new_gates: Vec<Gate<T>> = vec![];
     let mut new_output_count = new_input_len;
@@ -54,7 +55,8 @@ where
         let oi = input_len + i;
         let gi1 = usize::try_from(g.i0).unwrap();
         let gi2 = usize::try_from(g.i1).unwrap();
-
+        
+        //println!("  Gate: {} {} {} {}", i, gi1, gi2, g.func);
         match assign_map[gi1] {
             Value::Bool(v1) => {
                 match assign_map[gi2] {
@@ -88,8 +90,13 @@ where
                     Value::Output(idx2, n2) => {
                         if idx == idx2 {
                             // if same outputs
-                            let o2_0 = g.eval_args(false, false);
-                            let o2_1 = g.eval_args(true, true);
+                            let (o2_0, o2_1) = if n == n2 {
+                                (g.eval_args(false, false),
+                                 g.eval_args(true, true))
+                            } else {
+                                (g.eval_args(false, true),
+                                 g.eval_args(true, false))
+                            };
                             if o2_0 == o2_1 {
                                 assign_map[oi] = Value::Bool(o2_0);
                             } else {
@@ -474,6 +481,14 @@ mod tests {
                 true,
                 false,
                 (Circuit::new(1, [], [(0, false)]).unwrap(), vec![1], vec![]),
+            ),
+            (   // failure!
+                Gate::new_nor(0, 1),
+                Gate::new_and(1, 2),
+                0,
+                false,
+                false,
+                (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, false)]),
             ),
         ] {
             assert_eq!(
