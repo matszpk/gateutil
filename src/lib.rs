@@ -292,7 +292,7 @@ mod tests {
     }
 
     #[test]
-    fn test_assign() {
+    fn test_assign_1() {
         for (gate, input, value, out_neg, exp) in [
             (
                 Gate::new_and(0, 1),
@@ -450,6 +450,32 @@ mod tests {
                 ),
                 "{} {} {}",
                 gate,
+                value,
+                out_neg
+            );
+        }
+    }
+    #[test]
+    fn test_assign_2() {
+        for (gate1, gate2, input, value, out_neg, exp) in [
+            (
+                Gate::new_and(0, 1),
+                Gate::new_and(1, 2),
+                0,
+                false,
+                false,
+                (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, false)]),
+            ),
+        ] {
+            assert_eq!(
+                exp,
+                assign(
+                    Circuit::new(2, [gate1, gate2], [(3, out_neg)]).unwrap(),
+                    [(input, value)]
+                ),
+                "{} {} {} {}",
+                gate1,
+                gate2,
                 value,
                 out_neg
             );
