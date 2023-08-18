@@ -4,6 +4,8 @@ use std::cmp::Ord;
 use std::fmt::Debug;
 use std::iter;
 
+/// IDEA: use reconstruction from gategen - just
+
 /// Assign values to inputs. Return new circuit and mapping to output.
 pub fn assign<T>(
     circuit: Circuit<T>,
@@ -469,6 +471,7 @@ mod tests {
             );
         }
     }
+    
     #[test]
     fn test_assign_2() {
         for (gate1, gate2, input, value, out_neg, exp) in [
@@ -755,6 +758,38 @@ mod tests {
                 "{} {} {} {} {}",
                 gate1,
                 gate2,
+                input,
+                value,
+                out_neg
+            );
+        }
+    }
+    
+    #[test]
+    fn test_assign_3() {
+        for (gate1, gate2, gate3, input, value, out_neg, exp) in [
+            // assign i0
+            // second gate: and
+            (
+                Gate::new_and(0, 1),
+                Gate::new_and(1, 2),
+                Gate::new_and(3, 4),
+                0,
+                false,
+                false,
+                (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, false)]),
+            ),
+        ] {
+            assert_eq!(
+                exp,
+                assign(
+                    Circuit::new(3, [gate1, gate2, gate3], [(5, out_neg)]).unwrap(),
+                    [(input, value)]
+                ),
+                "{} {} {} {} {} {}",
+                gate1,
+                gate2,
+                gate3,
                 input,
                 value,
                 out_neg
