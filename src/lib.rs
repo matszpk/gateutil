@@ -55,7 +55,7 @@ where
         let oi = input_len + i;
         let gi1 = usize::try_from(g.i0).unwrap();
         let gi2 = usize::try_from(g.i1).unwrap();
-        
+
         //println!("  Gate: {} {} {} {}", i, gi1, gi2, g.func);
         match assign_map[gi1] {
             Value::Bool(v1) => {
@@ -91,11 +91,9 @@ where
                         if idx == idx2 {
                             // if same outputs
                             let (o2_0, o2_1) = if n == n2 {
-                                (g.eval_args(false, false),
-                                 g.eval_args(true, true))
+                                (g.eval_args(false, false), g.eval_args(true, true))
                             } else {
-                                (g.eval_args(false, true),
-                                 g.eval_args(true, false))
+                                (g.eval_args(false, true), g.eval_args(true, false))
                             };
                             if o2_0 == o2_1 {
                                 assign_map[oi] = Value::Bool(o2_0);
@@ -482,7 +480,8 @@ mod tests {
                 false,
                 (Circuit::new(1, [], [(0, false)]).unwrap(), vec![1], vec![]),
             ),
-            (   // failure!
+            (
+                // failure!
                 Gate::new_nor(0, 1),
                 Gate::new_and(1, 2),
                 0,
