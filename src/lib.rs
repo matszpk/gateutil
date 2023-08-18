@@ -293,91 +293,125 @@ mod tests {
 
     #[test]
     fn test_assign() {
-        for (gate, value, exp) in [
+        for (gate, value, out_neg, exp) in [
             (
                 Gate::new_and(0, 1),
+                false,
                 false,
                 (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, false)]),
             ),
             (
                 Gate::new_and(0, 1),
+                false,
                 true,
+                (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, true)]),
+            ),
+            (
+                Gate::new_and(0, 1),
+                true,
+                false,
                 (Circuit::new(1, [], [(0, false)]).unwrap(), vec![1], vec![]),
             ),
             (
+                Gate::new_and(0, 1),
+                true,
+                true,
+                (Circuit::new(1, [], [(0, true)]).unwrap(), vec![1], vec![]),
+            ),
+            (
                 Gate::new_and(1, 0),
+                false,
                 false,
                 (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, false)]),
             ),
             (
                 Gate::new_and(1, 0),
                 true,
+                false,
                 (Circuit::new(1, [], [(0, false)]).unwrap(), vec![1], vec![]),
             ),
             (
                 Gate::new_nor(0, 1),
                 false,
+                false,
                 (Circuit::new(1, [], [(0, true)]).unwrap(), vec![1], vec![]),
             ),
             (
                 Gate::new_nor(0, 1),
+                false,
                 true,
+                (Circuit::new(1, [], [(0, false)]).unwrap(), vec![1], vec![]),
+            ),
+            (
+                Gate::new_nor(0, 1),
+                true,
+                false,
                 (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, false)]),
             ),
             (
                 Gate::new_nor(1, 0),
                 false,
+                false,
                 (Circuit::new(1, [], [(0, true)]).unwrap(), vec![1], vec![]),
             ),
             (
                 Gate::new_nor(1, 0),
                 true,
-                (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, false)]),
-            ),
-            (
-                Gate::new_nimpl(0, 1),
                 false,
                 (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, false)]),
             ),
             (
                 Gate::new_nimpl(0, 1),
+                false,
+                false,
+                (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, false)]),
+            ),
+            (
+                Gate::new_nimpl(0, 1),
                 true,
+                false,
                 (Circuit::new(1, [], [(0, true)]).unwrap(), vec![1], vec![]),
             ),
             (
                 Gate::new_nimpl(1, 0),
+                false,
                 false,
                 (Circuit::new(1, [], [(0, false)]).unwrap(), vec![1], vec![]),
             ),
             (
                 Gate::new_nimpl(1, 0),
                 true,
+                false,
                 (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, false)]),
             ),
             (
                 Gate::new_xor(0, 1),
                 false,
+                false,
                 (Circuit::new(1, [], [(0, false)]).unwrap(), vec![1], vec![]),
             ),
             (
                 Gate::new_xor(0, 1),
                 true,
+                false,
                 (Circuit::new(1, [], [(0, true)]).unwrap(), vec![1], vec![]),
             ),
             (
                 Gate::new_xor(1, 0),
+                false,
                 false,
                 (Circuit::new(1, [], [(0, false)]).unwrap(), vec![1], vec![]),
             ),
             (
                 Gate::new_xor(1, 0),
                 true,
+                false,
                 (Circuit::new(1, [], [(0, true)]).unwrap(), vec![1], vec![]),
             ),
         ] {
             assert_eq!(
                 exp,
-                assign(Circuit::new(2, [gate], [(2, false)]).unwrap(), [(0, value)]),
+                assign(Circuit::new(2, [gate], [(2, out_neg)]).unwrap(), [(0, value)]),
                 "{} {}",
                 gate,
                 value
