@@ -628,6 +628,14 @@ mod tests {
                 false,
                 (Circuit::new(1, [], [(0, true)]).unwrap(), vec![1], vec![]),
             ),
+            (
+                Gate::new_nor(0, 1),
+                Gate::new_nimpl(2, 1),
+                0,
+                false,
+                true,
+                (Circuit::new(1, [], [(0, false)]).unwrap(), vec![1], vec![]),
+            ),
         ] {
             assert_eq!(
                 exp,
