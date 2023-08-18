@@ -489,7 +489,6 @@ mod tests {
                 (Circuit::new(1, [], [(0, false)]).unwrap(), vec![1], vec![]),
             ),
             (
-                // failure!
                 Gate::new_nor(0, 1),
                 Gate::new_and(1, 2),
                 0,
