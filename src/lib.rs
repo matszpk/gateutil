@@ -472,6 +472,7 @@ mod tests {
     #[test]
     fn test_assign_2() {
         for (gate1, gate2, input, value, out_neg, exp) in [
+            // second gate: and
             (
                 Gate::new_and(0, 1),
                 Gate::new_and(1, 2),
@@ -527,6 +528,47 @@ mod tests {
                 true,
                 false,
                 (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, false)]),
+            ),
+            (
+                Gate::new_nimpl(0, 1),
+                Gate::new_and(1, 2),
+                0,
+                false,
+                false,
+                (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, false)]),
+            ),
+            (
+                Gate::new_nimpl(0, 1),
+                Gate::new_and(1, 2),
+                0,
+                true,
+                false,
+                (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, false)]),
+            ),
+            (
+                Gate::new_nimpl(1, 0),
+                Gate::new_and(1, 2),
+                0,
+                false,
+                false,
+                (Circuit::new(1, [], [(0, false)]).unwrap(), vec![1], vec![]),
+            ),
+            (
+                Gate::new_nimpl(1, 0),
+                Gate::new_and(1, 2),
+                0,
+                true,
+                false,
+                (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, false)]),
+            ),
+            // second gate: nor
+            (
+                Gate::new_and(0, 1),
+                Gate::new_nor(1, 2),
+                0,
+                false,
+                false,
+                (Circuit::new(1, [], [(0, true)]).unwrap(), vec![1], vec![]),
             ),
         ] {
             assert_eq!(
