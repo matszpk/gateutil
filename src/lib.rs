@@ -334,6 +334,46 @@ mod tests {
                 true,
                 (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, false)]),
             ),
+            (
+                Gate::new_nimpl(0, 1),
+                false,
+                (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, false)]),
+            ),
+            (
+                Gate::new_nimpl(0, 1),
+                true,
+                (Circuit::new(1, [], [(0, true)]).unwrap(), vec![1], vec![]),
+            ),
+            (
+                Gate::new_nimpl(1, 0),
+                false,
+                (Circuit::new(1, [], [(0, false)]).unwrap(), vec![1], vec![]),
+            ),
+            (
+                Gate::new_nimpl(1, 0),
+                true,
+                (Circuit::new(0, [], []).unwrap(), vec![], vec![(0, false)]),
+            ),
+            (
+                Gate::new_xor(0, 1),
+                false,
+                (Circuit::new(1, [], [(0, false)]).unwrap(), vec![1], vec![]),
+            ),
+            (
+                Gate::new_xor(0, 1),
+                true,
+                (Circuit::new(1, [], [(0, true)]).unwrap(), vec![1], vec![]),
+            ),
+            (
+                Gate::new_xor(1, 0),
+                false,
+                (Circuit::new(1, [], [(0, false)]).unwrap(), vec![1], vec![]),
+            ),
+            (
+                Gate::new_xor(1, 0),
+                true,
+                (Circuit::new(1, [], [(0, true)]).unwrap(), vec![1], vec![]),
+            ),
         ] {
             assert_eq!(
                 exp,
