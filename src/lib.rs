@@ -411,10 +411,14 @@ mod tests {
         ] {
             assert_eq!(
                 exp,
-                assign(Circuit::new(2, [gate], [(2, out_neg)]).unwrap(), [(0, value)]),
-                "{} {}",
+                assign(
+                    Circuit::new(2, [gate], [(2, out_neg)]).unwrap(),
+                    [(0, value)]
+                ),
+                "{} {} {}",
                 gate,
-                value
+                value,
+                out_neg
             );
         }
     }
