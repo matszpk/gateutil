@@ -161,5 +161,42 @@ mod tests {
                 .unwrap()
             )
         );
+        assert_eq!(
+            Circuit::new(
+                4,
+                [
+                    Gate::new_xor(0, 1),
+                    Gate::new_xor(2, 3),
+                    Gate::new_nor(0, 1),
+                    Gate::new_nor(2, 3),
+                    Gate::new_and(4, 5),
+                    Gate::new_and(6, 7),
+                    Gate::new_nimpl(9, 8),
+                    Gate::new_nimpl(9, 10),
+                ],
+                [(11, true)],
+            )
+            .unwrap(),
+            deduplicate(
+                Circuit::new(
+                    4,
+                    [
+                        Gate::new_xor(1, 0), // arguments can be swapped
+                        Gate::new_xor(2, 3),
+                        Gate::new_nor(0, 1),
+                        Gate::new_nor(2, 3),
+                        Gate::new_and(4, 5),
+                        Gate::new_and(6, 7),
+                        Gate::new_nor(0, 1),
+                        Gate::new_nor(2, 3),
+                        Gate::new_and(10, 11),
+                        Gate::new_nimpl(9, 8), // arguments can not be swapped
+                        Gate::new_nimpl(12, 13),
+                    ],
+                    [(14, true)],
+                )
+                .unwrap()
+            )
+        );
     }
 }
