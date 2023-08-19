@@ -61,6 +61,9 @@ where
     Circuit::new(circuit.input_len(), new_gates, new_outputs).unwrap()
 }
 
+// IDEA: optimize clauses (AND, OR, XOR) in circuit by removing duplicated literals
+// IDEA: Use McCluskey-Quinn algortihm to optimize OR-AND or AND-OR clause-tree.
+
 #[cfg(test)]
 mod tests {
     use super::*;
