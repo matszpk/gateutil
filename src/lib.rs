@@ -23,6 +23,7 @@ where
         let oi = input_len + i;
         let gi0 = output_map[usize::try_from(g.i0).unwrap()];
         let gi1 = output_map[usize::try_from(g.i1).unwrap()];
+        // convert to new gate - ordered inputs if not nimpl.
         let (gi0, gi1) = if g.func != GateFunc::Nimpl && gi0 > gi1 {
             (gi1, gi0)
         } else {
@@ -33,10 +34,12 @@ where
             i1: gi1,
             func: g.func,
         };
+        /
         if let Some(gindex) = gate_map.get(&newg) {
-            // if found gate, then skip
+            // if found gate - then store its index into output_map
             output_map[oi] = *gindex;
         } else {
+            // otherwise push to new_gates and to gate_map and increment 
             new_gates.push(newg);
             let gate_count_t = T::try_from(gate_count).unwrap();
             output_map[oi] = gate_count_t;
