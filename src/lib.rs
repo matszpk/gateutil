@@ -34,12 +34,11 @@ where
             i1: gi1,
             func: g.func,
         };
-        /
         if let Some(gindex) = gate_map.get(&newg) {
             // if found gate - then store its index into output_map
             output_map[oi] = *gindex;
         } else {
-            // otherwise push to new_gates and to gate_map and increment 
+            // otherwise push to new_gates and to gate_map
             new_gates.push(newg);
             let gate_count_t = T::try_from(gate_count).unwrap();
             output_map[oi] = gate_count_t;
