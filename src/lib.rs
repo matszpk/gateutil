@@ -4,10 +4,11 @@ use std::cmp::Ord;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::iter;
 
 pub fn deduplicate<T: Clone + Copy + Ord + PartialEq + Eq>(circuit: Circuit<T>) -> Circuit<T>
 where
-    T: TryFrom<usize>,
+    T: Default + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
     usize: TryFrom<T>,
     <usize as TryFrom<T>>::Error: Debug,
@@ -17,7 +18,11 @@ where
     let mut new_gates: Vec<Gate<T>> = vec![];
     let input_len = usize::try_from(circuit.input_len()).unwrap();
     let mut gate_count = input_len;
-    let mut output_map = Vec::from_iter((0..input_len).map(|x| T::try_from(x).unwrap()));
+    let mut output_map = Vec::from_iter(
+        (0..input_len)
+            .map(|x| T::try_from(x).unwrap())
+            .chain(iter::repeat(T::default()).take(circuit.len())),
+    );
 
     for (i, g) in circuit.gates().into_iter().enumerate() {
         let oi = input_len + i;
@@ -59,4 +64,65 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_deduplicate() {
+        assert_eq!(
+            Circuit::new(
+                3,
+                [
+                    Gate::new_xor(0, 1),
+                    Gate::new_xor(2, 3),
+                    Gate::new_and(2, 3),
+                    Gate::new_and(0, 1),
+                    Gate::new_nor(5, 6),
+                ],
+                [(4, false), (7, true)],
+            )
+            .unwrap(),
+            deduplicate(
+                Circuit::new(
+                    3,
+                    [
+                        Gate::new_xor(0, 1),
+                        Gate::new_xor(2, 3),
+                        Gate::new_and(2, 3),
+                        Gate::new_and(0, 1),
+                        Gate::new_nor(5, 6),
+                    ],
+                    [(4, false), (7, true)],
+                )
+                .unwrap()
+            )
+        );
+        assert_eq!(
+            Circuit::new(
+                3,
+                [
+                    Gate::new_xor(0, 1),
+                    Gate::new_xor(2, 3),
+                    Gate::new_and(2, 3),
+                    Gate::new_and(0, 1),
+                    Gate::new_nor(5, 6),
+                ],
+                [(4, false), (7, true)],
+            )
+            .unwrap(),
+            deduplicate(
+                Circuit::new(
+                    3,
+                    [
+                        Gate::new_xor(0, 1),
+                        Gate::new_xor(2, 3),
+                        Gate::new_xor(1, 0),
+                        Gate::new_and(2, 5),
+                        Gate::new_and(0, 1),
+                        Gate::new_nor(6, 7),
+                    ],
+                    [(4, false), (8, true)],
+                )
+                .unwrap()
+            )
+        );
+    }
 }
