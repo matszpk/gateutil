@@ -61,6 +61,8 @@ where
     Circuit::new(circuit.input_len(), new_gates, new_outputs).unwrap()
 }
 
+// deduplication based on evaluation (evaluated values for all input values).
+
 // return circuit with assignment and mapping from older input to new input
 // pub fn assign_to_circuit<T>(clause_circuit: &Circuit<T>,
 //      inputs: IntoIterator<Item = (T, bool)>) -> (Circuit<T>, Vec<T>) {
