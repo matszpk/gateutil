@@ -62,7 +62,8 @@ where
 }
 
 // return circuit with assignment and mapping from older input to new input
-// pub fn assign_to_circuit(clause_circuit: &Circuit<T>) -> (Circuit<T>, Vec<T>) {
+// pub fn assign_to_circuit<T>(clause_circuit: &Circuit<T>,
+//      inputs: IntoIterator<Item = (T, bool)>) -> (Circuit<T>, Vec<T>) {
 // }
 
 // reduce chain clause - one-literal-clause - clause.
