@@ -61,6 +61,15 @@ where
     Circuit::new(circuit.input_len(), new_gates, new_outputs).unwrap()
 }
 
+// return circuit with assignment and mapping from older input to new input
+// pub fn assign_to_circuit(clause_circuit: &Circuit<T>) -> (Circuit<T>, Vec<T>) {
+// }
+
+// reduce chain clause - one-literal-clause - clause.
+// check whether all usages of clause only in other clause.
+// reduce clauses to zero or ones (constants).
+// remove duplicated literals in clause.
+// reduce literals in clause.
 // pub fn optimize_clause_circuit<T>(clause_circuit: ClauseCircuit<T>) -> ClauseCircuit<T>
 // where
 //     T: Default + TryFrom<usize>,
