@@ -187,12 +187,12 @@ where
     // outputs
     let mut new_outputs = vec![];
     let mut output_entries = vec![];
-    for (o, n) in circuit.outputs() {
+    for (i, (o, n)) in circuit.outputs().iter().enumerate() {
         let o_u = usize::try_from(*o).unwrap();
         match gate_map[o_u] {
             OutputEntry::NewIndex(no) => {
                 new_outputs.push((no, *n));
-                output_entries.push(gate_map[o_u]);
+                output_entries.push(OutputEntry::NewIndex(T::try_from(i).unwrap()));
             }
             OutputEntry::Value(v) => {
                 output_entries.push(OutputEntry::Value(v ^ n));
@@ -373,10 +373,32 @@ mod tests {
             (
                 Circuit::new(1, [Gate::new_and(0, 0)], [(1, false)]).unwrap(),
                 vec![OutputEntry::NewIndex(0), OutputEntry::Value(true)],
-                vec![OutputEntry::NewIndex(1)],
+                vec![OutputEntry::NewIndex(0)],
             ),
             assign_to_circuit(
                 &Circuit::new(2, [Gate::new_and(0, 1)], [(2, false)]).unwrap(),
+                [(1, true)]
+            )
+        );
+        assert_eq!(
+            (
+                Circuit::new(1, [Gate::new_nimpl(0, 0)], [(1, false)]).unwrap(),
+                vec![OutputEntry::NewIndex(0), OutputEntry::Value(false)],
+                vec![OutputEntry::NewIndex(0)],
+            ),
+            assign_to_circuit(
+                &Circuit::new(2, [Gate::new_and(0, 1)], [(2, false)]).unwrap(),
+                [(1, false)]
+            )
+        );
+        assert_eq!(
+            (
+                Circuit::new(1, [Gate::new_and(0, 0)], [(1, true)]).unwrap(),
+                vec![OutputEntry::NewIndex(0), OutputEntry::Value(true)],
+                vec![OutputEntry::NewIndex(0)],
+            ),
+            assign_to_circuit(
+                &Circuit::new(2, [Gate::new_and(0, 1)], [(2, true)]).unwrap(),
                 [(1, true)]
             )
         );
