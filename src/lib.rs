@@ -61,18 +61,157 @@ where
     Circuit::new(circuit.input_len(), new_gates, new_outputs).unwrap()
 }
 
-// deduplication based on evaluation (evaluated values for all input values).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OutputEntry<T> {
+    NewIndex(T),
+    Value(bool),
+}
 
 // return circuit with assignment and mapping from older input to new input
-// pub fn assign_to_circuit<T>(clause_circuit: &Circuit<T>,
-//      inputs: IntoIterator<Item = (T, bool)>) -> (Circuit<T>, Vec<T>) {
-// }
+// and output mapping from older output index to new output index or value
+pub fn assign_to_circuit<T>(
+    circuit: &Circuit<T>,
+    inputs: impl IntoIterator<Item = (T, bool)>,
+) -> (Circuit<T>, Vec<OutputEntry<T>>, Vec<OutputEntry<T>>)
+where
+    T: Default + Clone + Copy + PartialEq + Eq + PartialOrd + Ord,
+    T: TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    let input_len = usize::try_from(circuit.input_len()).unwrap();
+    let len = circuit.len();
+
+    let mut gate_map = vec![OutputEntry::Value(false); input_len + len];
+    let mut rest_map = vec![true; input_len];
+    // filter inputs
+    for (g, v) in inputs.into_iter() {
+        let g_u = usize::try_from(g).unwrap();
+        rest_map[g_u] = false;
+        gate_map[g_u] = OutputEntry::Value(v);
+    }
+    // generate output inputs
+    let out_inputs = rest_map[0..input_len]
+        .iter()
+        .enumerate()
+        .filter_map(|(i, x)| {
+            if *x {
+                Some(T::try_from(i).unwrap())
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+    // make to_new_rest_map - conversion to new outputs
+    for (i, j) in out_inputs.iter().enumerate() {
+        gate_map[usize::try_from(*j).unwrap()] = OutputEntry::NewIndex(T::try_from(i).unwrap());
+    }
+    let new_input_len = out_inputs.len();
+    let mut new_gates: Vec<Gate<T>> = vec![];
+
+    let mut oi = new_input_len;
+    for (i, g) in circuit.gates().into_iter().enumerate() {
+        let ii = input_len + i;
+        let gi0 = usize::try_from(g.i0).unwrap();
+        let gi1 = usize::try_from(g.i1).unwrap();
+        match gate_map[gi0] {
+            OutputEntry::NewIndex(ni0) => {
+                match gate_map[gi1] {
+                    OutputEntry::NewIndex(ni1) => {
+                        gate_map[ii] = OutputEntry::NewIndex(T::try_from(oi).unwrap());
+                        new_gates.push(Gate {
+                            i0: ni0,
+                            i1: ni1,
+                            func: g.func,
+                        });
+                        oi += 1;
+                    }
+                    OutputEntry::Value(v1) => {
+                        let vv0 = g.eval_args(false, v1);
+                        let vv1 = g.eval_args(true, v1);
+                        new_gates.push(Gate {
+                            i0: ni0,
+                            i1: ni0,
+                            func: if !vv0 && vv1 {
+                                // x
+                                GateFunc::And
+                            } else if vv0 && !vv1 {
+                                // !x
+                                GateFunc::Nor
+                            } else if !vv0 && !vv1 {
+                                // 0
+                                GateFunc::Nimpl
+                            } else {
+                                panic!("Unexpected case!");
+                            },
+                        });
+                        oi += 1;
+                    }
+                }
+            }
+            OutputEntry::Value(v0) => {
+                match gate_map[gi1] {
+                    OutputEntry::NewIndex(ni1) => {
+                        let vv0 = g.eval_args(v0, false);
+                        let vv1 = g.eval_args(v0, true);
+                        new_gates.push(Gate {
+                            i0: ni1,
+                            i1: ni1,
+                            func: if !vv0 && vv1 {
+                                // x
+                                GateFunc::And
+                            } else if vv0 && !vv1 {
+                                // !x
+                                GateFunc::Nor
+                            } else if !vv0 && !vv1 {
+                                // 0
+                                GateFunc::Nimpl
+                            } else {
+                                panic!("Unexpected case!");
+                            },
+                        });
+                        oi += 1;
+                    }
+                    OutputEntry::Value(v1) => {
+                        let out = g.eval_args(v0, v1);
+                        gate_map[ii] = OutputEntry::Value(out);
+                    }
+                }
+            }
+        }
+    }
+
+    // outputs
+    let mut new_outputs = vec![];
+    let mut output_entries = vec![];
+    for (o, n) in circuit.outputs() {
+        let o_u = usize::try_from(*o).unwrap();
+        match gate_map[o_u] {
+            OutputEntry::NewIndex(no) => {
+                new_outputs.push((no, *n));
+                output_entries.push(gate_map[o_u]);
+            }
+            OutputEntry::Value(v) => {
+                output_entries.push(OutputEntry::Value(v ^ n));
+            }
+        }
+    }
+
+    (
+        Circuit::<T>::new(T::try_from(new_input_len).unwrap(), new_gates, new_outputs).unwrap(),
+        gate_map[0..input_len].to_vec(),
+        output_entries,
+    )
+}
 
 // reduce chain clause - one-literal-clause - clause.
 // check whether all usages of clause only in other clause.
 // reduce clauses to zero or ones (constants).
 // remove duplicated literals in clause.
 // reduce literals in clause.
+// deduplication based on evaluation (evaluated values for all input values) (optional).
+// xor detection in and-or and or-and clause tree.
 // pub fn optimize_clause_circuit<T>(clause_circuit: ClauseCircuit<T>) -> ClauseCircuit<T>
 // where
 //     T: Default + TryFrom<usize>,
