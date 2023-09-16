@@ -807,5 +807,135 @@ mod tests {
                 [(1, true), (3, true)]
             )
         );
+
+        assert_eq!(
+            (
+                Circuit::new(
+                    1,
+                    [
+                        Gate::new_nimpl(0, 0),
+                        Gate::new_and(0, 0),
+                        // Gate::new_and(0, 3), -> false
+                        // Gate::new_and(1, 3), -> true
+                        // add a1*b0 + a0*b1
+                        Gate::new_and(2, 2),
+                        Gate::new_nimpl(2, 2),
+                        // add c(a1*b0 + a0*b1) + a1*b1
+                        Gate::new_nor(4, 4),
+                        Gate::new_and(4, 4),
+                    ],
+                    [(1, false), (3, false), (5, false), (6, false)],
+                )
+                .unwrap(),
+                vec![
+                    OutputEntry::Value(false),
+                    OutputEntry::Value(true),
+                    OutputEntry::NewIndex(0),
+                    OutputEntry::Value(true)
+                ],
+                vec![
+                    OutputEntry::NewIndex(0),
+                    OutputEntry::NewIndex(1),
+                    OutputEntry::NewIndex(2),
+                    OutputEntry::NewIndex(3)
+                ],
+            ),
+            assign_to_circuit(
+                &Circuit::new(
+                    4,
+                    [
+                        Gate::new_and(0, 2),
+                        Gate::new_and(1, 2),
+                        Gate::new_and(0, 3),
+                        Gate::new_and(1, 3),
+                        // add a1*b0 + a0*b1
+                        Gate::new_xor(5, 6),
+                        Gate::new_and(5, 6),
+                        // add c(a1*b0 + a0*b1) + a1*b1
+                        Gate::new_xor(7, 9),
+                        Gate::new_and(7, 9),
+                    ],
+                    [(4, false), (8, false), (10, false), (11, false)],
+                )
+                .unwrap(),
+                [(0, false), (1, true), (3, true)]
+            )
+        );
+
+        assert_eq!(
+            (
+                Circuit::new(0, [], []).unwrap(),
+                vec![
+                    OutputEntry::Value(false),
+                    OutputEntry::Value(true),
+                    OutputEntry::Value(false),
+                    OutputEntry::Value(true)
+                ],
+                vec![
+                    OutputEntry::Value(false),
+                    OutputEntry::Value(false),
+                    OutputEntry::Value(true),
+                    OutputEntry::Value(false)
+                ],
+            ),
+            assign_to_circuit(
+                &Circuit::new(
+                    4,
+                    [
+                        Gate::new_and(0, 2),
+                        Gate::new_and(1, 2),
+                        Gate::new_and(0, 3),
+                        Gate::new_and(1, 3),
+                        // add a1*b0 + a0*b1
+                        Gate::new_xor(5, 6),
+                        Gate::new_and(5, 6),
+                        // add c(a1*b0 + a0*b1) + a1*b1
+                        Gate::new_xor(7, 9),
+                        Gate::new_and(7, 9),
+                    ],
+                    [(4, false), (8, false), (10, false), (11, false)],
+                )
+                .unwrap(),
+                [(0, false), (1, true), (2, false), (3, true)]
+            )
+        );
+
+        assert_eq!(
+            (
+                Circuit::new(0, [], []).unwrap(),
+                vec![
+                    OutputEntry::Value(false),
+                    OutputEntry::Value(true),
+                    OutputEntry::Value(true),
+                    OutputEntry::Value(true)
+                ],
+                vec![
+                    OutputEntry::Value(false),
+                    OutputEntry::Value(true),
+                    OutputEntry::Value(true),
+                    OutputEntry::Value(false)
+                ],
+            ),
+            assign_to_circuit(
+                &Circuit::new(
+                    4,
+                    [
+                        Gate::new_and(0, 2),
+                        Gate::new_and(1, 2),
+                        Gate::new_and(0, 3),
+                        Gate::new_and(1, 3),
+                        // add a1*b0 + a0*b1
+                        Gate::new_xor(5, 6),
+                        Gate::new_and(5, 6),
+                        // add c(a1*b0 + a0*b1) + a1*b1
+                        Gate::new_xor(7, 9),
+                        Gate::new_and(7, 9),
+                    ],
+                    [(4, false), (8, false), (10, false), (11, false)],
+                )
+                .unwrap(),
+                [(0, false), (1, true), (2, true), (3, true)]
+            )
+        );
     }
 }
