@@ -402,5 +402,38 @@ mod tests {
                 [(1, true)]
             )
         );
+        assert_eq!(
+            (
+                Circuit::new(0, [], []).unwrap(),
+                vec![OutputEntry::Value(false), OutputEntry::Value(true)],
+                vec![OutputEntry::Value(true)],
+            ),
+            assign_to_circuit(
+                &Circuit::new(2, [Gate::new_and(0, 1)], [(2, true)]).unwrap(),
+                [(0, false), (1, true)]
+            )
+        );
+        assert_eq!(
+            (
+                Circuit::new(0, [], []).unwrap(),
+                vec![OutputEntry::Value(false), OutputEntry::Value(true)],
+                vec![OutputEntry::Value(false)],
+            ),
+            assign_to_circuit(
+                &Circuit::new(2, [Gate::new_and(0, 1)], [(2, false)]).unwrap(),
+                [(0, false), (1, true)]
+            )
+        );
+        assert_eq!(
+            (
+                Circuit::new(0, [], []).unwrap(),
+                vec![OutputEntry::Value(true), OutputEntry::Value(true)],
+                vec![OutputEntry::Value(true)],
+            ),
+            assign_to_circuit(
+                &Circuit::new(2, [Gate::new_and(0, 1)], [(2, false)]).unwrap(),
+                [(0, true), (1, true)]
+            )
+        );
     }
 }
