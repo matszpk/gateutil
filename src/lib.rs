@@ -187,12 +187,14 @@ where
     // outputs
     let mut new_outputs = vec![];
     let mut output_entries = vec![];
-    for (i, (o, n)) in circuit.outputs().iter().enumerate() {
+    for (o, n) in circuit.outputs().iter() {
         let o_u = usize::try_from(*o).unwrap();
         match gate_map[o_u] {
             OutputEntry::NewIndex(no) => {
+                output_entries.push(OutputEntry::NewIndex(
+                    T::try_from(new_outputs.len()).unwrap(),
+                ));
                 new_outputs.push((no, *n));
-                output_entries.push(OutputEntry::NewIndex(T::try_from(i).unwrap()));
             }
             OutputEntry::Value(v) => {
                 output_entries.push(OutputEntry::Value(v ^ n));
@@ -673,9 +675,9 @@ mod tests {
                 ],
                 vec![
                     OutputEntry::Value(false),
+                    OutputEntry::NewIndex(0),
                     OutputEntry::NewIndex(1),
-                    OutputEntry::NewIndex(2),
-                    OutputEntry::NewIndex(3)
+                    OutputEntry::NewIndex(2)
                 ],
             ),
             assign_to_circuit(
