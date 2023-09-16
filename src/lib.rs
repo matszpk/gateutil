@@ -216,19 +216,20 @@ where
 // reduce literals in clause.
 // deduplication based on evaluation (evaluated values for all input values) (optional).
 // xor detection in and-or and or-and clause tree.
-// pub fn optimize_clause_circuit<T>(clause_circuit: ClauseCircuit<T>) -> ClauseCircuit<T>
-// where
-//     T: Default + TryFrom<usize>,
-//     <T as TryFrom<usize>>::Error: Debug,
-//     usize: TryFrom<T>,
-//     <usize as TryFrom<T>>::Error: Debug,
-// {
-//     ClauseCircuit {
-//         input_len: T::default(),
-//         clauses: vec![],
-//         outputs: vec![],
-//     }
-// }
+
+pub fn optimize_clause_circuit<T>(clause_circuit: ClauseCircuit<T>) -> (ClauseCircuit<T>, Vec<T>)
+where
+    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Default + TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    (
+        ClauseCircuit::new(T::default(), vec![], vec![]).unwrap(),
+        vec![],
+    )
+}
 
 #[cfg(test)]
 mod tests {
