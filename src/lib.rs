@@ -699,5 +699,59 @@ mod tests {
                 [(0, false), (2, true)]
             )
         );
+
+        assert_eq!(
+            (
+                Circuit::new(
+                    2,
+                    [
+                        Gate::new_and(0, 1),
+                        Gate::new_and(1, 1),
+                        Gate::new_nimpl(0, 0),
+                        // Gate::new_and(1, 3), -> false
+                        // add a1*b0 + a0*b1
+                        Gate::new_xor(3, 4),
+                        Gate::new_and(3, 4),
+                        // add c(a1*b0 + a0*b1) + a1*b1
+                        Gate::new_and(6, 6),
+                        Gate::new_nimpl(6, 6),
+                    ],
+                    [(2, false), (5, false), (7, false), (8, false)],
+                )
+                .unwrap(),
+                vec![
+                    OutputEntry::NewIndex(0),
+                    OutputEntry::Value(true),
+                    OutputEntry::NewIndex(1),
+                    OutputEntry::Value(false)
+                ],
+                vec![
+                    OutputEntry::NewIndex(0),
+                    OutputEntry::NewIndex(1),
+                    OutputEntry::NewIndex(2),
+                    OutputEntry::NewIndex(3)
+                ],
+            ),
+            assign_to_circuit(
+                &Circuit::new(
+                    4,
+                    [
+                        Gate::new_and(0, 2),
+                        Gate::new_and(1, 2),
+                        Gate::new_and(0, 3),
+                        Gate::new_and(1, 3),
+                        // add a1*b0 + a0*b1
+                        Gate::new_xor(5, 6),
+                        Gate::new_and(5, 6),
+                        // add c(a1*b0 + a0*b1) + a1*b1
+                        Gate::new_xor(7, 9),
+                        Gate::new_and(7, 9),
+                    ],
+                    [(4, false), (8, false), (10, false), (11, false)],
+                )
+                .unwrap(),
+                [(1, true), (3, false)]
+            )
+        );
     }
 }
