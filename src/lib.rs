@@ -216,11 +216,12 @@ where
 // reduce literals in clause.
 // deduplication based on evaluation (evaluated values for all input values) (optional).
 // xor detection in and-or and or-and clause tree.
+// find common parts of clauses to reuse more parts.
 
 // return optimized circuit, mapping to new inputs, mapping to new outputs
 pub fn optimize_clause_circuit<T>(
     clause_circuit: ClauseCircuit<T>,
-) -> (ClauseCircuit<T>, Vec<T>, Vec<T>)
+) -> (ClauseCircuit<T>, Vec<T>, Vec<OutputEntry<T>>)
 where
     T: Clone + Copy + Ord + PartialEq + Eq,
     T: Default + TryFrom<usize>,
