@@ -128,6 +128,7 @@ where
                         oi += 1;
                     }
                     OutputEntry::Value(v1) => {
+                        gate_map[ii] = OutputEntry::NewIndex(T::try_from(oi).unwrap());
                         let vv0 = g.eval_args(false, v1);
                         let vv1 = g.eval_args(true, v1);
                         new_gates.push(Gate {
@@ -153,6 +154,7 @@ where
             OutputEntry::Value(v0) => {
                 match gate_map[gi1] {
                     OutputEntry::NewIndex(ni1) => {
+                        gate_map[ii] = OutputEntry::NewIndex(T::try_from(oi).unwrap());
                         let vv0 = g.eval_args(v0, false);
                         let vv1 = g.eval_args(v0, true);
                         new_gates.push(Gate {
@@ -361,6 +363,21 @@ mod tests {
                     [(14, true)],
                 )
                 .unwrap()
+            )
+        );
+    }
+
+    #[test]
+    fn test_assign_to_circuit() {
+        assert_eq!(
+            (
+                Circuit::new(1, [Gate::new_and(0, 0)], [(1, false)]).unwrap(),
+                vec![OutputEntry::NewIndex(0), OutputEntry::Value(true)],
+                vec![OutputEntry::NewIndex(1)],
+            ),
+            assign_to_circuit(
+                &Circuit::new(2, [Gate::new_and(0, 1)], [(2, false)]).unwrap(),
+                [(1, true)]
             )
         );
     }
