@@ -217,7 +217,10 @@ where
 // deduplication based on evaluation (evaluated values for all input values) (optional).
 // xor detection in and-or and or-and clause tree.
 
-pub fn optimize_clause_circuit<T>(clause_circuit: ClauseCircuit<T>) -> (ClauseCircuit<T>, Vec<T>)
+// return optimized circuit, mapping to new inputs, mapping to new outputs
+pub fn optimize_clause_circuit<T>(
+    clause_circuit: ClauseCircuit<T>,
+) -> (ClauseCircuit<T>, Vec<T>, Vec<T>)
 where
     T: Clone + Copy + Ord + PartialEq + Eq,
     T: Default + TryFrom<usize>,
@@ -227,6 +230,7 @@ where
 {
     (
         ClauseCircuit::new(T::default(), vec![], vec![]).unwrap(),
+        vec![],
         vec![],
     )
 }
