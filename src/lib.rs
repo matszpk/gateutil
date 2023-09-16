@@ -402,6 +402,31 @@ mod tests {
                 [(1, true)]
             )
         );
+        
+        assert_eq!(
+            (
+                Circuit::new(1, [Gate::new_and(0, 0)], [(1, false)]).unwrap(),
+                vec![OutputEntry::Value(true), OutputEntry::NewIndex(0)],
+                vec![OutputEntry::NewIndex(0)],
+            ),
+            assign_to_circuit(
+                &Circuit::new(2, [Gate::new_and(0, 1)], [(2, false)]).unwrap(),
+                [(0, true)]
+            )
+        );
+        assert_eq!(
+            (
+                Circuit::new(1, [Gate::new_nimpl(0, 0)], [(1, false)]).unwrap(),
+                vec![OutputEntry::Value(false), OutputEntry::NewIndex(0)],
+                vec![OutputEntry::NewIndex(0)],
+            ),
+            assign_to_circuit(
+                &Circuit::new(2, [Gate::new_and(0, 1)], [(2, false)]).unwrap(),
+                [(0, false)]
+            )
+        );
+        
+        // evaluation of gate
         assert_eq!(
             (
                 Circuit::new(0, [], []).unwrap(),
