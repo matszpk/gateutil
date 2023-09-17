@@ -221,7 +221,7 @@ where
 // return optimized circuit, mapping to new inputs, mapping to new outputs
 pub fn optimize_clause_circuit<T>(
     clause_circuit: ClauseCircuit<T>,
-) -> (ClauseCircuit<T>, Vec<T>, Vec<OutputEntry<T>>)
+) -> (ClauseCircuit<T>, Vec<Option<T>>, Vec<OutputEntry<T>>)
 where
     T: Clone + Copy + Ord + PartialEq + Eq,
     T: Default + TryFrom<usize>,
