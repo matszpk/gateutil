@@ -218,9 +218,64 @@ where
 // xor detection in and-or and or-and clause tree.
 // find common parts of clauses to reuse more parts.
 
+fn reduce_clauses_int<T>(clauses: &mut [(Clause<T>, bool)])
+where
+    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Default + TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    for (clause, cs) in clauses {
+        clause.literals.sort();
+        match clause.kind {
+            ClauseKind::And => {
+                clause.literals.dedup();
+                let mut pl = None;
+                let mut zero = false;
+                for (l, _) in &clause.literals {
+                    if let Some(pl) = pl {
+                        if pl == l {
+                            // we have l and not(l) -> clause = 0
+                            zero = true;
+                            break;
+                        }
+                    }
+                    pl = Some(l);
+                }
+                if zero {
+                    clause.literals.clear();
+                }
+            }
+            ClauseKind::Xor => {
+                let mut pl = None;
+                let mut new_literals = vec![];
+
+                for (l, s) in &clause.literals {
+                    if *s {
+                        *cs = !*cs;
+                    }
+                    if let Some(pl) = pl {
+                        if pl == l {
+                            // we have l and l -> reduce 0
+                            new_literals.pop();
+                        } else {
+                            new_literals.push((*l, false));
+                        }
+                    } else {
+                        new_literals.push((*l, false));
+                    }
+                    pl = Some(l);
+                }
+                clause.literals = new_literals;
+            }
+        }
+    }
+}
+
 // return optimized circuit, mapping to new inputs, mapping to new outputs
 pub fn optimize_clause_circuit<T>(
-    clause_circuit: ClauseCircuit<T>,
+    circuit: ClauseCircuit<T>,
 ) -> (ClauseCircuit<T>, Vec<Option<T>>, Vec<OutputEntry<T>>)
 where
     T: Clone + Copy + Ord + PartialEq + Eq,
@@ -229,6 +284,13 @@ where
     usize: TryFrom<T>,
     <usize as TryFrom<T>>::Error: Debug,
 {
+    let mut clauses = circuit
+        .clauses()
+        .iter()
+        .map(|x| (x.clone(), false))
+        .collect::<Vec<_>>();
+    reduce_clauses_int(&mut clauses);
+
     (
         ClauseCircuit::new(T::default(), vec![], vec![]).unwrap(),
         vec![],
