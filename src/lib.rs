@@ -945,5 +945,60 @@ mod tests {
                 [(0, false), (1, true), (2, true), (3, true)]
             )
         );
+
+        assert_eq!(
+            (
+                Circuit::new(
+                    2,
+                    [
+                        // Gate::new_and(0, 2), -> false
+                        // Gate::new_xor(0, 2), -> true
+                        Gate::new_nimpl(0, 0), // Gate::new_nor(1, 2),
+                        Gate::new_nimpl(1, 1), // Gate::new_nor(2, 3),
+                        // Gate::new_and(4, 5), -> false
+                        // Gate::new_nimpl(4, 5), -> false
+                        Gate::new_xor(2, 3),
+                        Gate::new_nor(2, 3),
+                        // Gate::new_and(8, 9), -> false
+                        Gate::new_and(4, 5),
+                        Gate::new_nimpl(6, 6),
+                    ],
+                    [(7, false)],
+                )
+                .unwrap(),
+                vec![
+                    OutputEntry::Value(false),
+                    OutputEntry::NewIndex(0),
+                    OutputEntry::Value(true),
+                    OutputEntry::NewIndex(1)
+                ],
+                vec![
+                    OutputEntry::Value(true),
+                    OutputEntry::Value(true),
+                    OutputEntry::NewIndex(0)
+                ],
+            ),
+            assign_to_circuit(
+                &Circuit::new(
+                    4,
+                    [
+                        Gate::new_and(0, 2),
+                        Gate::new_xor(0, 2),
+                        Gate::new_nor(1, 2),
+                        Gate::new_nor(2, 3),
+                        Gate::new_and(4, 5),
+                        Gate::new_nimpl(4, 5),
+                        Gate::new_xor(6, 7),
+                        Gate::new_nor(6, 7),
+                        Gate::new_and(8, 9),
+                        Gate::new_and(10, 11),
+                        Gate::new_and(12, 13),
+                    ],
+                    [(5, false), (9, true), (14, false)],
+                )
+                .unwrap(),
+                [(0, false), (2, true)]
+            )
+        );
     }
 }
