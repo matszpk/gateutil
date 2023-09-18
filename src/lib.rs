@@ -372,22 +372,14 @@ where
                 }
             }
             if top.way < clause.literals.len() {
-                let l = usize::try_from(clause.literals[top.way].0).unwrap();
                 top.way += 1;
-                match output_map[l] {
-                    OutputEntryN::NewIndex(o, _) => {
-                        let o = usize::try_from(o).unwrap();
-                        if o >= *input_len {
-                            stack.push(StackEntry {
-                                node: o - *input_len,
-                                way: 0,
-                                clause_id: None,
-                            });
-                        }
-                    }
-                    OutputEntryN::Value(v) => {
-                        // handle value -> resolve value
-                    }
+                let l = usize::try_from(clause.literals[top.way].0).unwrap();
+                if o >= *input_len {
+                    stack.push(StackEntry {
+                        node: o - *input_len,
+                        way: 0,
+                        clause_id: None,
+                    });
                 }
             } else {
                 // resolve values and indexes for current clauses
