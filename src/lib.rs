@@ -280,13 +280,19 @@ where
     to_reduce_tree
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OutputEntryN<T> {
+    NewIndex(T, bool),
+    Value(bool),
+}
+
 // return true if further changes is needed.
 // output_map includes circuit's inputs.
 fn join_and_remove_clauses<T>(
     input_len: &mut usize,
     outputs: &[(T, bool)],
     clauses: &mut [(Clause<T>, bool)],
-    output_map: &mut [OutputEntry<T>],
+    output_map: &mut [OutputEntryN<T>],
 ) -> bool
 where
     T: Clone + Copy + Ord + PartialEq + Eq,
@@ -303,7 +309,7 @@ where
         }
     }
     for (o, _) in outputs.iter() {
-        if let OutputEntry::NewIndex(o) = output_map[usize::try_from(*o).unwrap()] {
+        if let OutputEntryN::NewIndex(o, _) = output_map[usize::try_from(*o).unwrap()] {
             let o = usize::try_from(o).unwrap();
             used_outputs[o] += 1;
         }
@@ -313,7 +319,7 @@ where
     let orig_index_map_len = clauses.len() + *input_len;
     let mut orig_index_map = vec![0; orig_index_map_len];
     for (i, x) in output_map.iter().enumerate() {
-        if let OutputEntry::NewIndex(x) = x {
+        if let OutputEntryN::NewIndex(x, _) = x {
             orig_index_map[usize::try_from(*x).unwrap()] = i;
         }
     }
@@ -362,12 +368,20 @@ where
                 if clause.literals.len() == 0 {
                     // fill up by zero ^ neg
                     output_map[orig_index_map[*input_len + node_index]] =
-                        OutputEntry::Value(*clause_neg);
+                        OutputEntryN::Value(*clause_neg);
                 } else if clause.literals.len() == 1 {
-                    // include !! negation from literal!!
+                    // propagate to output_map
                     let l = usize::try_from(clause.literals[0].0).unwrap();
-                    output_map[orig_index_map[*input_len + node_index]] =
-                        output_map[orig_index_map[l]]
+                    match output_map[orig_index_map[l]] {
+                        OutputEntryN::NewIndex(x, n1) => {
+                            output_map[orig_index_map[*input_len + node_index]] =
+                                OutputEntryN::NewIndex(x, n1 ^ clause.literals[0].1 ^ *clause_neg);
+                        }
+                        OutputEntryN::Value(v) => {
+                            output_map[orig_index_map[*input_len + node_index]] =
+                                OutputEntryN::Value(v ^ clause.literals[0].1 ^ *clause_neg);
+                        }
+                    }
                 } else {
                 }
                 stack.pop();
@@ -396,7 +410,7 @@ where
 
     let input_len = usize::try_from(circuit.input_len()).unwrap();
     let mut output_map = (0..input_len + clauses.len())
-        .map(|x| OutputEntry::NewIndex(T::try_from(x).unwrap()))
+        .map(|x| OutputEntryN::NewIndex(T::try_from(x).unwrap(), false))
         .collect::<Vec<_>>();
 
     let mut first = true;
