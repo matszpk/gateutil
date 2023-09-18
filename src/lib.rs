@@ -316,11 +316,11 @@ where
     }
 
     // generate orig_index_map - convert new indexes to old original indexes
-    let orig_index_map_len = clauses.len() + *input_len;
-    let mut orig_index_map = vec![0; orig_index_map_len];
+    let oim_len = clauses.len() + *input_len;
+    let mut oim = vec![0; oim_len];
     for (i, x) in output_map.iter().enumerate() {
         if let OutputEntryN::NewIndex(x, _) = x {
-            orig_index_map[usize::try_from(*x).unwrap()] = i;
+            oim[usize::try_from(*x).unwrap()] = i;
         }
     }
 
@@ -348,7 +348,7 @@ where
             used_new_outputs[o] = true;
             continue;
         }
-        let o = match output_map[o] {
+        let o = match output_map[oim[o]] {
             OutputEntryN::NewIndex(o, _) => {
                 let o = usize::try_from(o).unwrap();
                 if o < *input_len {
@@ -394,7 +394,7 @@ where
                 if let Some(clause_id) = top.clause_id {
                     let n = clause.literals[way].1;
                     let l = usize::try_from(clause.literals[way].0).unwrap();
-                    if let OutputEntryN::NewIndex(l1, n1) = output_map[l] {
+                    if let OutputEntryN::NewIndex(l1, n1) = output_map[oim[l]] {
                         let l1_u = usize::try_from(l1).unwrap();
                         let lclause = &clauses[l1_u - *input_len];
                         // if clause kind is same and if and-clause then
@@ -445,7 +445,7 @@ where
                     for (li, (l, n)) in clause.literals.iter().enumerate().take(
                             clause_len_before_second[node_index]) {
                         let l_u = usize::try_from(*l).unwrap();
-                        if let OutputEntryN::NewIndex(l1, n1) = output_map[l_u] {
+                        if let OutputEntryN::NewIndex(l1, n1) = output_map[oim[l_u]] {
                             // check if can be merged
                             let l1_u = usize::try_from(l1).unwrap();
                             let lclause = &clauses[l1_u - *input_len];
@@ -482,19 +482,19 @@ where
                 // resolve values and indexes for current clauses
                 if clause.literals.len() == 0 {
                     // fill up by zero ^ neg
-                    output_map[orig_index_map[*input_len + node_index]] =
+                    output_map[oim[*input_len + node_index]] =
                         OutputEntryN::Value(*clause_neg);
                     used_new_outputs[*input_len + node_index] = false;
                 } else if clause.literals.len() == 1 {
                     // propagate to output_map
                     let l = usize::try_from(clause.literals[0].0).unwrap();
-                    match output_map[orig_index_map[l]] {
+                    match output_map[oim[l]] {
                         OutputEntryN::NewIndex(x, n1) => {
-                            output_map[orig_index_map[*input_len + node_index]] =
+                            output_map[oim[*input_len + node_index]] =
                                 OutputEntryN::NewIndex(x, n1 ^ clause.literals[0].1 ^ *clause_neg);
                         }
                         OutputEntryN::Value(v) => {
-                            output_map[orig_index_map[*input_len + node_index]] =
+                            output_map[oim[*input_len + node_index]] =
                                 OutputEntryN::Value(v ^ clause.literals[0].1 ^ *clause_neg);
                         }
                     }
@@ -506,7 +506,7 @@ where
                     let mut neg_clause = false;
                     for (l, n) in &clause.literals {
                         let l_u = usize::try_from(*l).unwrap();
-                        match output_map[l_u] {
+                        match output_map[oim[l_u]] {
                             OutputEntryN::NewIndex(l1, n1) => {
                                 // check if can be merged
                                 if !do_second_pass {
@@ -561,7 +561,7 @@ where
                             }
                         } else {
                             // resolve empty clause
-                            output_map[orig_index_map[*input_len + node_index]] =
+                            output_map[oim[*input_len + node_index]] =
                                 OutputEntryN::Value(*clause_neg);
                             used_new_outputs[*input_len + node_index] = false;
                         }
@@ -573,6 +573,7 @@ where
     }
     
     // translate literals
+    //used_new_outputs.into_iter().enumerate()
 
     false
 }
