@@ -324,7 +324,7 @@ where
         }
     }
 
-    let mut new_output_usages = vec![false; clauses.len()];
+    let mut used_new_outputs = vec![false; *input_len + clauses.len()];
 
     // traversing and join clauses
     #[derive(Clone, Copy, Debug)]
@@ -332,16 +332,18 @@ where
         node: usize,
         way: usize,
         clause_id: Option<usize>,
+        negate_join: bool,
     }
     let mut visited = vec![false; clauses.len()];
-    
+    let mut visited_for_collect = vec![false; clauses.len()];
+
     //
     // traverse 1: resolve one literal clauses and resolve other clauses
     //
     for (o, _) in outputs.iter() {
         let o = usize::try_from(*o).unwrap();
         if o < *input_len {
-            new_output_usages[o] = true;
+            used_new_outputs[o] = true;
             continue;
         }
         let o = match output_map[o] {
@@ -359,38 +361,127 @@ where
             node: o - *input_len,
             way: 0,
             clause_id: None,
+            negate_join: false,
         });
         while !stack.is_empty() {
             let mut top = stack.last_mut().unwrap();
             let node_index = top.node;
-            let (clause, clause_neg) = &mut clauses[node_index];
+            let (clause, clause_neg) = &clauses[node_index];
 
             if top.way == 0 {
-                if !visited[node_index] {
-                    visited[node_index] = true;
+                if top.clause_id.is_some() {
+                    // different visited masks for collection
+                    if !visited_for_collect[node_index] {
+                        visited_for_collect[node_index] = true;
+                    } else {
+                        stack.pop();
+                        continue;
+                    }
                 } else {
-                    stack.pop();
-                    continue;
+                    if !visited[node_index] {
+                        visited[node_index] = true;
+                    } else {
+                        stack.pop();
+                        continue;
+                    }
                 }
             }
             if top.way < clause.literals.len() {
+                let way = top.way;
                 top.way += 1;
-                let l = usize::try_from(clause.literals[top.way].0).unwrap();
-                if l >= *input_len {
-                    stack.push(StackEntry {
-                        node: l - *input_len,
-                        way: 0,
-                        clause_id: None,
-                    });
+                if let Some(clause_id) = top.clause_id {
+                    let n = clause.literals[way].1;
+                    let l = usize::try_from(clause.literals[way].0).unwrap();
+                    if let OutputEntryN::NewIndex(l1, n1) = output_map[l] {
+                        let l1_u = usize::try_from(l1).unwrap();
+                        let lclause = &clauses[l1_u - *input_len];
+                        // if clause kind is same and if and-clause then
+                        // must be negated literal finally
+                        if lclause.0.kind == clause.kind
+                            && (lclause.0.kind != ClauseKind::And
+                                && (lclause.1 ^ n1 ^ n))
+                                // ignore clause with multiple usage
+                                && output_usages[l1_u] <= 1
+                        {
+                            // push with clause kind
+                            stack.push(StackEntry {
+                                node: l1_u - *input_len,
+                                way: 0,
+                                clause_id: Some(clause_id),
+                                negate_join: lclause.1 ^ n1 ^ n,
+                            });
+                        }
+                    }
                 } else {
-                    new_output_usages[l] = true;
+                    let l = usize::try_from(clause.literals[way].0).unwrap();
+                    if l >= *input_len {
+                        stack.push(StackEntry {
+                            node: l - *input_len,
+                            way: 0,
+                            clause_id: None,
+                            negate_join: false,
+                        });
+                    } else {
+                        used_new_outputs[l] = true;
+                    }
                 }
+            } else if let Some(clause_id) = top.clause_id {
+                // resolving clause collecting
+                if clause_id != node_index {
+                    let literals_to_add = clause.literals.clone();
+                    // put to target clause
+                    let target_clause = &mut clauses[clause_id];
+                    target_clause.0.literals.extend(literals_to_add);
+                    // resolve negation
+                    if top.negate_join {
+                        target_clause.1 = !target_clause.1;
+                    }
+                    used_new_outputs[*input_len + node_index] = false;
+                } else {
+                    // remove literals of clauses
+                    let mut to_remove = vec![];
+                    for (li, (l, n)) in clause.literals.iter().enumerate() {
+                        let l_u = usize::try_from(*l).unwrap();
+                        if let OutputEntryN::NewIndex(l1, n1) = output_map[l_u] {
+                            // check if can be merged
+                            let l1_u = usize::try_from(l1).unwrap();
+                            let lclause = &clauses[l1_u - *input_len];
+                            // if clause kind is same and if and-clause then
+                            // must be negated literal finally
+                            if lclause.0.kind == clause.kind
+                                && (lclause.0.kind != ClauseKind::And
+                                    && (lclause.1 ^ n1 ^ n))
+                                    // ignore clause with multiple usage
+                                    && output_usages[l1_u] <= 1
+                            {
+                                to_remove.push(li);
+                            }
+                        }
+                    }
+                    let mut new_literals = vec![];
+                    let mut j = 0;
+                    // create new literals without removed literals
+                    for (i, l) in clause.literals.iter().enumerate() {
+                        if let Some(idx) = to_remove.get(j) {
+                            if *idx == i {
+                                j += 1;
+                            } else {
+                                new_literals.push(*l);
+                            }
+                        } else {
+                            new_literals.push(*l);
+                        }
+                    }
+                    clauses[node_index].0.literals = new_literals;
+                }
+                stack.pop();
             } else {
                 // resolve values and indexes for current clauses
                 if clause.literals.len() == 0 {
                     // fill up by zero ^ neg
                     output_map[orig_index_map[*input_len + node_index]] =
                         OutputEntryN::Value(*clause_neg);
+                    used_new_outputs[*input_len + node_index] = false;
                 } else if clause.literals.len() == 1 {
                     // propagate to output_map
                     let l = usize::try_from(clause.literals[0].0).unwrap();
@@ -404,14 +495,32 @@ where
                                 OutputEntryN::Value(v ^ clause.literals[0].1 ^ *clause_neg);
                         }
                     }
+                    used_new_outputs[*input_len + node_index] = false;
                 } else {
                     // resolve clause
                     let mut new_literals = vec![];
+                    let mut do_second_pass = false;
+                    let mut neg_clause = false;
                     for (l, n) in &clause.literals {
                         let l_u = usize::try_from(*l).unwrap();
-                        // TODO: handle clause merging!!
                         match output_map[l_u] {
                             OutputEntryN::NewIndex(l1, n1) => {
+                                // check if can be merged
+                                if !do_second_pass {
+                                    let l1_u = usize::try_from(l1).unwrap();
+                                    let lclause = &clauses[l1_u - *input_len];
+                                    // if clause kind is same and if and-clause then
+                                    // must be negated literal finally
+                                    if lclause.0.kind == clause.kind
+                                        && (lclause.0.kind != ClauseKind::And
+                                            && (lclause.1 ^ n1 ^ n))
+                                            // ignore clause with multiple usage
+                                            && output_usages[l1_u] <= 1
+                                    {
+                                        // use second_pass for node to collect child clauses
+                                        do_second_pass = true;
+                                    }
+                                }
                                 new_literals.push((l1, n ^ n1));
                             }
                             OutputEntryN::Value(v1) => {
@@ -425,75 +534,40 @@ where
                                     }
                                     ClauseKind::Xor => {
                                         if v {
-                                            *clause_neg = !*clause_neg;
+                                            neg_clause = !neg_clause;
                                         }
                                     }
                                 }
                             }
                         }
                     }
-                    clause.literals = new_literals;
-                    new_output_usages[*input_len + node_index] = true;
+                    {
+                        let (clause, clause_neg) = &mut clauses[node_index];
+                        clause.literals = new_literals;
+                        if neg_clause {
+                            *clause_neg = !*clause_neg;
+                        }
+                        if !clause.literals.is_empty() {
+                            used_new_outputs[*input_len + node_index] = true;
+                            if do_second_pass {
+                                // prepare to second pass to collect clauses
+                                top.way = 0; // reset way
+                                top.clause_id = Some(node_index);
+                                continue; // skip popping
+                            }
+                        } else {
+                            // resolve empty clause
+                            output_map[orig_index_map[*input_len + node_index]] =
+                                OutputEntryN::Value(*clause_neg);
+                            used_new_outputs[*input_len + node_index] = false;
+                        }
+                    }
                 }
                 stack.pop();
             }
         }
     }
-    
-    //
-    // traverse 2: collect to parent clauses
-    //
-    visited.fill(false);
-    for (o, _) in outputs.iter() {
-        let o = usize::try_from(*o).unwrap();
-        if o < *input_len {
-            continue;
-        }
-        let o = match output_map[o] {
-            OutputEntryN::NewIndex(o, _) => {
-                let o = usize::try_from(o).unwrap();
-                if o < *input_len {
-                    continue;
-                }
-                o
-            }
-            OutputEntryN::Value(_) => continue,
-        };
-        let mut stack = Vec::<StackEntry>::new();
-        stack.push(StackEntry {
-            node: o - *input_len,
-            way: 0,
-            clause_id: None,
-        });
-        
-        while !stack.is_empty() {
-            let mut top = stack.last_mut().unwrap();
-            let node_index = top.node;
-            let (clause, clause_neg) = &mut clauses[node_index];
 
-            if top.way == 0 {
-                if !visited[node_index] {
-                    visited[node_index] = true;
-                } else {
-                    stack.pop();
-                    continue;
-                }
-            }
-            if top.way < clause.literals.len() {
-                top.way += 1;
-                let l = usize::try_from(clause.literals[top.way].0).unwrap();
-                if l >= *input_len {
-                    stack.push(StackEntry {
-                        node: l - *input_len,
-                        way: 0,
-                        clause_id: None,
-                    });
-                }
-            } else {
-                stack.pop();
-            }
-        }
-    }
     false
 }
 
