@@ -319,9 +319,58 @@ where
     }
 
     let mut used_clauses = vec![false; clauses.len()];
-    // traversing and join clauses
 
-    // remove unnecessary clauses
+    // traversing and join clauses
+    #[derive(Clone, Copy, Debug)]
+    struct StackEntry {
+        node: usize,
+        way: usize,
+        clause_id: Option<usize>,
+    }
+    let mut visited = vec![false; clauses.len()];
+    let mut new_clauses: Vec<(Clause<T>, bool)> = vec![];
+    //let mut clause_ids = vec![None; clauses.len()];
+
+    for (o, _) in outputs.iter() {
+        let o = usize::try_from(*o).unwrap();
+        if o < *input_len {
+            continue;
+        }
+        let mut stack = Vec::<StackEntry>::new();
+        stack.push(StackEntry {
+            node: o - *input_len,
+            way: 0,
+            clause_id: None,
+        });
+        while !stack.is_empty() {
+            let mut top = stack.last_mut().unwrap();
+            let node_index = top.node;
+            let (clause, clause_neg) = &mut clauses[node_index];
+
+            if top.way == 0 {
+                if !visited[node_index] {
+                    visited[node_index] = true;
+                } else {
+                    stack.pop();
+                    continue;
+                }
+            }
+            if top.way < clause.literals.len() {
+                top.way += 1;
+            } else {
+                // resolve values and indexes for current clauses
+                if clause.literals.len() == 0 {
+                    // fill up by zero ^ neg
+                    output_map[orig_index_map[*input_len + node_index]] =
+                        OutputEntry::Value(*clause_neg);
+                } else if clause.literals.len() == 1 {
+                    // move back this literal
+                } else {
+                }
+                stack.pop();
+            }
+        }
+    }
     false
 }
 
