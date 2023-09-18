@@ -310,18 +310,7 @@ where
     }
 
     // generate orig_index_map - convert new indexes to old original indexes
-    let orig_index_map_len = output_map
-        .iter()
-        .filter_map(|x| {
-            if let OutputEntry::NewIndex(i) = x {
-                Some(usize::try_from(*i).unwrap())
-            } else {
-                None
-            }
-        })
-        .max()
-        .unwrap_or_default()
-        + 1;
+    let orig_index_map_len = clauses.len() + *input_len;
     let mut orig_index_map = vec![0; orig_index_map_len];
     for (i, x) in output_map.iter().enumerate() {
         if let OutputEntry::NewIndex(x) = x {
