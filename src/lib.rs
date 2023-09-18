@@ -291,7 +291,7 @@ pub enum OutputEntryN<T> {
 fn join_and_remove_clauses<T>(
     input_len: &mut usize,
     outputs: &[(T, bool)],
-    clauses: &mut [(Clause<T>, bool)],
+    clauses: &mut Vec<(Clause<T>, bool)>,
     output_map: &mut [OutputEntryN<T>],
 ) -> bool
 where
@@ -583,16 +583,16 @@ where
 
     // translate literals map - from previous to current index
     let old_trans_map = used_new_outputs
-        .into_iter()
+        .iter()
         .enumerate()
-        .filter(|(_, x)| *x)
+        .filter(|(_, x)| **x)
         .map(|(i, _)| T::try_from(i).unwrap())
         .collect::<Vec<_>>();
     let mut trans_map = vec![T::default(); clauses.len()];
     for (i, x) in old_trans_map.iter().enumerate() {
         trans_map[usize::try_from(*x).unwrap()] = T::try_from(i).unwrap();
     }
-    for (clause, _) in clauses {
+    for (clause, _) in clauses.iter_mut() {
         for (l, n) in &mut clause.literals {
             let l_u = usize::try_from(*l).unwrap();
             if let OutputEntryN::NewIndex(l1, n1) = output_map[oim[l_u]] {
@@ -606,6 +606,12 @@ where
             *oe = OutputEntryN::NewIndex(trans_map[usize::try_from(*i).unwrap()], *n);
         }
     }
+    *clauses = used_new_outputs[*input_len..]
+        .into_iter()
+        .enumerate()
+        .filter(|(_, x)| **x)
+        .map(|(i, _)| clauses[i].clone())
+        .collect::<Vec<_>>();
     *input_len = trans_map[0..*input_len]
         .iter()
         .map(|x| usize::try_from(*x).unwrap())
