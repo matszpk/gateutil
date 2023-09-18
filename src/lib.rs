@@ -301,17 +301,17 @@ where
     usize: TryFrom<T>,
     <usize as TryFrom<T>>::Error: Debug,
 {
-    let mut used_outputs = vec![0; *input_len + clauses.len()];
+    let mut output_usages = vec![0; *input_len + clauses.len()];
     for (c, _) in clauses.iter() {
         for (l, _) in &c.literals {
             let l = usize::try_from(*l).unwrap();
-            used_outputs[l] += 1;
+            output_usages[l] += 1;
         }
     }
     for (o, _) in outputs.iter() {
         if let OutputEntryN::NewIndex(o, _) = output_map[usize::try_from(*o).unwrap()] {
             let o = usize::try_from(o).unwrap();
-            used_outputs[o] += 1;
+            output_usages[o] += 1;
         }
     }
 
@@ -324,7 +324,7 @@ where
         }
     }
 
-    let mut used_clauses = vec![false; clauses.len()];
+    let mut new_output_usages = vec![false; clauses.len()];
 
     // traversing and join clauses
     #[derive(Clone, Copy, Debug)]
@@ -334,12 +334,14 @@ where
         clause_id: Option<usize>,
     }
     let mut visited = vec![false; clauses.len()];
-    let mut new_clauses: Vec<(Clause<T>, bool)> = vec![];
-    //let mut clause_ids = vec![None; clauses.len()];
-
+    
+    //
+    // traverse 1: resolve one literal clauses and resolve other clauses
+    //
     for (o, _) in outputs.iter() {
         let o = usize::try_from(*o).unwrap();
         if o < *input_len {
+            new_output_usages[o] = true;
             continue;
         }
         let o = match output_map[o] {
@@ -374,12 +376,14 @@ where
             if top.way < clause.literals.len() {
                 top.way += 1;
                 let l = usize::try_from(clause.literals[top.way].0).unwrap();
-                if o >= *input_len {
+                if l >= *input_len {
                     stack.push(StackEntry {
-                        node: o - *input_len,
+                        node: l - *input_len,
                         way: 0,
                         clause_id: None,
                     });
+                } else {
+                    new_output_usages[l] = true;
                 }
             } else {
                 // resolve values and indexes for current clauses
@@ -429,7 +433,63 @@ where
                         }
                     }
                     clause.literals = new_literals;
+                    new_output_usages[*input_len + node_index] = true;
                 }
+                stack.pop();
+            }
+        }
+    }
+    
+    //
+    // traverse 2: collect to parent clauses
+    //
+    visited.fill(false);
+    for (o, _) in outputs.iter() {
+        let o = usize::try_from(*o).unwrap();
+        if o < *input_len {
+            continue;
+        }
+        let o = match output_map[o] {
+            OutputEntryN::NewIndex(o, _) => {
+                let o = usize::try_from(o).unwrap();
+                if o < *input_len {
+                    continue;
+                }
+                o
+            }
+            OutputEntryN::Value(_) => continue,
+        };
+        let mut stack = Vec::<StackEntry>::new();
+        stack.push(StackEntry {
+            node: o - *input_len,
+            way: 0,
+            clause_id: None,
+        });
+        
+        while !stack.is_empty() {
+            let mut top = stack.last_mut().unwrap();
+            let node_index = top.node;
+            let (clause, clause_neg) = &mut clauses[node_index];
+
+            if top.way == 0 {
+                if !visited[node_index] {
+                    visited[node_index] = true;
+                } else {
+                    stack.pop();
+                    continue;
+                }
+            }
+            if top.way < clause.literals.len() {
+                top.way += 1;
+                let l = usize::try_from(clause.literals[top.way].0).unwrap();
+                if l >= *input_len {
+                    stack.push(StackEntry {
+                        node: l - *input_len,
+                        way: 0,
+                        clause_id: None,
+                    });
+                }
+            } else {
                 stack.pop();
             }
         }
