@@ -218,7 +218,7 @@ where
 // xor detection in and-or and or-and clause tree.
 // find common parts of clauses to reuse more parts.
 
-fn reduce_clauses_int<T>(clauses: &mut [(Clause<T>, bool)])
+fn reduce_clauses_int<T>(clauses: &mut [(Clause<T>, bool)]) -> bool
 where
     T: Clone + Copy + Ord + PartialEq + Eq,
     T: Default + TryFrom<usize>,
@@ -226,8 +226,10 @@ where
     usize: TryFrom<T>,
     <usize as TryFrom<T>>::Error: Debug,
 {
+    let mut to_reduce_tree = false;
     for (clause, cs) in clauses {
         clause.literals.sort();
+        let old_len = clause.len();
         match clause.kind {
             ClauseKind::And => {
                 clause.literals.dedup();
@@ -270,7 +272,11 @@ where
                 clause.literals = new_literals;
             }
         }
+        if old_len >= 2 && clause.len() < 2 {
+            to_reduce_tree = true;
+        }
     }
+    to_reduce_tree
 }
 
 // return optimized circuit, mapping to new inputs, mapping to new outputs
@@ -296,4 +302,95 @@ where
         vec![],
         vec![],
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_reduce_clauses_int() {
+        let mut clauses = [
+            (
+                Clause::new_and([(3, false), (0, false), (1, true), (3, false)]),
+                false,
+            ),
+            (
+                Clause::new_and([(3, true), (0, false), (1, true), (3, false)]),
+                true,
+            ),
+            (
+                Clause::new_and([(3, true), (3, true), (0, false), (1, true), (3, false)]),
+                false,
+            ),
+            (
+                Clause::new_and([(3, true), (0, false), (1, true), (3, true)]),
+                false,
+            ),
+            (
+                Clause::new_xor([(4, false), (3, false), (1, true), (2, false)]),
+                false,
+            ),
+            (
+                Clause::new_xor([(4, false), (2, false), (1, true), (2, false)]),
+                true,
+            ),
+            (
+                Clause::new_xor([(4, false), (2, false), (1, true), (2, true)]),
+                true,
+            ),
+        ];
+        assert!(reduce_clauses_int(&mut clauses));
+        assert_eq!(
+            [
+                (Clause::new_and([(0, false), (1, true), (3, false)]), false),
+                (Clause::new_and([]), true),
+                (Clause::new_and([]), false),
+                (Clause::new_and([(0, false), (1, true), (3, true)]), false),
+                (
+                    Clause::new_xor([(1, false), (2, false), (3, false), (4, false)]),
+                    true
+                ),
+                (Clause::new_xor([(1, false), (4, false)]), false),
+                (Clause::new_xor([(1, false), (4, false)]), true),
+            ],
+            clauses
+        );
+
+        // no changes
+        let mut clauses = [
+            (
+                Clause::new_and([(3, false), (0, false), (1, true), (3, false)]),
+                false,
+            ),
+            (
+                Clause::new_xor([(4, false), (2, false), (1, true), (2, true)]),
+                true,
+            ),
+        ];
+        assert!(!reduce_clauses_int(&mut clauses));
+        assert_eq!(
+            [
+                (Clause::new_and([(0, false), (1, true), (3, false)]), false),
+                (Clause::new_xor([(1, false), (4, false)]), true),
+            ],
+            clauses
+        );
+
+        let mut clauses = [
+            (
+                Clause::new_and([(3, false), (0, false), (1, true), (3, false)]),
+                false,
+            ),
+            (Clause::new_xor([(4, false), (2, false), (2, true)]), true),
+        ];
+        assert!(reduce_clauses_int(&mut clauses));
+        assert_eq!(
+            [
+                (Clause::new_and([(0, false), (1, true), (3, false)]), false),
+                (Clause::new_xor([(4, false)]), false),
+            ],
+            clauses
+        );
+    }
 }
