@@ -364,7 +364,10 @@ where
                     output_map[orig_index_map[*input_len + node_index]] =
                         OutputEntry::Value(*clause_neg);
                 } else if clause.literals.len() == 1 {
-                    // move back this literal
+                    // include !! negation from literal!!
+                    let l = usize::try_from(clause.literals[0].0).unwrap();
+                    output_map[orig_index_map[*input_len + node_index]] =
+                        output_map[orig_index_map[l]]
                 } else {
                 }
                 stack.pop();
