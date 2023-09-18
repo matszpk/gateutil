@@ -402,6 +402,33 @@ where
                     }
                 } else {
                     // resolve clause
+                    let mut new_literals = vec![];
+                    for (l, n) in &clause.literals {
+                        let l_u = usize::try_from(*l).unwrap();
+                        // TODO: handle clause merging!!
+                        match output_map[l_u] {
+                            OutputEntryN::NewIndex(l1, n1) => {
+                                new_literals.push((l1, n ^ n1));
+                            }
+                            OutputEntryN::Value(v1) => {
+                                let v = n ^ v1;
+                                match clause.kind {
+                                    ClauseKind::And => {
+                                        if !v {
+                                            new_literals.clear();
+                                            break;
+                                        }
+                                    }
+                                    ClauseKind::Xor => {
+                                        if v {
+                                            *clause_neg = !*clause_neg;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    clause.literals = new_literals;
                 }
                 stack.pop();
             }
