@@ -339,6 +339,7 @@ where
     // clauses length before second pass
     let mut clause_len_before_second = vec![0; clauses.len()];
 
+    let mut do_next_loop = false;
     //
     // traverse 1: resolve one literal clauses and resolve other clauses
     //
@@ -488,6 +489,7 @@ where
                     // fill up by zero ^ neg
                     output_map[oim[*input_len + node_index]] = OutputEntryN::Value(*clause_neg);
                     used_new_outputs[*input_len + node_index] = false;
+                    do_next_loop = true;
                 } else if clause.literals.len() == 1 {
                     // propagate to output_map
                     let l = usize::try_from(clause.literals[0].0).unwrap();
@@ -502,6 +504,7 @@ where
                         }
                     }
                     used_new_outputs[*input_len + node_index] = false;
+                    do_next_loop = true;
                 } else {
                     // resolve clause
                     let mut new_literals = vec![];
@@ -544,6 +547,7 @@ where
                                         }
                                     }
                                 }
+                                do_next_loop = true;
                             }
                         }
                     }
@@ -560,6 +564,7 @@ where
                                 // prepare to second pass to collect clauses
                                 top.way = 0; // reset way
                                 top.clause_id = Some(node_index);
+                                do_next_loop = true;
                                 continue; // skip popping
                             }
                         } else {
@@ -567,6 +572,7 @@ where
                             output_map[oim[*input_len + node_index]] =
                                 OutputEntryN::Value(*clause_neg);
                             used_new_outputs[*input_len + node_index] = false;
+                            do_next_loop = true;
                         }
                     }
                 }
@@ -595,7 +601,18 @@ where
             }
         }
     }
-    false
+    for oe in output_map {
+        if let OutputEntryN::NewIndex(i, n) = oe {
+            *oe = OutputEntryN::NewIndex(trans_map[usize::try_from(*i).unwrap()], *n);
+        }
+    }
+    *input_len = trans_map[0..*input_len]
+        .iter()
+        .map(|x| usize::try_from(*x).unwrap())
+        .max()
+        .unwrap_or_default()
+        + 1;
+    do_next_loop
 }
 
 // return optimized circuit, mapping to new inputs, mapping to new outputs
