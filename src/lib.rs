@@ -473,6 +473,8 @@ where
                         }
                     }
                     clauses[node_index].0.literals = new_literals;
+                    
+                    // resolve clause ???
                 }
                 stack.pop();
             } else {
