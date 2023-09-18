@@ -342,6 +342,16 @@ where
         if o < *input_len {
             continue;
         }
+        let o = match output_map[o] {
+            OutputEntryN::NewIndex(o, _) => {
+                let o = usize::try_from(o).unwrap();
+                if o < *input_len {
+                    continue;
+                }
+                o
+            }
+            OutputEntryN::Value(_) => continue,
+        };
         let mut stack = Vec::<StackEntry>::new();
         stack.push(StackEntry {
             node: o - *input_len,
@@ -362,7 +372,23 @@ where
                 }
             }
             if top.way < clause.literals.len() {
+                let l = usize::try_from(clause.literals[top.way].0).unwrap();
                 top.way += 1;
+                match output_map[l] {
+                    OutputEntryN::NewIndex(o, _) => {
+                        let o = usize::try_from(o).unwrap();
+                        if o >= *input_len {
+                            stack.push(StackEntry {
+                                node: o - *input_len,
+                                way: 0,
+                                clause_id: None,
+                            });
+                        }
+                    }
+                    OutputEntryN::Value(v) => {
+                        // handle value -> resolve value
+                    }
+                }
             } else {
                 // resolve values and indexes for current clauses
                 if clause.literals.len() == 0 {
@@ -383,6 +409,7 @@ where
                         }
                     }
                 } else {
+                    // resolve clause
                 }
                 stack.pop();
             }
