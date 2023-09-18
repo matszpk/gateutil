@@ -442,8 +442,12 @@ where
                 } else {
                     // remove literals of clauses
                     let mut to_remove = vec![];
-                    for (li, (l, n)) in clause.literals.iter().enumerate().take(
-                            clause_len_before_second[node_index]) {
+                    for (li, (l, n)) in clause
+                        .literals
+                        .iter()
+                        .enumerate()
+                        .take(clause_len_before_second[node_index])
+                    {
                         let l_u = usize::try_from(*l).unwrap();
                         if let OutputEntryN::NewIndex(l1, n1) = output_map[oim[l_u]] {
                             // check if can be merged
@@ -482,8 +486,7 @@ where
                 // resolve values and indexes for current clauses
                 if clause.literals.len() == 0 {
                     // fill up by zero ^ neg
-                    output_map[oim[*input_len + node_index]] =
-                        OutputEntryN::Value(*clause_neg);
+                    output_map[oim[*input_len + node_index]] = OutputEntryN::Value(*clause_neg);
                     used_new_outputs[*input_len + node_index] = false;
                 } else if clause.literals.len() == 1 {
                     // propagate to output_map
@@ -571,10 +574,27 @@ where
             }
         }
     }
-    
-    // translate literals
-    //used_new_outputs.into_iter().enumerate()
 
+    // translate literals map - from previous to current index
+    let old_trans_map = used_new_outputs
+        .into_iter()
+        .enumerate()
+        .filter(|(_, x)| *x)
+        .map(|(i, _)| T::try_from(i).unwrap())
+        .collect::<Vec<_>>();
+    let mut trans_map = vec![T::default(); clauses.len()];
+    for (i, x) in old_trans_map.iter().enumerate() {
+        trans_map[usize::try_from(*x).unwrap()] = T::try_from(i).unwrap();
+    }
+    for (clause, _) in clauses {
+        for (l, n) in &mut clause.literals {
+            let l_u = usize::try_from(*l).unwrap();
+            if let OutputEntryN::NewIndex(l1, n1) = output_map[oim[l_u]] {
+                *l = trans_map[usize::try_from(l1).unwrap()];
+                *n ^= n1;
+            }
+        }
+    }
     false
 }
 
