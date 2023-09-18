@@ -336,6 +336,8 @@ where
     }
     let mut visited = vec![false; clauses.len()];
     let mut visited_for_collect = vec![false; clauses.len()];
+    // clauses length before second pass
+    let mut clause_len_before_second = vec![0; clauses.len()];
 
     //
     // traverse 1: resolve one literal clauses and resolve other clauses
@@ -440,7 +442,8 @@ where
                 } else {
                     // remove literals of clauses
                     let mut to_remove = vec![];
-                    for (li, (l, n)) in clause.literals.iter().enumerate() {
+                    for (li, (l, n)) in clause.literals.iter().enumerate().take(
+                            clause_len_before_second[node_index]) {
                         let l_u = usize::try_from(*l).unwrap();
                         if let OutputEntryN::NewIndex(l1, n1) = output_map[l_u] {
                             // check if can be merged
@@ -473,8 +476,6 @@ where
                         }
                     }
                     clauses[node_index].0.literals = new_literals;
-                    
-                    // resolve clause ???
                 }
                 stack.pop();
             } else {
@@ -551,6 +552,7 @@ where
                         }
                         if !clause.literals.is_empty() {
                             used_new_outputs[*input_len + node_index] = true;
+                            clause_len_before_second[node_index] = clause.literals.len();
                             if do_second_pass {
                                 // prepare to second pass to collect clauses
                                 top.way = 0; // reset way
@@ -569,6 +571,8 @@ where
             }
         }
     }
+    
+    // translate literals
 
     false
 }
