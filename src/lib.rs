@@ -218,7 +218,7 @@ where
 // xor detection in and-or and or-and clause tree.
 // find common parts of clauses to reuse more parts.
 
-fn reduce_clauses_int<T>(clauses: &mut [(Clause<T>, bool)]) -> bool
+fn reduce_clauses<T>(clauses: &mut [(Clause<T>, bool)]) -> bool
 where
     T: Clone + Copy + Ord + PartialEq + Eq,
     T: Default + TryFrom<usize>,
@@ -246,6 +246,7 @@ where
                     pl = Some(l);
                 }
                 if zero {
+                    // IMPORTANT: empty clauses treat as false.
                     clause.literals.clear();
                 }
             }
@@ -279,6 +280,62 @@ where
     to_reduce_tree
 }
 
+// return true if further changes is needed.
+// output_map includes circuit's inputs.
+fn join_and_remove_clauses<T>(
+    input_len: &mut usize,
+    outputs: &[(T, bool)],
+    clauses: &mut [(Clause<T>, bool)],
+    output_map: &mut [OutputEntry<T>],
+) -> bool
+where
+    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Default + TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    let mut used_outputs = vec![0; *input_len + clauses.len()];
+    for (c, _) in clauses.iter() {
+        for (l, _) in &c.literals {
+            let l = usize::try_from(*l).unwrap();
+            used_outputs[l] += 1;
+        }
+    }
+    for (o, _) in outputs.iter() {
+        if let OutputEntry::NewIndex(o) = output_map[usize::try_from(*o).unwrap()] {
+            let o = usize::try_from(o).unwrap();
+            used_outputs[o] += 1;
+        }
+    }
+
+    // generate orig_index_map - convert new indexes to old original indexes
+    let orig_index_map_len = output_map
+        .iter()
+        .filter_map(|x| {
+            if let OutputEntry::NewIndex(i) = x {
+                Some(usize::try_from(*i).unwrap())
+            } else {
+                None
+            }
+        })
+        .max()
+        .unwrap_or_default()
+        + 1;
+    let mut orig_index_map = vec![0; orig_index_map_len];
+    for (i, x) in output_map.iter().enumerate() {
+        if let OutputEntry::NewIndex(x) = x {
+            orig_index_map[usize::try_from(*x).unwrap()] = i;
+        }
+    }
+
+    let mut used_clauses = vec![false; clauses.len()];
+    // traversing and join clauses
+
+    // remove unnecessary clauses
+    false
+}
+
 // return optimized circuit, mapping to new inputs, mapping to new outputs
 pub fn optimize_clause_circuit<T>(
     circuit: ClauseCircuit<T>,
@@ -295,7 +352,26 @@ where
         .iter()
         .map(|x| (x.clone(), false))
         .collect::<Vec<_>>();
-    reduce_clauses_int(&mut clauses);
+
+    let input_len = usize::try_from(circuit.input_len()).unwrap();
+    let mut output_map = (0..input_len + clauses.len())
+        .map(|x| OutputEntry::NewIndex(T::try_from(x).unwrap()))
+        .collect::<Vec<_>>();
+
+    let mut first = true;
+    let mut new_input_len = input_len;
+    while !reduce_clauses(&mut clauses) || first {
+        // join clauses and remove unnecessary clauses
+        first = false;
+        if !join_and_remove_clauses(
+            &mut new_input_len,
+            circuit.outputs(),
+            &mut clauses,
+            &mut output_map,
+        ) {
+            break;
+        }
+    }
 
     (
         ClauseCircuit::new(T::default(), vec![], vec![]).unwrap(),
@@ -309,7 +385,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_reduce_clauses_int() {
+    fn test_reduce_clauses() {
         let mut clauses = [
             (
                 Clause::new_and([(3, false), (0, false), (1, true), (3, false)]),
@@ -340,7 +416,7 @@ mod tests {
                 true,
             ),
         ];
-        assert!(reduce_clauses_int(&mut clauses));
+        assert!(reduce_clauses(&mut clauses));
         assert_eq!(
             [
                 (Clause::new_and([(0, false), (1, true), (3, false)]), false),
@@ -368,7 +444,7 @@ mod tests {
                 true,
             ),
         ];
-        assert!(!reduce_clauses_int(&mut clauses));
+        assert!(!reduce_clauses(&mut clauses));
         assert_eq!(
             [
                 (Clause::new_and([(0, false), (1, true), (3, false)]), false),
@@ -384,7 +460,7 @@ mod tests {
             ),
             (Clause::new_xor([(4, false), (2, false), (2, true)]), true),
         ];
-        assert!(reduce_clauses_int(&mut clauses));
+        assert!(reduce_clauses(&mut clauses));
         assert_eq!(
             [
                 (Clause::new_and([(0, false), (1, true), (3, false)]), false),
