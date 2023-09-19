@@ -486,10 +486,18 @@ where
                 }
                 stack.pop();
             } else {
+                let cur_out_n1 = if let OutputEntryN::NewIndex(_, n) =
+                    output_map[oim[*input_len + node_index]]
+                {
+                    n
+                } else {
+                    panic!("Unexpected");
+                };
                 // resolve values and indexes for current clauses
                 if clause.literals.len() == 0 {
                     // fill up by zero ^ neg
-                    output_map[oim[*input_len + node_index]] = OutputEntryN::Value(*clause_neg);
+                    output_map[oim[*input_len + node_index]] =
+                        OutputEntryN::Value(*clause_neg ^ cur_out_n1);
                     used_new_outputs[*input_len + node_index] = false;
                     do_next_loop = true;
                 } else if clause.literals.len() == 1 {
@@ -497,13 +505,6 @@ where
                     let l = usize::try_from(clause.literals[0].0).unwrap();
                     match output_map[oim[l]] {
                         OutputEntryN::NewIndex(x, n1) => {
-                            let cur_out_n1 = if let OutputEntryN::NewIndex(_, n) =
-                                output_map[oim[*input_len + node_index]]
-                            {
-                                n
-                            } else {
-                                panic!("Unexpected");
-                            };
                             output_map[oim[*input_len + node_index]] = OutputEntryN::NewIndex(
                                 x,
                                 cur_out_n1 ^ n1 ^ clause.literals[0].1 ^ *clause_neg,
@@ -596,7 +597,7 @@ where
                         } else {
                             // resolve empty clause
                             output_map[oim[*input_len + node_index]] =
-                                OutputEntryN::Value(*clause_neg);
+                                OutputEntryN::Value(*clause_neg ^ cur_out_n1);
                             used_new_outputs[*input_len + node_index] = false;
                             do_next_loop = true;
                         }
@@ -905,17 +906,20 @@ mod tests {
         );
 
         // testcase
-        for t in [false, true] {
+        for tv in 0..8 {
             let mut input_len = 2;
+            let t = (tv & 1) != 0;
+            let t1 = (tv & 2) != 0;
+            let t2 = (tv & 4) != 0;
             let mut clauses = vec![
                 (Clause::new_and([]), t),
-                (Clause::new_xor([(0, false), (1, false), (2, false)]), false),
+                (Clause::new_xor([(0, false), (1, false), (2, false)]), t2),
             ];
             let outputs = [(3, false)];
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
-                OutputEntryN::NewIndex(2, false),
+                OutputEntryN::NewIndex(2, t1),
                 OutputEntryN::NewIndex(3, false),
             ];
             assert!(join_and_remove_clauses(
@@ -926,14 +930,14 @@ mod tests {
             ));
             assert_eq!(2, input_len);
             assert_eq!(
-                vec![(Clause::new_xor([(0, false), (1, false)]), t)],
+                vec![(Clause::new_xor([(0, false), (1, false)]), t ^ t1 ^ t2)],
                 clauses
             );
             assert_eq!(
                 [
                     OutputEntryN::NewIndex(0, false),
                     OutputEntryN::NewIndex(1, false),
-                    OutputEntryN::Value(t),
+                    OutputEntryN::Value(t ^ t1),
                     OutputEntryN::NewIndex(2, false),
                 ],
                 output_map
