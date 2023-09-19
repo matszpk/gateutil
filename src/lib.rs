@@ -295,12 +295,13 @@ fn join_and_remove_clauses<T>(
     output_map: &mut [OutputEntryN<T>],
 ) -> bool
 where
-    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Clone + Copy + Ord + PartialEq + Eq + Debug,
     T: Default + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
     usize: TryFrom<T>,
     <usize as TryFrom<T>>::Error: Debug,
 {
+    //println!("Start");
     let mut output_usages = vec![0; *input_len + clauses.len()];
     for (c, _) in clauses.iter() {
         for (l, _) in &c.literals {
@@ -371,6 +372,8 @@ where
             let node_index = top.node;
             let (clause, clause_neg) = &clauses[node_index];
 
+            //println!("Stack top: {:?}", top);
+
             if top.way == 0 {
                 if top.clause_id.is_some() {
                     // different visited masks for collection
@@ -403,7 +406,7 @@ where
                             // must be negated literal finally
                             if lclause.0.kind == clause.kind
                                 && (lclause.0.kind != ClauseKind::And
-                                    && (lclause.1 ^ n1 ^ n))
+                                    || !(lclause.1 ^ n1 ^ n))
                                     // ignore clause with multiple usage
                                     && output_usages[l1_u] <= 1
                             {
@@ -459,7 +462,7 @@ where
                                 // must be negated literal finally
                                 if lclause.0.kind == clause.kind
                                     && (lclause.0.kind != ClauseKind::And
-                                        && (lclause.1 ^ n1 ^ n))
+                                        || !(lclause.1 ^ n1 ^ n))
                                         // ignore clause with multiple usage
                                         && output_usages[l1_u] <= 1
                                 {
@@ -539,7 +542,7 @@ where
                                         // must be negated literal finally
                                         if lclause.0.kind == clause.kind
                                             && (lclause.0.kind != ClauseKind::And
-                                                && (lclause.1 ^ n1 ^ n))
+                                                || !(lclause.1 ^ n1 ^ n))
                                                 // ignore clause with multiple usage
                                                 && output_usages[l1_u] <= 1
                                         {
@@ -591,6 +594,7 @@ where
 
                             if do_second_pass {
                                 // prepare to second pass to collect clauses
+                                //println!("Second pass: {:?}", clause);
                                 top.way = 0; // reset way
                                 top.clause_id = Some(node_index);
                                 do_next_loop = true;
@@ -689,7 +693,7 @@ pub fn optimize_clause_circuit<T>(
     circuit: ClauseCircuit<T>,
 ) -> (ClauseCircuit<T>, Vec<Option<T>>, Vec<OutputEntry<T>>)
 where
-    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Clone + Copy + Ord + PartialEq + Eq + Debug,
     T: Default + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
     usize: TryFrom<T>,
@@ -1097,5 +1101,41 @@ mod tests {
                 tv
             );
         }
+
+        // testcase
+        let mut input_len = 3;
+        let mut clauses = vec![
+            (Clause::new_and([(0, false), (1, false)]), false),
+            (Clause::new_and([(2, false), (3, false)]), false),
+        ];
+        let outputs = [(4, false)];
+        let mut output_map = [
+            OutputEntryN::NewIndex(0, false),
+            OutputEntryN::NewIndex(1, false),
+            OutputEntryN::NewIndex(2, false),
+            OutputEntryN::NewIndex(3, false),
+            OutputEntryN::NewIndex(4, false),
+        ];
+        assert!(join_and_remove_clauses(
+            &mut input_len,
+            &mut clauses,
+            &outputs,
+            &mut output_map
+        ));
+        assert_eq!(3, input_len);
+        assert_eq!(
+            vec![(Clause::new_and([(2, false), (0, false), (1, false)]), false)],
+            clauses
+        );
+        assert_eq!(
+            [
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::NewIndex(1, false),
+                OutputEntryN::NewIndex(2, false),
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::NewIndex(3, false),
+            ],
+            output_map
+        );
     }
 }
