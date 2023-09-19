@@ -397,22 +397,24 @@ where
                     let l = usize::try_from(clause.literals[way].0).unwrap();
                     if let OutputEntryN::NewIndex(l1, n1) = output_map[oim[l]] {
                         let l1_u = usize::try_from(l1).unwrap();
-                        let lclause = &clauses[l1_u - *input_len];
-                        // if clause kind is same and if and-clause then
-                        // must be negated literal finally
-                        if lclause.0.kind == clause.kind
-                            && (lclause.0.kind != ClauseKind::And
-                                && (lclause.1 ^ n1 ^ n))
-                                // ignore clause with multiple usage
-                                && output_usages[l1_u] <= 1
-                        {
-                            // push with clause kind
-                            stack.push(StackEntry {
-                                node: l1_u - *input_len,
-                                way: 0,
-                                clause_id: Some(clause_id),
-                                negate_join: lclause.1 ^ n1 ^ n,
-                            });
+                        if l1_u >= *input_len {
+                            let lclause = &clauses[l1_u - *input_len];
+                            // if clause kind is same and if and-clause then
+                            // must be negated literal finally
+                            if lclause.0.kind == clause.kind
+                                && (lclause.0.kind != ClauseKind::And
+                                    && (lclause.1 ^ n1 ^ n))
+                                    // ignore clause with multiple usage
+                                    && output_usages[l1_u] <= 1
+                            {
+                                // push with clause kind
+                                stack.push(StackEntry {
+                                    node: l1_u - *input_len,
+                                    way: 0,
+                                    clause_id: Some(clause_id),
+                                    negate_join: lclause.1 ^ n1 ^ n,
+                                });
+                            }
                         }
                     }
                 } else {
@@ -453,16 +455,18 @@ where
                         if let OutputEntryN::NewIndex(l1, n1) = output_map[oim[l_u]] {
                             // check if can be merged
                             let l1_u = usize::try_from(l1).unwrap();
-                            let lclause = &clauses[l1_u - *input_len];
-                            // if clause kind is same and if and-clause then
-                            // must be negated literal finally
-                            if lclause.0.kind == clause.kind
-                                && (lclause.0.kind != ClauseKind::And
-                                    && (lclause.1 ^ n1 ^ n))
-                                    // ignore clause with multiple usage
-                                    && output_usages[l1_u] <= 1
-                            {
-                                to_remove.push(li);
+                            if l1_u >= *input_len {
+                                let lclause = &clauses[l1_u - *input_len];
+                                // if clause kind is same and if and-clause then
+                                // must be negated literal finally
+                                if lclause.0.kind == clause.kind
+                                    && (lclause.0.kind != ClauseKind::And
+                                        && (lclause.1 ^ n1 ^ n))
+                                        // ignore clause with multiple usage
+                                        && output_usages[l1_u] <= 1
+                                {
+                                    to_remove.push(li);
+                                }
                             }
                         }
                     }
@@ -519,17 +523,19 @@ where
                                 // check if can be merged
                                 if !do_second_pass {
                                     let l1_u = usize::try_from(l1).unwrap();
-                                    let lclause = &clauses[l1_u - *input_len];
-                                    // if clause kind is same and if and-clause then
-                                    // must be negated literal finally
-                                    if lclause.0.kind == clause.kind
-                                        && (lclause.0.kind != ClauseKind::And
-                                            && (lclause.1 ^ n1 ^ n))
-                                            // ignore clause with multiple usage
-                                            && output_usages[l1_u] <= 1
-                                    {
-                                        // use second_pass for node to collect child clauses
-                                        do_second_pass = true;
+                                    if l1_u >= *input_len {
+                                        let lclause = &clauses[l1_u - *input_len];
+                                        // if clause kind is same and if and-clause then
+                                        // must be negated literal finally
+                                        if lclause.0.kind == clause.kind
+                                            && (lclause.0.kind != ClauseKind::And
+                                                && (lclause.1 ^ n1 ^ n))
+                                                // ignore clause with multiple usage
+                                                && output_usages[l1_u] <= 1
+                                        {
+                                            // use second_pass for node to collect child clauses
+                                            do_second_pass = true;
+                                        }
                                     }
                                 }
                                 new_literals.push((l1, n ^ n1));
@@ -590,7 +596,7 @@ where
         .filter(|(_, x)| **x)
         .map(|(i, _)| T::try_from(i).unwrap())
         .collect::<Vec<_>>();
-    let mut trans_map = vec![T::default(); clauses.len()];
+    let mut trans_map = vec![T::default(); *input_len + clauses.len()];
     for (i, x) in old_trans_map.iter().enumerate() {
         trans_map[usize::try_from(*x).unwrap()] = T::try_from(i).unwrap();
     }
@@ -756,8 +762,37 @@ mod tests {
             clauses
         );
     }
-    
+
     #[test]
     fn test_join_and_remove_clauses() {
+        let mut input_len = 3;
+        let mut clauses = vec![(Clause::new_and([(0, false), (1, false), (2, false)]), false)];
+        let outputs = [(3, false)];
+        let mut output_map = [
+            OutputEntryN::NewIndex(0, false),
+            OutputEntryN::NewIndex(1, false),
+            OutputEntryN::NewIndex(2, false),
+            OutputEntryN::NewIndex(3, false),
+        ];
+        assert!(!join_and_remove_clauses(
+            &mut input_len,
+            &mut clauses,
+            &outputs,
+            &mut output_map
+        ));
+        assert_eq!(3, input_len);
+        assert_eq!(
+            vec![(Clause::new_and([(0, false), (1, false), (2, false)]), false)],
+            clauses
+        );
+        assert_eq!(
+            [
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::NewIndex(1, false),
+                OutputEntryN::NewIndex(2, false),
+                OutputEntryN::NewIndex(3, false),
+            ],
+            output_map
+        );
     }
 }
