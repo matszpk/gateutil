@@ -548,12 +548,7 @@ where
                                         }
                                     }
                                 }
-                                if l1 != *l {
-                                    // include sign only if literal appoint to not same
-                                    new_literals.push((l1, n ^ n1));
-                                } else {
-                                    new_literals.push((l1, *n));
-                                }
+                                new_literals.push((l1, n ^ n1));
                             }
                             OutputEntryN::Value(v1) => {
                                 let v = n ^ v1;
@@ -605,11 +600,14 @@ where
                             // propagate to output_map
                             let l = usize::try_from(clause.literals[0].0).unwrap();
                             match output_map[oim[l]] {
-                                OutputEntryN::NewIndex(x, n1) => {
+                                OutputEntryN::NewIndex(x, _) => {
+                                    // important: do not include n1 - negation
+                                    // from newIndex from OutputEntry becuase ealrier
+                                    // had been included in literal sign.
                                     output_map[oim[*input_len + node_index]] =
                                         OutputEntryN::NewIndex(
                                             x,
-                                            cur_out_n1 ^ n1 ^ clause.literals[0].1 ^ *clause_neg,
+                                            cur_out_n1 ^ clause.literals[0].1 ^ *clause_neg,
                                         );
                                     // propagate usage of clause
                                     output_usages[usize::try_from(x).unwrap()] +=
