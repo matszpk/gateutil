@@ -795,6 +795,7 @@ mod tests {
     #[test]
     fn test_join_and_remove_clauses() {
         // testcase
+        // trivial no changes
         let mut input_len = 3;
         let mut clauses = vec![(Clause::new_and([(0, false), (1, false), (2, false)]), false)];
         let outputs = [(3, false)];
@@ -826,11 +827,20 @@ mod tests {
         );
 
         // testcase
-        for tv in 0..4 {
+        // process empty clause
+        for tv in 0..8 {
             let mut input_len = 0;
             let t = (tv & 1) != 0;
             let t1 = (tv & 2) != 0;
-            let mut clauses = vec![(Clause::new_and([]), t)];
+            let xor = (tv & 4) != 0;
+            let mut clauses = vec![(
+                if xor {
+                    Clause::new_xor([])
+                } else {
+                    Clause::new_and([])
+                },
+                t,
+            )];
             let outputs = [(0, false)];
             let mut output_map = [OutputEntryN::NewIndex(0, t1)];
             assert!(join_and_remove_clauses(
@@ -845,12 +855,21 @@ mod tests {
         }
 
         // testcase
-        for tv in 0..4 {
+        // process resolving empty clause (->false) in parent clause
+        for tv in 0..8 {
             let mut input_len = 2;
             let t = (tv & 1) != 0;
             let t1 = (tv & 2) != 0;
+            let xor = (tv & 4) != 0;
             let mut clauses = vec![
-                (Clause::new_and([]), false),
+                (
+                    if xor {
+                        Clause::new_xor([])
+                    } else {
+                        Clause::new_and([])
+                    },
+                    false,
+                ),
                 (Clause::new_and([(0, false), (1, false), (2, false)]), t),
             ];
             let outputs = [(3, false)];
@@ -880,47 +899,66 @@ mod tests {
         }
 
         // testcase
-        let mut input_len = 2;
-        let mut clauses = vec![
-            (Clause::new_and([]), true),
-            (Clause::new_and([(0, false), (1, false), (2, false)]), false),
-        ];
-        let outputs = [(3, false)];
-        let mut output_map = [
-            OutputEntryN::NewIndex(0, false),
-            OutputEntryN::NewIndex(1, false),
-            OutputEntryN::NewIndex(2, false),
-            OutputEntryN::NewIndex(3, false),
-        ];
-        assert!(join_and_remove_clauses(
-            &mut input_len,
-            &mut clauses,
-            &outputs,
-            &mut output_map
-        ));
-        assert_eq!(2, input_len);
-        assert_eq!(
-            vec![(Clause::new_and([(0, false), (1, false)]), false)],
-            clauses
-        );
-        assert_eq!(
-            [
+        // process resolving empty clause (->false) in parent clause
+        for xor in [false, true] {
+            let mut input_len = 2;
+            let mut clauses = vec![
+                (
+                    if xor {
+                        Clause::new_xor([])
+                    } else {
+                        Clause::new_and([])
+                    },
+                    true,
+                ),
+                (Clause::new_and([(0, false), (1, false), (2, false)]), false),
+            ];
+            let outputs = [(3, false)];
+            let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
-                OutputEntryN::Value(true),
                 OutputEntryN::NewIndex(2, false),
-            ],
-            output_map
-        );
+                OutputEntryN::NewIndex(3, false),
+            ];
+            assert!(join_and_remove_clauses(
+                &mut input_len,
+                &mut clauses,
+                &outputs,
+                &mut output_map
+            ));
+            assert_eq!(2, input_len);
+            assert_eq!(
+                vec![(Clause::new_and([(0, false), (1, false)]), false)],
+                clauses
+            );
+            assert_eq!(
+                [
+                    OutputEntryN::NewIndex(0, false),
+                    OutputEntryN::NewIndex(1, false),
+                    OutputEntryN::Value(true),
+                    OutputEntryN::NewIndex(2, false),
+                ],
+                output_map
+            );
+        }
 
         // testcase
-        for tv in 0..8 {
+        // process resolving empty clause (->t) in parent clause and change clause negation
+        for tv in 0..16 {
             let mut input_len = 2;
             let t = (tv & 1) != 0;
             let t1 = (tv & 2) != 0;
             let t2 = (tv & 4) != 0;
+            let xor = (tv & 8) != 0;
             let mut clauses = vec![
-                (Clause::new_and([]), t),
+                (
+                    if xor {
+                        Clause::new_xor([])
+                    } else {
+                        Clause::new_and([])
+                    },
+                    t,
+                ),
                 (Clause::new_xor([(0, false), (1, false), (2, false)]), t2),
             ];
             let outputs = [(3, false)];
@@ -953,6 +991,7 @@ mod tests {
         }
 
         // testcase
+        // resolve output map for clause with one literal (including sign).
         for tv in 0..16 {
             let t0 = (tv & 1) != 0;
             let t1 = (tv & 2) != 0;
