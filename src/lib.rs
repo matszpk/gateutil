@@ -290,8 +290,8 @@ pub enum OutputEntryN<T> {
 // output_map includes circuit's inputs.
 fn join_and_remove_clauses<T>(
     input_len: &mut usize,
-    outputs: &[(T, bool)],
     clauses: &mut Vec<(Clause<T>, bool)>,
+    outputs: &[(T, bool)],
     output_map: &mut [OutputEntryN<T>],
 ) -> bool
 where
@@ -652,8 +652,8 @@ where
         first = false;
         if !join_and_remove_clauses(
             &mut new_input_len,
-            circuit.outputs(),
             &mut clauses,
+            circuit.outputs(),
             &mut output_map,
         ) {
             break;
@@ -755,5 +755,9 @@ mod tests {
             ],
             clauses
         );
+    }
+    
+    #[test]
+    fn test_join_and_remove_clauses() {
     }
 }
