@@ -497,8 +497,17 @@ where
                     let l = usize::try_from(clause.literals[0].0).unwrap();
                     match output_map[oim[l]] {
                         OutputEntryN::NewIndex(x, n1) => {
-                            output_map[oim[*input_len + node_index]] =
-                                OutputEntryN::NewIndex(x, n1 ^ clause.literals[0].1 ^ *clause_neg);
+                            let cur_out_n1 = if let OutputEntryN::NewIndex(_, n) =
+                                output_map[oim[*input_len + node_index]]
+                            {
+                                n
+                            } else {
+                                panic!("Unexpected");
+                            };
+                            output_map[oim[*input_len + node_index]] = OutputEntryN::NewIndex(
+                                x,
+                                cur_out_n1 ^ n1 ^ clause.literals[0].1 ^ *clause_neg,
+                            );
                             // propagate usage of clause
                             output_usages[usize::try_from(x).unwrap()] += output_usages[l] - 1;
                         }
@@ -932,16 +941,15 @@ mod tests {
         }
 
         // testcase
-        for tv in 0..3 {
+        for tv in 0..16 {
             let t0 = (tv & 1) != 0;
             let t1 = (tv & 2) != 0;
+            let t2 = (tv & 4) != 0;
+            let t3 = (tv & 8) != 0;
             let mut input_len = 1;
             let mut clauses = vec![(Clause::new_and([(0, t0)]), t1)];
             let outputs = [(1, false)];
-            let mut output_map = [
-                OutputEntryN::NewIndex(0, false),
-                OutputEntryN::NewIndex(1, false),
-            ];
+            let mut output_map = [OutputEntryN::NewIndex(0, t2), OutputEntryN::NewIndex(1, t3)];
             assert!(join_and_remove_clauses(
                 &mut input_len,
                 &mut clauses,
@@ -952,8 +960,8 @@ mod tests {
             assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
             assert_eq!(
                 [
-                    OutputEntryN::NewIndex(0, false),
-                    OutputEntryN::NewIndex(0, t0 ^ t1),
+                    OutputEntryN::NewIndex(0, t2),
+                    OutputEntryN::NewIndex(0, t0 ^ t1 ^ t2 ^ t3),
                 ],
                 output_map
             );
