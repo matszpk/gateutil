@@ -992,13 +992,21 @@ mod tests {
 
         // testcase
         // resolve output map for clause with one literal (including sign).
-        for tv in 0..16 {
+        for tv in 0..32 {
             let t0 = (tv & 1) != 0;
             let t1 = (tv & 2) != 0;
             let t2 = (tv & 4) != 0;
             let t3 = (tv & 8) != 0;
+            let xor = (tv & 16) != 0;
             let mut input_len = 1;
-            let mut clauses = vec![(Clause::new_and([(0, t0)]), t1)];
+            let mut clauses = vec![(
+                if xor {
+                    Clause::new_xor([(0, t0)])
+                } else {
+                    Clause::new_and([(0, t0)])
+                },
+                t1,
+            )];
             let outputs = [(1, false)];
             let mut output_map = [OutputEntryN::NewIndex(0, t2), OutputEntryN::NewIndex(1, t3)];
             assert!(join_and_remove_clauses(
