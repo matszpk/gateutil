@@ -551,7 +551,7 @@ where
                                         }
                                     }
                                 }
-                                new_literals.push((l1, *n));
+                                new_literals.push((*l, *n));
                             }
                             OutputEntryN::Value(v1) => {
                                 let v = n ^ v1;
@@ -600,10 +600,11 @@ where
                                 do_next_loop = true;
                                 continue; // skip popping
                             } else {
-                                // update negations for literals at end
+                                // update same literals and negations for literals at end
                                 for (l, n) in &mut clause.literals {
                                     let l_u = usize::try_from(*l).unwrap();
-                                    if let OutputEntryN::NewIndex(_, n1) = output_map[oim[l_u]] {
+                                    if let OutputEntryN::NewIndex(l1, n1) = output_map[oim[l_u]] {
+                                        *l = l1;
                                         *n ^= n1;
                                     }
                                 }
