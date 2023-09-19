@@ -548,7 +548,12 @@ where
                                         }
                                     }
                                 }
-                                new_literals.push((l1, n ^ n1));
+                                if l1 != *l {
+                                    // include sign only if literal appoint to not same
+                                    new_literals.push((l1, n ^ n1));
+                                } else {
+                                    new_literals.push((l1, *n));
+                                }
                             }
                             OutputEntryN::Value(v1) => {
                                 let v = n ^ v1;
@@ -1046,6 +1051,52 @@ mod tests {
                     OutputEntryN::NewIndex(0, t0 ^ t1 ^ t2 ^ t3),
                 ],
                 output_map
+            );
+        }
+
+        // testcase
+        // process resolving empty clause (->true) in parent clause to one-literal clause
+        for tv in 0..32 {
+            let t0 = (tv & 1) != 0;
+            let t1 = (tv & 2) != 0;
+            let t2 = (tv & 4) != 0;
+            let t3 = (tv & 8) != 0;
+            let xor = (tv & 16) != 0;
+            let mut input_len = 1;
+            let mut clauses = vec![
+                (
+                    if xor {
+                        Clause::new_xor([])
+                    } else {
+                        Clause::new_and([])
+                    },
+                    true,
+                ),
+                (Clause::new_and([(0, t0), (1, false)]), t1),
+            ];
+            let outputs = [(2, false)];
+            let mut output_map = [
+                OutputEntryN::NewIndex(0, t2),
+                OutputEntryN::NewIndex(1, false),
+                OutputEntryN::NewIndex(2, t3),
+            ];
+            assert!(join_and_remove_clauses(
+                &mut input_len,
+                &mut clauses,
+                &outputs,
+                &mut output_map
+            ));
+            assert_eq!(1, input_len);
+            assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
+            assert_eq!(
+                [
+                    OutputEntryN::NewIndex(0, t2),
+                    OutputEntryN::Value(true),
+                    OutputEntryN::NewIndex(0, t0 ^ t1 ^ t2 ^ t3),
+                ],
+                output_map,
+                "{}",
+                tv
             );
         }
     }
