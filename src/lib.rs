@@ -497,6 +497,8 @@ where
                         OutputEntryN::NewIndex(x, n1) => {
                             output_map[oim[*input_len + node_index]] =
                                 OutputEntryN::NewIndex(x, n1 ^ clause.literals[0].1 ^ *clause_neg);
+                            // propagate usage of clause
+                            output_usages[usize::try_from(x).unwrap()] += output_usages[l] - 1;
                         }
                         OutputEntryN::Value(v) => {
                             output_map[oim[*input_len + node_index]] =
