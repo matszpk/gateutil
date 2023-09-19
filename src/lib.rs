@@ -853,5 +853,75 @@ mod tests {
             ],
             output_map
         );
+
+        // testcase
+        let mut input_len = 2;
+        let mut clauses = vec![
+            (Clause::new_and([]), true),
+            (Clause::new_and([(0, false), (1, false), (2, false)]), false),
+        ];
+        let outputs = [(3, false)];
+        let mut output_map = [
+            OutputEntryN::NewIndex(0, false),
+            OutputEntryN::NewIndex(1, false),
+            OutputEntryN::NewIndex(2, false),
+            OutputEntryN::NewIndex(3, false),
+        ];
+        assert!(join_and_remove_clauses(
+            &mut input_len,
+            &mut clauses,
+            &outputs,
+            &mut output_map
+        ));
+        assert_eq!(2, input_len);
+        assert_eq!(
+            vec![(Clause::new_and([(0, false), (1, false)]), false)],
+            clauses
+        );
+        assert_eq!(
+            [
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::NewIndex(1, false),
+                OutputEntryN::Value(true),
+                OutputEntryN::NewIndex(2, false),
+            ],
+            output_map
+        );
+
+        // testcase
+        for t in [false, true] {
+            let mut input_len = 2;
+            let mut clauses = vec![
+                (Clause::new_and([]), t),
+                (Clause::new_xor([(0, false), (1, false), (2, false)]), false),
+            ];
+            let outputs = [(3, false)];
+            let mut output_map = [
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::NewIndex(1, false),
+                OutputEntryN::NewIndex(2, false),
+                OutputEntryN::NewIndex(3, false),
+            ];
+            assert!(join_and_remove_clauses(
+                &mut input_len,
+                &mut clauses,
+                &outputs,
+                &mut output_map
+            ));
+            assert_eq!(2, input_len);
+            assert_eq!(
+                vec![(Clause::new_xor([(0, false), (1, false)]), t)],
+                clauses
+            );
+            assert_eq!(
+                [
+                    OutputEntryN::NewIndex(0, false),
+                    OutputEntryN::NewIndex(1, false),
+                    OutputEntryN::Value(t),
+                    OutputEntryN::NewIndex(2, false),
+                ],
+                output_map
+            );
+        }
     }
 }
