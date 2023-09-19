@@ -1196,8 +1196,9 @@ mod tests {
                 output_map
             );
         }
-        
-        // join clause
+
+        // testcase
+        // join clause 2 - xor clauses
         for tv in 0..8 {
             let mut input_len = 3;
             let t = (tv & 1) != 0;
@@ -1223,7 +1224,10 @@ mod tests {
             ));
             assert_eq!(3, input_len);
             assert_eq!(
-                vec![(Clause::new_xor([(2, false), (0, false), (1, false)]), t ^ t1 ^ t2)],
+                vec![(
+                    Clause::new_xor([(2, false), (0, false), (1, false)]),
+                    t ^ t1 ^ t2
+                )],
                 clauses,
                 "{}",
                 tv
