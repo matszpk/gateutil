@@ -484,7 +484,9 @@ where
                     }
                     clauses[node_index].0.literals = new_literals;
                 }
-                stack.pop();
+                // repeat process
+                top.way = 0;
+                top.clause_id = None;
             } else {
                 let cur_out_n1 = if let OutputEntryN::NewIndex(_, n) =
                     output_map[oim[*input_len + node_index]]
@@ -494,7 +496,7 @@ where
                     panic!("Unexpected");
                 };
                 // resolve values and indexes for current clauses
-                if clause.literals.len() == 0 {
+                if clause.literals.is_empty() {
                     // fill up by zero ^ neg
                     output_map[oim[*input_len + node_index]] =
                         OutputEntryN::Value(*clause_neg ^ cur_out_n1);
@@ -573,7 +575,7 @@ where
                         if neg_clause {
                             *clause_neg = !*clause_neg;
                         }
-                        if !clause.literals.is_empty() {
+                        if clause.literals.len() >= 2 {
                             used_new_outputs[*input_len + node_index] = true;
                             clause_len_before_second[node_index] = clause.literals.len();
                             // update used_new_outputs
@@ -594,6 +596,27 @@ where
                                 do_next_loop = true;
                                 continue; // skip popping
                             }
+                        } else if clause.literals.len() == 1 {
+                            // propagate to output_map
+                            let l = usize::try_from(clause.literals[0].0).unwrap();
+                            match output_map[oim[l]] {
+                                OutputEntryN::NewIndex(x, n1) => {
+                                    output_map[oim[*input_len + node_index]] =
+                                        OutputEntryN::NewIndex(
+                                            x,
+                                            cur_out_n1 ^ n1 ^ clause.literals[0].1 ^ *clause_neg,
+                                        );
+                                    // propagate usage of clause
+                                    output_usages[usize::try_from(x).unwrap()] +=
+                                        output_usages[l] - 1;
+                                }
+                                OutputEntryN::Value(v) => {
+                                    output_map[oim[*input_len + node_index]] =
+                                        OutputEntryN::Value(v ^ clause.literals[0].1 ^ *clause_neg);
+                                }
+                            }
+                            used_new_outputs[*input_len + node_index] = false;
+                            do_next_loop = true;
                         } else {
                             // resolve empty clause
                             output_map[oim[*input_len + node_index]] =
