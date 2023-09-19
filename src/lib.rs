@@ -826,50 +826,58 @@ mod tests {
         );
 
         // testcase
-        let mut input_len = 0;
-        let mut clauses = vec![(Clause::new_and([]), false)];
-        let outputs = [(0, false)];
-        let mut output_map = [OutputEntryN::NewIndex(0, false)];
-        assert!(join_and_remove_clauses(
-            &mut input_len,
-            &mut clauses,
-            &outputs,
-            &mut output_map
-        ));
-        assert_eq!(0, input_len);
-        assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
-        assert_eq!([OutputEntryN::Value(false),], output_map);
+        for tv in 0..4 {
+            let mut input_len = 0;
+            let t = (tv & 1) != 0;
+            let t1 = (tv & 2) != 0;
+            let mut clauses = vec![(Clause::new_and([]), t)];
+            let outputs = [(0, false)];
+            let mut output_map = [OutputEntryN::NewIndex(0, t1)];
+            assert!(join_and_remove_clauses(
+                &mut input_len,
+                &mut clauses,
+                &outputs,
+                &mut output_map
+            ));
+            assert_eq!(0, input_len);
+            assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
+            assert_eq!([OutputEntryN::Value(t ^ t1),], output_map);
+        }
 
         // testcase
-        let mut input_len = 2;
-        let mut clauses = vec![
-            (Clause::new_and([]), false),
-            (Clause::new_and([(0, false), (1, false), (2, false)]), false),
-        ];
-        let outputs = [(3, false)];
-        let mut output_map = [
-            OutputEntryN::NewIndex(0, false),
-            OutputEntryN::NewIndex(1, false),
-            OutputEntryN::NewIndex(2, false),
-            OutputEntryN::NewIndex(3, false),
-        ];
-        assert!(join_and_remove_clauses(
-            &mut input_len,
-            &mut clauses,
-            &outputs,
-            &mut output_map
-        ));
-        assert_eq!(0, input_len);
-        assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
-        assert_eq!(
-            [
+        for tv in 0..4 {
+            let mut input_len = 2;
+            let t = (tv & 1) != 0;
+            let t1 = (tv & 2) != 0;
+            let mut clauses = vec![
+                (Clause::new_and([]), false),
+                (Clause::new_and([(0, false), (1, false), (2, false)]), t),
+            ];
+            let outputs = [(3, false)];
+            let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
-                OutputEntryN::NewIndex(0, false),
-                OutputEntryN::Value(false),
-                OutputEntryN::Value(false),
-            ],
-            output_map
-        );
+                OutputEntryN::NewIndex(1, false),
+                OutputEntryN::NewIndex(2, false),
+                OutputEntryN::NewIndex(3, t1),
+            ];
+            assert!(join_and_remove_clauses(
+                &mut input_len,
+                &mut clauses,
+                &outputs,
+                &mut output_map
+            ));
+            assert_eq!(0, input_len);
+            assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
+            assert_eq!(
+                [
+                    OutputEntryN::NewIndex(0, false),
+                    OutputEntryN::NewIndex(0, false),
+                    OutputEntryN::Value(false),
+                    OutputEntryN::Value(t ^ t1),
+                ],
+                output_map
+            );
+        }
 
         // testcase
         let mut input_len = 2;
