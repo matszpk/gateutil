@@ -325,8 +325,6 @@ where
         }
     }
 
-    let mut used_new_outputs = vec![false; *input_len + clauses.len()];
-
     // traversing and join clauses
     #[derive(Clone, Copy, Debug)]
     struct StackEntry {
@@ -347,7 +345,6 @@ where
     for (o, _) in outputs.iter() {
         let o = usize::try_from(*o).unwrap();
         if o < *input_len {
-            used_new_outputs[o] = true;
             continue;
         }
         let o = match output_map[oim[o]] {
@@ -442,7 +439,6 @@ where
                     if top.negate_join {
                         target_clause.1 = !target_clause.1;
                     }
-                    used_new_outputs[*input_len + node_index] = false;
                 } else {
                     // remove literals of clauses
                     let mut to_remove = vec![];
@@ -503,7 +499,6 @@ where
                     // fill up by zero ^ neg
                     output_map[oim[*input_len + node_index]] =
                         OutputEntryN::Value(*clause_neg ^ cur_out_n1);
-                    used_new_outputs[*input_len + node_index] = false;
                     do_next_loop = true;
                 } else if clause.literals.len() == 1 {
                     // propagate to output_map
@@ -522,7 +517,6 @@ where
                                 OutputEntryN::Value(v ^ clause.literals[0].1 ^ *clause_neg);
                         }
                     }
-                    used_new_outputs[*input_len + node_index] = false;
                     do_next_loop = true;
                 } else {
                     // resolve clause
@@ -579,18 +573,7 @@ where
                             *clause_neg = !*clause_neg;
                         }
                         if clause.literals.len() >= 2 {
-                            used_new_outputs[*input_len + node_index] = true;
                             clause_len_before_second[node_index] = clause.literals.len();
-                            // update used_new_outputs
-                            for (l, _) in &mut clause.literals {
-                                let l_u = usize::try_from(*l).unwrap();
-                                if let OutputEntryN::NewIndex(l1, _) = output_map[oim[l_u]] {
-                                    let l1_u = usize::try_from(l1).unwrap();
-                                    if l1_u < *input_len {
-                                        used_new_outputs[l1_u] = true;
-                                    }
-                                }
-                            }
 
                             if do_second_pass {
                                 // prepare to second pass to collect clauses
@@ -628,17 +611,75 @@ where
                                         OutputEntryN::Value(v ^ clause.literals[0].1 ^ *clause_neg);
                                 }
                             }
-                            used_new_outputs[*input_len + node_index] = false;
                             do_next_loop = true;
                         } else {
                             // resolve empty clause
                             output_map[oim[*input_len + node_index]] =
                                 OutputEntryN::Value(*clause_neg ^ cur_out_n1);
-                            used_new_outputs[*input_len + node_index] = false;
                             do_next_loop = true;
                         }
                     }
                 }
+                stack.pop();
+            }
+        }
+    }
+
+    let mut used_new_outputs = vec![false; *input_len + clauses.len()];
+    //
+    // traverse 2 - used_new_outputs - fill usage of outputs
+    //
+    for (o, _) in outputs.iter() {
+        let o = usize::try_from(*o).unwrap();
+        if o < *input_len {
+            used_new_outputs[o] = true;
+            continue;
+        }
+        let o = match output_map[oim[o]] {
+            OutputEntryN::NewIndex(o, _) => {
+                let o = usize::try_from(o).unwrap();
+                if o < *input_len {
+                    continue;
+                }
+                o
+            }
+            OutputEntryN::Value(_) => continue,
+        };
+        let mut stack = Vec::<StackEntry>::new();
+        stack.push(StackEntry {
+            node: o - *input_len,
+            way: 0,
+            clause_id: None,
+            negate_join: false,
+        });
+        while !stack.is_empty() {
+            let mut top = stack.last_mut().unwrap();
+            let node_index = top.node;
+            let (clause, _) = &clauses[node_index];
+            if top.way == 0 {
+                if !used_new_outputs[*input_len + node_index] {
+                    used_new_outputs[*input_len + node_index] = true;
+                } else {
+                    stack.pop();
+                    continue;
+                }
+            }
+
+            if top.way < clause.literals.len() {
+                let way = top.way;
+                top.way += 1;
+                let l = usize::try_from(clause.literals[way].0).unwrap();
+                if l >= *input_len {
+                    stack.push(StackEntry {
+                        node: l - *input_len,
+                        way: 0,
+                        clause_id: None,
+                        negate_join: false,
+                    });
+                } else {
+                    used_new_outputs[l] = true;
+                }
+            } else {
                 stack.pop();
             }
         }
@@ -1351,5 +1392,9 @@ mod tests {
                 tv
             );
         }
+
+        // testcase
+        // join clause - with one literal clause
+        // do make similar for xor clauses
     }
 }
