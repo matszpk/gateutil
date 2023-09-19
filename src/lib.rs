@@ -899,7 +899,7 @@ mod tests {
         }
 
         // testcase
-        // process resolving empty clause (->false) in parent clause
+        // process resolving empty clause (->true) in parent clause
         for xor in [false, true] {
             let mut input_len = 2;
             let mut clauses = vec![
