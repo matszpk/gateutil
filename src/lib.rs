@@ -624,19 +624,20 @@ where
         }
     }
     *clauses = used_new_outputs[*input_len..]
-        .into_iter()
+        .iter()
         .enumerate()
         .filter(|(_, x)| **x)
         .map(|(i, _)| clauses[i].clone())
         .collect::<Vec<_>>();
-    if *input_len != 0 {
-        *input_len = trans_map[0..*input_len]
-            .iter()
-            .map(|x| usize::try_from(*x).unwrap())
-            .max()
-            .unwrap_or_default()
-            + 1;
-    }
+    *input_len = used_new_outputs[..*input_len]
+        .iter()
+        .enumerate()
+        .filter(|(_, x)| **x)
+        .map(|(i, _)| trans_map[i])
+        .map(|x| usize::try_from(x).unwrap())
+        .max()
+        .map(|x| x + 1)
+        .unwrap_or_default();
     do_next_loop
 }
 
@@ -821,5 +822,36 @@ mod tests {
         assert_eq!(0, input_len);
         assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
         assert_eq!([OutputEntryN::Value(false),], output_map);
+
+        // testcase
+        let mut input_len = 2;
+        let mut clauses = vec![
+            (Clause::new_and([]), false),
+            (Clause::new_and([(0, false), (1, false), (2, false)]), false),
+        ];
+        let outputs = [(3, false)];
+        let mut output_map = [
+            OutputEntryN::NewIndex(0, false),
+            OutputEntryN::NewIndex(1, false),
+            OutputEntryN::NewIndex(2, false),
+            OutputEntryN::NewIndex(3, false),
+        ];
+        assert!(join_and_remove_clauses(
+            &mut input_len,
+            &mut clauses,
+            &outputs,
+            &mut output_map
+        ));
+        assert_eq!(0, input_len);
+        assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
+        assert_eq!(
+            [
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::Value(false),
+                OutputEntryN::Value(false),
+            ],
+            output_map
+        );
     }
 }
