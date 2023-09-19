@@ -426,8 +426,6 @@ where
                             clause_id: None,
                             negate_join: false,
                         });
-                    } else {
-                        used_new_outputs[l] = true;
                     }
                 }
             } else if let Some(clause_id) = top.clause_id {
@@ -568,6 +566,17 @@ where
                         if !clause.literals.is_empty() {
                             used_new_outputs[*input_len + node_index] = true;
                             clause_len_before_second[node_index] = clause.literals.len();
+                            // update used_new_outputs
+                            for (l, _) in &clause.literals {
+                                let l_u = usize::try_from(*l).unwrap();
+                                if let OutputEntryN::NewIndex(l1, _) = output_map[oim[l_u]] {
+                                    let l1_u = usize::try_from(l1).unwrap();
+                                    if l1_u < *input_len {
+                                        used_new_outputs[l1_u] = true;
+                                    }
+                                }
+                            }
+
                             if do_second_pass {
                                 // prepare to second pass to collect clauses
                                 top.way = 0; // reset way
