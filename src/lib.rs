@@ -582,11 +582,10 @@ where
                             used_new_outputs[*input_len + node_index] = true;
                             clause_len_before_second[node_index] = clause.literals.len();
                             // update used_new_outputs
-                            for (l, n) in &mut clause.literals {
+                            for (l, _) in &mut clause.literals {
                                 let l_u = usize::try_from(*l).unwrap();
-                                if let OutputEntryN::NewIndex(l1, n1) = output_map[oim[l_u]] {
+                                if let OutputEntryN::NewIndex(l1, _) = output_map[oim[l_u]] {
                                     let l1_u = usize::try_from(l1).unwrap();
-                                    *n ^= n1;
                                     if l1_u < *input_len {
                                         used_new_outputs[l1_u] = true;
                                     }
@@ -600,15 +599,20 @@ where
                                 top.clause_id = Some(node_index);
                                 do_next_loop = true;
                                 continue; // skip popping
+                            } else {
+                                // update negations for literals at end
+                                for (l, n) in &mut clause.literals {
+                                    let l_u = usize::try_from(*l).unwrap();
+                                    if let OutputEntryN::NewIndex(_, n1) = output_map[oim[l_u]] {
+                                        *n ^= n1;
+                                    }
+                                }
                             }
                         } else if clause.literals.len() == 1 {
                             // propagate to output_map
                             let l = usize::try_from(clause.literals[0].0).unwrap();
                             match output_map[oim[l]] {
                                 OutputEntryN::NewIndex(x, n1) => {
-                                    // important: do not include n1 - negation
-                                    // from newIndex from OutputEntry becuase ealrier
-                                    // had been included in literal sign.
                                     output_map[oim[*input_len + node_index]] =
                                         OutputEntryN::NewIndex(
                                             x,
@@ -1104,45 +1108,47 @@ mod tests {
         }
 
         // testcase
-        // for tv in 0..4 {
-        //     let mut input_len = 3;
-        //     let t = (tv & 1) != 0;
-        //     let t1 = (tv & 2) != 0;
-        //     let mut clauses = vec![
-        //         (Clause::new_and([(0, false), (1, false)]), t ^ t1),
-        //         (Clause::new_and([(2, false), (3, t)]), false),
-        //     ];
-        //     let outputs = [(4, false)];
-        //     let mut output_map = [
-        //         OutputEntryN::NewIndex(0, false),
-        //         OutputEntryN::NewIndex(1, false),
-        //         OutputEntryN::NewIndex(2, false),
-        //         OutputEntryN::NewIndex(3, t1),
-        //         OutputEntryN::NewIndex(4, false),
-        //     ];
-        //     assert!(join_and_remove_clauses(
-        //         &mut input_len,
-        //         &mut clauses,
-        //         &outputs,
-        //         &mut output_map
-        //     ));
-        //     assert_eq!(3, input_len);
-        //     assert_eq!(
-        //         vec![(Clause::new_and([(2, false), (0, false), (1, false)]), false)],
-        //         clauses,
-        //         "{}", tv
-        //     );
-        //     assert_eq!(
-        //         [
-        //             OutputEntryN::NewIndex(0, false),
-        //             OutputEntryN::NewIndex(1, false),
-        //             OutputEntryN::NewIndex(2, false),
-        //             OutputEntryN::NewIndex(0, false),
-        //             OutputEntryN::NewIndex(3, false),
-        //         ],
-        //         output_map,
-        //         "{}", tv
-        //     );
-        // }
+        for tv in 0..4 {
+            let mut input_len = 3;
+            let t = (tv & 1) != 0;
+            let t1 = (tv & 2) != 0;
+            let mut clauses = vec![
+                (Clause::new_and([(0, false), (1, false)]), t ^ t1),
+                (Clause::new_and([(2, false), (3, t)]), false),
+            ];
+            let outputs = [(4, false)];
+            let mut output_map = [
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::NewIndex(1, false),
+                OutputEntryN::NewIndex(2, false),
+                OutputEntryN::NewIndex(3, t1),
+                OutputEntryN::NewIndex(4, false),
+            ];
+            assert!(join_and_remove_clauses(
+                &mut input_len,
+                &mut clauses,
+                &outputs,
+                &mut output_map
+            ));
+            assert_eq!(3, input_len);
+            assert_eq!(
+                vec![(Clause::new_and([(2, false), (0, false), (1, false)]), false)],
+                clauses,
+                "{}",
+                tv
+            );
+            assert_eq!(
+                [
+                    OutputEntryN::NewIndex(0, false),
+                    OutputEntryN::NewIndex(1, false),
+                    OutputEntryN::NewIndex(2, false),
+                    OutputEntryN::NewIndex(0, t1),
+                    OutputEntryN::NewIndex(3, false),
+                ],
+                output_map,
+                "{}",
+                tv
+            );
+        }
     }
 }
