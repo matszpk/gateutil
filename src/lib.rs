@@ -932,27 +932,31 @@ mod tests {
         }
 
         // testcase
-        let mut input_len = 1;
-        let mut clauses = vec![(Clause::new_and([(0, false)]), false)];
-        let outputs = [(1, false)];
-        let mut output_map = [
-            OutputEntryN::NewIndex(0, false),
-            OutputEntryN::NewIndex(1, false),
-        ];
-        assert!(join_and_remove_clauses(
-            &mut input_len,
-            &mut clauses,
-            &outputs,
-            &mut output_map
-        ));
-        assert_eq!(1, input_len);
-        assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
-        assert_eq!(
-            [
+        for tv in 0..3 {
+            let t0 = (tv & 1) != 0;
+            let t1 = (tv & 2) != 0;
+            let mut input_len = 1;
+            let mut clauses = vec![(Clause::new_and([(0, t0)]), t1)];
+            let outputs = [(1, false)];
+            let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
-                OutputEntryN::NewIndex(0, false),
-            ],
-            output_map
-        );
+                OutputEntryN::NewIndex(1, false),
+            ];
+            assert!(join_and_remove_clauses(
+                &mut input_len,
+                &mut clauses,
+                &outputs,
+                &mut output_map
+            ));
+            assert_eq!(1, input_len);
+            assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
+            assert_eq!(
+                [
+                    OutputEntryN::NewIndex(0, false),
+                    OutputEntryN::NewIndex(0, t0 ^ t1),
+                ],
+                output_map
+            );
+        }
     }
 }
