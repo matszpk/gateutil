@@ -598,6 +598,13 @@ where
         }
     }
 
+    // include new usage from outputs
+    for (o, _) in outputs.iter() {
+        if let OutputEntryN::NewIndex(o, _) = output_map[usize::try_from(*o).unwrap()] {
+            used_new_outputs[usize::try_from(o).unwrap()] = true;
+        }
+    }
+
     // translate literals map - from previous to current index
     let old_trans_map = used_new_outputs
         .iter()
@@ -923,5 +930,29 @@ mod tests {
                 output_map
             );
         }
+
+        // testcase
+        let mut input_len = 1;
+        let mut clauses = vec![(Clause::new_and([(0, false)]), false)];
+        let outputs = [(1, false)];
+        let mut output_map = [
+            OutputEntryN::NewIndex(0, false),
+            OutputEntryN::NewIndex(1, false),
+        ];
+        assert!(join_and_remove_clauses(
+            &mut input_len,
+            &mut clauses,
+            &outputs,
+            &mut output_map
+        ));
+        assert_eq!(1, input_len);
+        assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
+        assert_eq!(
+            [
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::NewIndex(0, false),
+            ],
+            output_map
+        );
     }
 }
