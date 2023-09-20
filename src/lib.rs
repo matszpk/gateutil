@@ -1425,7 +1425,7 @@ mod tests {
                     OutputEntryN::NewIndex(1, false),
                     OutputEntryN::NewIndex(2, false),
                     OutputEntryN::NewIndex(0, t1),
-                    OutputEntryN::NewIndex(0, t1 ^ t2 ^ t3), // ???
+                    OutputEntryN::NewIndex(0, t1 ^ t2 ^ t3),
                     OutputEntryN::NewIndex(3, false),
                 ],
                 output_map,
@@ -1481,7 +1481,7 @@ mod tests {
                     OutputEntryN::NewIndex(1, false),
                     OutputEntryN::NewIndex(2, false),
                     OutputEntryN::NewIndex(3, t1),
-                    OutputEntryN::NewIndex(3, t1 ^ t2 ^ t3), // ???
+                    OutputEntryN::NewIndex(3, t1 ^ t2 ^ t3),
                     OutputEntryN::NewIndex(4, false),
                 ],
                 output_map,
@@ -1772,7 +1772,7 @@ mod tests {
                     OutputEntryN::NewIndex(0, false),
                     OutputEntryN::NewIndex(0, false),
                     OutputEntryN::NewIndex(0, t1),
-                    OutputEntryN::NewIndex(0, t1 ^ t2 ^ t3), // ???
+                    OutputEntryN::NewIndex(0, t1 ^ t2 ^ t3),
                     OutputEntryN::Value(false),
                     OutputEntryN::Value(false),
                 ],
@@ -1823,9 +1823,68 @@ mod tests {
                     OutputEntryN::NewIndex(0, false),
                     OutputEntryN::NewIndex(0, t1),
                     OutputEntryN::Value(false),
-                    OutputEntryN::NewIndex(0, t1 ^ t2 ^ t3), // ???
+                    OutputEntryN::NewIndex(0, t1 ^ t2 ^ t3),
                     OutputEntryN::Value(false),
                     OutputEntryN::Value(false),
+                ],
+                output_map,
+                "{}",
+                tv
+            );
+        }
+
+        // testcase
+        // join clause - with one literal clause - 2-clause chain
+        for tv in 0..128 {
+            let mut input_len = 3;
+            let t = (tv & 1) != 0;
+            let t1 = (tv & 2) != 0;
+            let t2 = (tv & 4) != 0;
+            let t3 = (tv & 8) != 0;
+            let t4 = (tv & 16) != 0;
+            let t5 = (tv & 32) != 0;
+            let t6 = (tv & 64) != 0;
+            let mut clauses = vec![
+                (
+                    Clause::new_and([(0, false), (1, false)]),
+                    t ^ t1 ^ t2 ^ t3 ^ t4 ^ t5 ^ t6,
+                ),
+                (Clause::new_xor([(3, t2)]), t3),
+                (Clause::new_xor([(4, t5)]), t6),
+                (Clause::new_and([(2, false), (5, t)]), false),
+            ];
+            let outputs = [(6, false)];
+            let mut output_map = [
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::NewIndex(1, false),
+                OutputEntryN::NewIndex(2, false),
+                OutputEntryN::NewIndex(3, t1),
+                OutputEntryN::NewIndex(4, t4),
+                OutputEntryN::NewIndex(5, false),
+                OutputEntryN::NewIndex(6, false),
+            ];
+            assert!(join_and_remove_clauses(
+                &mut input_len,
+                &mut clauses,
+                &outputs,
+                &mut output_map
+            ));
+            assert_eq!(3, input_len);
+            assert_eq!(
+                vec![(Clause::new_and([(2, false), (0, false), (1, false)]), false)],
+                clauses,
+                "{}",
+                tv
+            );
+            assert_eq!(
+                [
+                    OutputEntryN::NewIndex(0, false),
+                    OutputEntryN::NewIndex(1, false),
+                    OutputEntryN::NewIndex(2, false),
+                    OutputEntryN::NewIndex(0, t1),
+                    OutputEntryN::NewIndex(0, t1 ^ t2 ^ t3 ^ t4),
+                    OutputEntryN::NewIndex(0, t1 ^ t2 ^ t3 ^ t4 ^ t5 ^ t6),
+                    OutputEntryN::NewIndex(3, false),
                 ],
                 output_map,
                 "{}",
