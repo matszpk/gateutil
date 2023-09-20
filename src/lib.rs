@@ -1396,5 +1396,57 @@ mod tests {
         // testcase
         // join clause - with one literal clause
         // do make similar for xor clauses
+        for tv in 0..64 {
+            let mut input_len = 3;
+            let t = (tv & 1) != 0;
+            let t1 = (tv & 2) != 0;
+            let t2 = (tv & 4) != 0;
+            let t3 = (tv & 8) != 0;
+            let t4 = (tv & 16) != 0;
+            let t5 = (tv & 32) != 0;
+            let mut clauses = vec![
+                (Clause::new_xor([(0, false), (1, false)]), t),
+                (Clause::new_xor([(3, t2)]), t3),
+                (Clause::new_xor([(2, false), (4, t1)]), false),
+            ];
+            let outputs = [(5, false)];
+            let mut output_map = [
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::NewIndex(1, false),
+                OutputEntryN::NewIndex(2, false),
+                OutputEntryN::NewIndex(3, t4),
+                OutputEntryN::NewIndex(4, t5),
+                OutputEntryN::NewIndex(5, false),
+            ];
+            assert!(join_and_remove_clauses(
+                &mut input_len,
+                &mut clauses,
+                &outputs,
+                &mut output_map
+            ));
+            assert_eq!(3, input_len);
+            assert_eq!(
+                vec![(
+                    Clause::new_xor([(2, false), (0, false), (1, false)]),
+                    t ^ t1 ^ t2 ^ t3 ^ t4 ^ t5
+                )],
+                clauses,
+                "{}",
+                tv
+            );
+            assert_eq!(
+                [
+                    OutputEntryN::NewIndex(0, false),
+                    OutputEntryN::NewIndex(1, false),
+                    OutputEntryN::NewIndex(2, false),
+                    OutputEntryN::NewIndex(0, t4),
+                    OutputEntryN::NewIndex(0, t2 ^ t3 ^ t4 ^ t5),
+                    OutputEntryN::NewIndex(3, false),
+                ],
+                output_map,
+                "{}",
+                tv
+            );
+        }
     }
 }
