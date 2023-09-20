@@ -1203,6 +1203,48 @@ mod tests {
         }
 
         // testcase
+        // resolve output map for clause with one literal (including sign).
+        for tv in 0..64 {
+            let t0 = (tv & 1) != 0;
+            let t1 = (tv & 2) != 0;
+            let t2 = (tv & 4) != 0;
+            let t3 = (tv & 8) != 0;
+            let t4 = (tv & 16) != 0;
+            let xor = (tv & 32) != 0;
+            let mut input_len = 0;
+            let mut clauses = vec![
+                (
+                    if xor {
+                        Clause::new_xor([])
+                    } else {
+                        Clause::new_and([])
+                    },
+                    t0,
+                ),
+                (Clause::new_xor([(0, t1)]), t2),
+            ];
+            let outputs = [(1, false)];
+            let mut output_map = [OutputEntryN::NewIndex(0, t3), OutputEntryN::NewIndex(1, t4)];
+            assert!(join_and_remove_clauses(
+                &mut input_len,
+                &mut clauses,
+                &outputs,
+                &mut output_map
+            ));
+            assert_eq!(0, input_len);
+            assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
+            assert_eq!(
+                [
+                    OutputEntryN::Value(t0 ^ t3),
+                    OutputEntryN::Value(t0 ^ t1 ^ t2 ^ t3 ^ t4),
+                ],
+                output_map,
+                "{}",
+                tv
+            );
+        }
+
+        // testcase
         // join clause
         for tv in 0..4 {
             let mut input_len = 3;
