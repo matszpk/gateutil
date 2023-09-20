@@ -487,6 +487,7 @@ where
                 top.way = 0;
                 top.clause_id = None;
             } else {
+                // resolve values and indexes for current clause
                 let cur_out_n1 = if let OutputEntryN::NewIndex(_, n) =
                     output_map[oim[*input_len + node_index]]
                 {
@@ -494,7 +495,6 @@ where
                 } else {
                     panic!("Unexpected");
                 };
-                // resolve values and indexes for current clauses
                 if clause.literals.is_empty() {
                     // fill up by zero ^ neg
                     output_map[oim[*input_len + node_index]] =
