@@ -1339,6 +1339,54 @@ mod tests {
                 tv
             );
         }
+        
+        // testcase
+        // do not join clause - some literal is false
+        for tv in 0..4 {
+            let mut input_len = 3;
+            let t = (tv & 1) != 0;
+            let t1 = (tv & 2) != 0;
+            let mut clauses = vec![
+                (Clause::new_and([(0, false), (1, false)]), t ^ t1),
+                (Clause::new_and([]), false),
+                (Clause::new_and([(2, false), (3, t), (4, false)]), false),
+            ];
+            let outputs = [(5, false)];
+            let mut output_map = [
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::NewIndex(1, false),
+                OutputEntryN::NewIndex(2, false),
+                OutputEntryN::NewIndex(3, t1),
+                OutputEntryN::NewIndex(4, false),
+                OutputEntryN::NewIndex(5, false),
+            ];
+            assert!(join_and_remove_clauses(
+                &mut input_len,
+                &mut clauses,
+                &outputs,
+                &mut output_map
+            ));
+            assert_eq!(0, input_len);
+            assert_eq!(
+                Vec::<(Clause<usize>, bool)>::new(),
+                clauses,
+                "{}",
+                tv
+            );
+            assert_eq!(
+                [
+                    OutputEntryN::NewIndex(0, false),
+                    OutputEntryN::NewIndex(0, false),
+                    OutputEntryN::NewIndex(0, false),
+                    OutputEntryN::NewIndex(0, t1),
+                    OutputEntryN::Value(false),
+                    OutputEntryN::Value(false),
+                ],
+                output_map,
+                "{}",
+                tv
+            );
+        }
 
         // testcase
         // join clause - with one literal clause
