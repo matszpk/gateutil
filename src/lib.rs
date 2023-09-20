@@ -470,7 +470,12 @@ where
                     let mut new_literals = vec![];
                     let mut j = 0;
                     // create new literals without removed literals
-                    for (i, l) in clause.literals.iter().enumerate() {
+                    for (i, l) in clause
+                        .literals
+                        .iter()
+                        .enumerate()
+                        .take(clause_len_before_second[node_index])
+                    {
                         if let Some(idx) = to_remove.get(j) {
                             if *idx == i {
                                 j += 1;
@@ -481,6 +486,7 @@ where
                             new_literals.push(*l);
                         }
                     }
+                    new_literals.extend(&clause.literals[clause_len_before_second[node_index]..]);
                     clauses[node_index].0.literals = new_literals;
                 }
                 // repeat process
