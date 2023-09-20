@@ -1669,7 +1669,7 @@ mod tests {
         }
 
         // testcase
-        // join clause - with one literal clause
+        // do not join clause - with one literal clause - some literal is false
         for tv in 0..16 {
             let mut input_len = 3;
             let t = (tv & 1) != 0;
