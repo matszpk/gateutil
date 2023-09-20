@@ -338,7 +338,7 @@ where
     // clauses length before second pass
     let mut clause_len_before_second = vec![0; clauses.len()];
 
-    let mut do_next_loop = false;
+    let mut do_next_iter = false;
     //
     // traverse 1: resolve one literal clauses and resolve other clauses
     //
@@ -499,7 +499,7 @@ where
                     // fill up by zero ^ neg
                     output_map[oim[*input_len + node_index]] =
                         OutputEntryN::Value(*clause_neg ^ cur_out_n1);
-                    do_next_loop = true;
+                    do_next_iter = true;
                 } else if clause.literals.len() == 1 {
                     // propagate to output_map
                     let l = usize::try_from(clause.literals[0].0).unwrap();
@@ -518,7 +518,7 @@ where
                                 OutputEntryN::Value(v ^ clause.literals[0].1 ^ *clause_neg);
                         }
                     }
-                    do_next_loop = true;
+                    do_next_iter = true;
                 } else {
                     // resolve clause
                     let mut new_literals = vec![];
@@ -563,7 +563,7 @@ where
                                         }
                                     }
                                 }
-                                do_next_loop = true;
+                                do_next_iter = true;
                             }
                         }
                     }
@@ -581,7 +581,7 @@ where
                                 //println!("Second pass: {:?}", clause);
                                 top.way = 0; // reset way
                                 top.clause_id = Some(node_index);
-                                do_next_loop = true;
+                                do_next_iter = true;
                                 continue; // skip popping
                             } else {
                                 // update same literals and negations for literals at end
@@ -612,12 +612,12 @@ where
                                         OutputEntryN::Value(v ^ clause.literals[0].1 ^ *clause_neg);
                                 }
                             }
-                            do_next_loop = true;
+                            do_next_iter = true;
                         } else {
                             // resolve empty clause
                             output_map[oim[*input_len + node_index]] =
                                 OutputEntryN::Value(*clause_neg ^ cur_out_n1);
-                            do_next_loop = true;
+                            do_next_iter = true;
                         }
                     }
                 }
@@ -733,7 +733,7 @@ where
         .max()
         .map(|x| x + 1)
         .unwrap_or_default();
-    do_next_loop
+    do_next_iter
 }
 
 // return optimized circuit, mapping to new inputs, mapping to new outputs
