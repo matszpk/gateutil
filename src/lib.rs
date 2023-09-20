@@ -2138,7 +2138,8 @@ mod tests {
         }
 
         // testcase
-        // join clause - different order - many joined clauses
+        // join clause - different order - many joined clauses.
+        // previously reduced clauses and sparse output_map.
         for tv in 0..4 {
             let mut input_len = 8;
             let t = (tv & 1) != 0;
