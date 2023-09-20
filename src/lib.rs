@@ -514,8 +514,9 @@ where
                                 output_usages[*input_len + node_index] - 1;
                         }
                         OutputEntryN::Value(v) => {
-                            output_map[oim[*input_len + node_index]] =
-                                OutputEntryN::Value(v ^ clause.literals[0].1 ^ *clause_neg);
+                            output_map[oim[*input_len + node_index]] = OutputEntryN::Value(
+                                cur_out_n1 ^ v ^ clause.literals[0].1 ^ *clause_neg,
+                            );
                         }
                     }
                     do_next_iter = true;
@@ -608,8 +609,9 @@ where
                                         output_usages[*input_len + node_index] - 1;
                                 }
                                 OutputEntryN::Value(v) => {
-                                    output_map[oim[*input_len + node_index]] =
-                                        OutputEntryN::Value(v ^ clause.literals[0].1 ^ *clause_neg);
+                                    output_map[oim[*input_len + node_index]] = OutputEntryN::Value(
+                                        cur_out_n1 ^ v ^ clause.literals[0].1 ^ *clause_neg,
+                                    );
                                 }
                             }
                             do_next_iter = true;
@@ -1143,6 +1145,56 @@ mod tests {
                     OutputEntryN::NewIndex(0, t2),
                     OutputEntryN::Value(true),
                     OutputEntryN::NewIndex(0, t0 ^ t1 ^ t2 ^ t3),
+                ],
+                output_map,
+                "{}",
+                tv
+            );
+        }
+
+        // testcase
+        // process resolving empty clause (->true) in parent clause to one-literal clause
+        // with parent xor clause.
+        for tv in 0..256 {
+            let t0 = (tv & 1) != 0;
+            let t1 = (tv & 2) != 0;
+            let t2 = (tv & 4) != 0;
+            let t3 = (tv & 8) != 0;
+            let xor = (tv & 16) != 0;
+            let t4 = (tv & 32) != 0;
+            let t5 = (tv & 64) != 0;
+            let t6 = (tv & 128) != 0;
+            let mut input_len = 1;
+            let mut clauses = vec![
+                (
+                    if xor {
+                        Clause::new_xor([])
+                    } else {
+                        Clause::new_and([])
+                    },
+                    t5,
+                ),
+                (Clause::new_xor([(0, t0), (1, t4)]), t1),
+            ];
+            let outputs = [(2, false)];
+            let mut output_map = [
+                OutputEntryN::NewIndex(0, t2),
+                OutputEntryN::NewIndex(1, t6),
+                OutputEntryN::NewIndex(2, t3),
+            ];
+            assert!(join_and_remove_clauses(
+                &mut input_len,
+                &mut clauses,
+                &outputs,
+                &mut output_map
+            ));
+            assert_eq!(1, input_len);
+            assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
+            assert_eq!(
+                [
+                    OutputEntryN::NewIndex(0, t2),
+                    OutputEntryN::Value(t5 ^ t6),
+                    OutputEntryN::NewIndex(0, t0 ^ t1 ^ t2 ^ t3 ^ t4 ^ t5 ^ t6),
                 ],
                 output_map,
                 "{}",
