@@ -704,6 +704,12 @@ where
     for (i, x) in old_trans_map.iter().enumerate() {
         trans_map[usize::try_from(*x).unwrap()] = T::try_from(i).unwrap();
     }
+    *clauses = used_new_outputs[*input_len..]
+        .iter()
+        .enumerate()
+        .filter(|(_, x)| **x)
+        .map(|(i, _)| clauses[i].clone())
+        .collect::<Vec<_>>();
     for (clause, _) in clauses.iter_mut() {
         for (l, n) in &mut clause.literals {
             let l_u = usize::try_from(*l).unwrap();
@@ -718,12 +724,6 @@ where
             *oe = OutputEntryN::NewIndex(trans_map[usize::try_from(*i).unwrap()], *n);
         }
     }
-    *clauses = used_new_outputs[*input_len..]
-        .iter()
-        .enumerate()
-        .filter(|(_, x)| **x)
-        .map(|(i, _)| clauses[i].clone())
-        .collect::<Vec<_>>();
     *input_len = used_new_outputs[..*input_len]
         .iter()
         .enumerate()
