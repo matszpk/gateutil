@@ -1502,7 +1502,7 @@ mod tests {
         }
 
         // testcase
-        // do not join clause - with one literal clause
+        // do not join clause - with one literal clause - shared clause
         for tv in 0..16 {
             let mut input_len = 3;
             let t = (tv & 1) != 0;
@@ -1553,6 +1553,69 @@ mod tests {
                     OutputEntryN::NewIndex(3, t1),
                     OutputEntryN::NewIndex(3, t1 ^ t2 ^ t3),
                     OutputEntryN::NewIndex(4, false),
+                    OutputEntryN::NewIndex(5, false),
+                ],
+                output_map,
+                "{}",
+                tv
+            );
+        }
+
+        // testcase
+        // do not join clause - with one literal clause - shared clause
+        for tv in 0..16 {
+            let mut input_len = 3;
+            let t = (tv & 1) != 0;
+            let t1 = (tv & 2) != 0;
+            let t2 = (tv & 4) != 0;
+            let t3 = (tv & 8) != 0;
+            let mut clauses = vec![
+                (Clause::new_and([(0, false), (1, false)]), t ^ t1 ^ t2 ^ t3),
+                (Clause::new_xor([(3, t2)]), t3),
+                (Clause::new_and([(2, false), (4, t)]), false),
+                (Clause::new_xor([(3, t2)]), t3),
+                (Clause::new_and([(1, false), (6, t), (5, true)]), false),
+            ];
+            let outputs = [(7, false)];
+            let mut output_map = [
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::NewIndex(1, false),
+                OutputEntryN::NewIndex(2, false),
+                OutputEntryN::NewIndex(3, t1),
+                OutputEntryN::NewIndex(4, false),
+                OutputEntryN::NewIndex(5, false),
+                OutputEntryN::NewIndex(6, false),
+                OutputEntryN::NewIndex(7, false),
+            ];
+            assert!(join_and_remove_clauses(
+                &mut input_len,
+                &mut clauses,
+                &outputs,
+                &mut output_map
+            ));
+            assert_eq!(3, input_len);
+            assert_eq!(
+                vec![
+                    (Clause::new_and([(0, false), (1, false)]), t ^ t1 ^ t2 ^ t3),
+                    (Clause::new_and([(2, false), (3, t ^ t2 ^ t3)]), false),
+                    (
+                        Clause::new_and([(1, false), (3, t ^ t2 ^ t3), (4, true)]),
+                        false
+                    ),
+                ],
+                clauses,
+                "{}",
+                tv
+            );
+            assert_eq!(
+                [
+                    OutputEntryN::NewIndex(0, false),
+                    OutputEntryN::NewIndex(1, false),
+                    OutputEntryN::NewIndex(2, false),
+                    OutputEntryN::NewIndex(3, t1),
+                    OutputEntryN::NewIndex(3, t1 ^ t2 ^ t3),
+                    OutputEntryN::NewIndex(4, false),
+                    OutputEntryN::NewIndex(3, t1 ^ t2 ^ t3),
                     OutputEntryN::NewIndex(5, false),
                 ],
                 output_map,
