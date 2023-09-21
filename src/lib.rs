@@ -317,13 +317,22 @@ where
     }
 
     // generate orig_index_map - convert new indexes to old original indexes
+    // include only first entries in output_map
     let oim_len = clauses.len() + *input_len;
-    let mut oim = vec![0; oim_len];
+    let mut oim = vec![None; oim_len];
     for (i, x) in output_map.iter().enumerate() {
         if let OutputEntryN::NewIndex(x, _) = x {
-            oim[usize::try_from(*x).unwrap()] = i;
+            let x = usize::try_from(*x).unwrap();
+            if oim[x].is_none() {
+                oim[x] = Some(i);
+            }
         }
     }
+    // to real oim
+    let oim = oim
+        .into_iter()
+        .map(|x| x.unwrap_or_default())
+        .collect::<Vec<_>>();
 
     // traversing and join clauses
     #[derive(Clone, Copy, Debug)]
@@ -2445,7 +2454,7 @@ mod tests {
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
-                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::Value(false),
                 OutputEntryN::NewIndex(2, false),
                 OutputEntryN::NewIndex(3, t1),
                 OutputEntryN::NewIndex(0, false),
@@ -2471,7 +2480,7 @@ mod tests {
                 [
                     OutputEntryN::NewIndex(0, false),
                     OutputEntryN::NewIndex(1, false),
-                    OutputEntryN::NewIndex(0, false),
+                    OutputEntryN::Value(false),
                     OutputEntryN::NewIndex(2, false),
                     OutputEntryN::NewIndex(0, t1),
                     OutputEntryN::NewIndex(0, false),
