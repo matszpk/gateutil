@@ -2581,5 +2581,60 @@ mod tests {
                 tv
             );
         }
+
+        // testcase
+        // process resolving empty clause (->t) in parent clause and change clause negation
+        // reduced sparse output_map
+        for tv in 0..16 {
+            let mut input_len = 2;
+            let t = (tv & 1) != 0;
+            let t1 = (tv & 2) != 0;
+            let t2 = (tv & 4) != 0;
+            let xor = (tv & 8) != 0;
+            let mut clauses = vec![
+                (
+                    if xor {
+                        Clause::new_xor([])
+                    } else {
+                        Clause::new_and([])
+                    },
+                    t,
+                ),
+                (Clause::new_xor([(0, false), (1, false), (2, false)]), t2),
+            ];
+            let outputs = [(6, false)];
+            let mut output_map = [
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::Value(false),
+                OutputEntryN::NewIndex(1, false),
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::NewIndex(2, t1),
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::NewIndex(3, false),
+            ];
+            assert!(join_and_remove_clauses(
+                &mut input_len,
+                &mut clauses,
+                &outputs,
+                &mut output_map
+            ));
+            assert_eq!(2, input_len);
+            assert_eq!(
+                vec![(Clause::new_xor([(0, false), (1, false)]), t ^ t1 ^ t2)],
+                clauses
+            );
+            assert_eq!(
+                [
+                    OutputEntryN::NewIndex(0, false),
+                    OutputEntryN::Value(false),
+                    OutputEntryN::NewIndex(1, false),
+                    OutputEntryN::NewIndex(0, false),
+                    OutputEntryN::Value(t ^ t1),
+                    OutputEntryN::NewIndex(0, false),
+                    OutputEntryN::NewIndex(2, false),
+                ],
+                output_map
+            );
+        }
     }
 }
