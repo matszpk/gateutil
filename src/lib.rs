@@ -2430,6 +2430,93 @@ mod tests {
         }
 
         // testcase
+        // join clause - different order - many joined clauses.
+        // previously reduced clauses and sparse output_map - different indexes in output_map.
+        for tv in 0..4 {
+            let mut input_len = 8;
+            let t = (tv & 1) != 0;
+            let t1 = (tv & 2) != 0;
+            let mut clauses = vec![
+                (Clause::new_and([(0, false), (1, false)]), t ^ t1),
+                (Clause::new_and([(2, false), (3, false)]), t ^ t1),
+                (
+                    Clause::new_and([
+                        (4, false),
+                        (8, t),
+                        (5, false),
+                        (9, t),
+                        (6, false),
+                        (7, false),
+                    ]),
+                    false,
+                ),
+            ];
+            let outputs = [(13, false)];
+            let mut output_map = [
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::NewIndex(1, false),
+                OutputEntryN::NewIndex(2, false),
+                OutputEntryN::NewIndex(1, false),
+                OutputEntryN::NewIndex(3, false),
+                OutputEntryN::NewIndex(4, false),
+                OutputEntryN::NewIndex(5, false),
+                OutputEntryN::NewIndex(6, false),
+                OutputEntryN::NewIndex(7, false),
+                OutputEntryN::NewIndex(5, false),
+                OutputEntryN::NewIndex(8, t1),
+                OutputEntryN::NewIndex(9, t1),
+                OutputEntryN::NewIndex(8, false),
+                OutputEntryN::NewIndex(10, false),
+            ];
+            assert!(join_and_remove_clauses(
+                &mut input_len,
+                &mut clauses,
+                &outputs,
+                &mut output_map
+            ));
+            assert_eq!(8, input_len);
+            assert_eq!(
+                vec![(
+                    Clause::new_and([
+                        (4, false),
+                        (5, false),
+                        (6, false),
+                        (7, false),
+                        (0, false),
+                        (1, false),
+                        (2, false),
+                        (3, false)
+                    ]),
+                    false
+                )],
+                clauses,
+                "{}",
+                tv
+            );
+            assert_eq!(
+                [
+                    OutputEntryN::NewIndex(0, false),
+                    OutputEntryN::NewIndex(1, false),
+                    OutputEntryN::NewIndex(2, false),
+                    OutputEntryN::NewIndex(1, false),
+                    OutputEntryN::NewIndex(3, false),
+                    OutputEntryN::NewIndex(4, false),
+                    OutputEntryN::NewIndex(5, false),
+                    OutputEntryN::NewIndex(6, false),
+                    OutputEntryN::NewIndex(7, false),
+                    OutputEntryN::NewIndex(5, false),
+                    OutputEntryN::NewIndex(0, t1),
+                    OutputEntryN::NewIndex(0, t1),
+                    OutputEntryN::NewIndex(0, false),
+                    OutputEntryN::NewIndex(8, false),
+                ],
+                output_map,
+                "{}",
+                tv
+            );
+        }
+
+        // testcase
         // join clause - with one literal clause - 2-clause chain
         // reduced sparse output_map
         for tv in 0..128 {
