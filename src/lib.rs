@@ -737,15 +737,24 @@ where
         let oim_id = oim[j];
         if !output_to_skip_set.contains(&oim_id) {
             if let OutputEntryN::NewIndex(idx, n) = output_map[oim_id] {
-                output_map[oim_id] =
-                    OutputEntryN::NewIndex(trans_map[usize::try_from(idx).unwrap()], n);
+                if *input_len != 0 && j < *input_len && !used_new_outputs[j] {
+                    output_map[oim_id] = OutputEntryN::Value(false);
+                } else {
+                    output_map[oim_id] =
+                        OutputEntryN::NewIndex(trans_map[usize::try_from(idx).unwrap()], n);
+                }
             }
         }
     }
     for (o, _) in outputs {
         let o = usize::try_from(*o).unwrap();
         if let OutputEntryN::NewIndex(idx, n) = output_map[o] {
-            output_map[o] = OutputEntryN::NewIndex(trans_map[usize::try_from(idx).unwrap()], n);
+            let idx_u = usize::try_from(idx).unwrap();
+            if *input_len != 0 && idx_u < *input_len && !used_new_outputs[idx_u] {
+                output_map[o] = OutputEntryN::Value(false);
+            } else {
+                output_map[o] = OutputEntryN::NewIndex(trans_map[usize::try_from(idx).unwrap()], n);
+            }
         }
     }
     *input_len = used_new_outputs[..*input_len]
@@ -991,8 +1000,8 @@ mod tests {
             assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
             assert_eq!(
                 [
-                    OutputEntryN::NewIndex(0, false),
-                    OutputEntryN::NewIndex(0, false),
+                    OutputEntryN::Value(false),
+                    OutputEntryN::Value(false),
                     OutputEntryN::Value(false),
                     OutputEntryN::Value(t ^ t1),
                 ],
@@ -1627,9 +1636,9 @@ mod tests {
             assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses, "{}", tv);
             assert_eq!(
                 [
-                    OutputEntryN::NewIndex(0, false),
-                    OutputEntryN::NewIndex(0, false),
-                    OutputEntryN::NewIndex(0, false),
+                    OutputEntryN::Value(false),
+                    OutputEntryN::Value(false),
+                    OutputEntryN::Value(false),
                     OutputEntryN::NewIndex(0, t1),
                     OutputEntryN::Value(false),
                     OutputEntryN::Value(false),
@@ -2079,9 +2088,9 @@ mod tests {
             assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses, "{}", tv);
             assert_eq!(
                 [
-                    OutputEntryN::NewIndex(0, false),
-                    OutputEntryN::NewIndex(0, false),
-                    OutputEntryN::NewIndex(0, false),
+                    OutputEntryN::Value(false),
+                    OutputEntryN::Value(false),
+                    OutputEntryN::Value(false),
                     OutputEntryN::NewIndex(0, t1),
                     OutputEntryN::NewIndex(0, t1 ^ t2 ^ t3),
                     OutputEntryN::Value(false),
@@ -2129,9 +2138,9 @@ mod tests {
             assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses, "{}", tv);
             assert_eq!(
                 [
-                    OutputEntryN::NewIndex(0, false),
-                    OutputEntryN::NewIndex(0, false),
-                    OutputEntryN::NewIndex(0, false),
+                    OutputEntryN::Value(false),
+                    OutputEntryN::Value(false),
+                    OutputEntryN::Value(false),
                     OutputEntryN::NewIndex(0, t1),
                     OutputEntryN::Value(false),
                     OutputEntryN::NewIndex(0, t1 ^ t2 ^ t3),
@@ -2342,7 +2351,7 @@ mod tests {
                     OutputEntryN::NewIndex(2, false),
                     OutputEntryN::NewIndex(3, false),
                     OutputEntryN::NewIndex(4, false),
-                    OutputEntryN::NewIndex(0, false),
+                    OutputEntryN::Value(false),
                     OutputEntryN::NewIndex(5, false),
                     OutputEntryN::NewIndex(6, false),
                     OutputEntryN::NewIndex(0, t1),
@@ -2840,11 +2849,11 @@ mod tests {
         );
         assert_eq!(
             [
-                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::Value(false),
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
                 OutputEntryN::NewIndex(2, false),
-                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::Value(false),
                 OutputEntryN::NewIndex(3, false),
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(4, false),
@@ -2874,11 +2883,11 @@ mod tests {
         );
         assert_eq!(
             [
-                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::Value(false),
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
                 OutputEntryN::NewIndex(2, false),
-                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::Value(false),
                 OutputEntryN::NewIndex(3, false),
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(0, false),
