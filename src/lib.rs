@@ -806,10 +806,55 @@ where
         }
     }
 
+    // generate new clauses
+    let mut new_clauses = clauses
+        .iter()
+        .map(|(clause, _)| clause.clone())
+        .collect::<Vec<_>>();
+    for clause in &mut new_clauses {
+        for (l, n) in &mut clause.literals {
+            // resolve sign of literal
+            *n ^= clauses[usize::try_from(*l).unwrap()].1;
+        }
+    }
+
+    // new inputs
+    let new_inputs = output_map[0..input_len]
+        .iter()
+        .map(|om| {
+            if let OutputEntryN::NewIndex(x, _) = om {
+                Some(*x)
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+
+    // new outputs and new outputs map
+    let mut new_outputs = vec![];
+    let mut new_outputs_map = vec![OutputEntry::Value(false); circuit.outputs().len()];
+    for (i, (o, on)) in circuit.outputs().iter().enumerate() {
+        match output_map[usize::try_from(*o).unwrap()] {
+            OutputEntryN::NewIndex(x, n) => {
+                let no_idx = T::try_from(new_outputs.len()).unwrap();
+                new_outputs_map[i] = OutputEntry::NewIndex(no_idx);
+                new_outputs.push((x, on ^ n ^ clauses[usize::try_from(x).unwrap()].1));
+            }
+            OutputEntryN::Value(v) => {
+                new_outputs_map[i] = OutputEntry::Value(v);
+            }
+        }
+    }
+
     (
-        ClauseCircuit::new(T::default(), vec![], vec![]).unwrap(),
-        vec![],
-        vec![],
+        ClauseCircuit::new(
+            T::try_from(new_input_len).unwrap(),
+            new_clauses,
+            new_outputs,
+        )
+        .unwrap(),
+        new_inputs,
+        new_outputs_map,
     )
 }
 
