@@ -377,7 +377,6 @@ where
             let mut top = stack.last_mut().unwrap();
             let node_index = top.node;
             let (clause, clause_neg) = &clauses[node_index];
-
             //println!("Stack top: {:?}", top);
 
             if top.way == 0 {
