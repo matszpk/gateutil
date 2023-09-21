@@ -491,7 +491,7 @@ where
                     }
                     clauses[node_index].0.literals = new_literals;
                 }
-                // repeat process??? really needed??
+                // repeat process??? really needed?? yes - translation.
                 top.way = 0;
                 top.clause_id = None;
             } else {
