@@ -1,7 +1,7 @@
 use gatesim::*;
 
 use std::cmp::Ord;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::iter;
@@ -704,6 +704,7 @@ where
     }
 
     // translate literals map - from previous to current index
+    let old_len = *input_len + clauses.len();
     let old_trans_map = used_new_outputs
         .iter()
         .enumerate()
@@ -729,9 +730,22 @@ where
             }
         }
     }
-    for oe in output_map {
-        if let OutputEntryN::NewIndex(i, n) = oe {
-            *oe = OutputEntryN::NewIndex(trans_map[usize::try_from(*i).unwrap()], *n);
+
+    let output_to_skip_set =
+        HashSet::<usize>::from_iter(outputs.iter().map(|(x, _)| usize::try_from(*x).unwrap()));
+    for j in 0..old_len {
+        let oim_id = oim[j];
+        if !output_to_skip_set.contains(&oim_id) {
+            if let OutputEntryN::NewIndex(idx, n) = output_map[oim_id] {
+                output_map[oim_id] =
+                    OutputEntryN::NewIndex(trans_map[usize::try_from(idx).unwrap()], n);
+            }
+        }
+    }
+    for (o, _) in outputs {
+        let o = usize::try_from(*o).unwrap();
+        if let OutputEntryN::NewIndex(idx, n) = output_map[o] {
+            output_map[o] = OutputEntryN::NewIndex(trans_map[usize::try_from(idx).unwrap()], n);
         }
     }
     *input_len = used_new_outputs[..*input_len]
@@ -2506,7 +2520,7 @@ mod tests {
                     OutputEntryN::NewIndex(5, false),
                     OutputEntryN::NewIndex(0, t1),
                     OutputEntryN::NewIndex(0, t1),
-                    OutputEntryN::NewIndex(0, false),
+                    OutputEntryN::NewIndex(8, false), // ???
                     OutputEntryN::NewIndex(8, false),
                 ],
                 output_map,
