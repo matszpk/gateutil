@@ -2843,5 +2843,38 @@ mod tests {
             ],
             output_map,
         );
+        
+        assert!(join_and_remove_clauses(
+            &mut input_len,
+            &mut clauses,
+            &outputs,
+            &mut output_map
+        ));
+        assert_eq!(4, input_len);
+        assert_eq!(
+            vec![
+                (Clause::new_xor([(2, false), (3, false), (0, false), (1, false)]), false),
+            ],
+            clauses
+        );
+        assert_eq!(
+            [
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::NewIndex(1, false),
+                OutputEntryN::NewIndex(2, false),
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::NewIndex(3, false),
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::Value(false),
+                OutputEntryN::Value(false),
+                OutputEntryN::NewIndex(4, false),
+                OutputEntryN::NewIndex(4, false),
+            ],
+            output_map,
+        );
     }
 }
