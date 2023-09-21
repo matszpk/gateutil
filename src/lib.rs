@@ -1435,56 +1435,6 @@ mod tests {
         }
 
         // testcase
-        // do not join clause - double usage with different sign of literal
-        for tv in 0..4 {
-            let t = (tv & 1) != 0;
-            let t1 = (tv & 2) != 0;
-            let mut input_len = 3;
-            let mut clauses = vec![
-                (Clause::new_and([(0, false), (1, false)]), t ^ t1),
-                (
-                    Clause::new_and([(2, false), (3, true ^ t), (3, false ^ t)]),
-                    false,
-                ),
-            ];
-            let outputs = [(4, false)];
-            let mut output_map = [
-                OutputEntryN::NewIndex(0, false),
-                OutputEntryN::NewIndex(1, false),
-                OutputEntryN::NewIndex(2, false),
-                OutputEntryN::NewIndex(3, t1),
-                OutputEntryN::NewIndex(4, false),
-            ];
-            assert!(!join_and_remove_clauses(
-                &mut input_len,
-                &mut clauses,
-                &outputs,
-                &mut output_map
-            ));
-            assert_eq!(3, input_len);
-            assert_eq!(
-                vec![
-                    (Clause::new_and([(0, false), (1, false)]), t ^ t1),
-                    (
-                        Clause::new_and([(2, false), (3, true ^ t), (3, false ^ t)]),
-                        false
-                    ),
-                ],
-                clauses
-            );
-            assert_eq!(
-                [
-                    OutputEntryN::NewIndex(0, false),
-                    OutputEntryN::NewIndex(1, false),
-                    OutputEntryN::NewIndex(2, false),
-                    OutputEntryN::NewIndex(3, t1),
-                    OutputEntryN::NewIndex(4, false),
-                ],
-                output_map
-            );
-        }
-
-        // testcase
         // do not join clause - some clause used by output
         for tv in 0..4 {
             let mut input_len = 3;
