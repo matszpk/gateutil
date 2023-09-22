@@ -793,7 +793,7 @@ where
 
     let mut first = true;
     let mut new_input_len = input_len;
-    while !reduce_clauses(&mut clauses) || first {
+    while reduce_clauses(&mut clauses) || first {
         // join clauses and remove unnecessary clauses
         first = false;
         if !join_and_remove_clauses(
