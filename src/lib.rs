@@ -443,7 +443,7 @@ where
                     // put to target clause
                     let target_clause = &mut clauses[clause_id];
                     target_clause.0.literals.extend(literals_to_add);
-                    // resolve negation
+                    // resolve negation: only for XOR clauses
                     if top.negate_join {
                         target_clause.1 = !target_clause.1;
                     }
