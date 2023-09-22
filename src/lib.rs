@@ -841,7 +841,7 @@ where
                 new_outputs.push((x, on ^ n ^ clauses[usize::try_from(x).unwrap()].1));
             }
             OutputEntryN::Value(v) => {
-                new_outputs_map[i] = OutputEntry::Value(v);
+                new_outputs_map[i] = OutputEntry::Value(v ^ on);
             }
         }
     }

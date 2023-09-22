@@ -762,3 +762,34 @@ fn test_assign_to_circuit_2() {
         )
     );
 }
+
+#[test]
+fn test_optimize_clause_circuit() {
+    assert_eq!(
+        (ClauseCircuit::new(0, [], []).unwrap(), vec![], vec![]),
+        optimize_clause_circuit(ClauseCircuit::new(0, [], []).unwrap())
+    );
+
+    assert_eq!(
+        (
+            ClauseCircuit::new(0, [], []).unwrap(),
+            vec![None],
+            vec![OutputEntry::Value(false)]
+        ),
+        optimize_clause_circuit(
+            ClauseCircuit::new(1, [Clause::new_and([(0, false), (0, true)])], [(1, false)])
+                .unwrap()
+        )
+    );
+
+    assert_eq!(
+        (
+            ClauseCircuit::new(0, [], []).unwrap(),
+            vec![None],
+            vec![OutputEntry::Value(true)]
+        ),
+        optimize_clause_circuit(
+            ClauseCircuit::new(1, [Clause::new_and([(0, false), (0, true)])], [(1, true)]).unwrap()
+        )
+    );
+}
