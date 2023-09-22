@@ -814,7 +814,10 @@ where
     for clause in &mut new_clauses {
         for (l, n) in &mut clause.literals {
             // resolve sign of literal
-            *n ^= clauses[usize::try_from(*l).unwrap()].1;
+            let l = usize::try_from(*l).unwrap();
+            if l >= new_input_len {
+                *n ^= clauses[l - new_input_len].1;
+            }
         }
     }
 
@@ -838,7 +841,12 @@ where
             OutputEntryN::NewIndex(x, n) => {
                 let no_idx = T::try_from(new_outputs.len()).unwrap();
                 new_outputs_map[i] = OutputEntry::NewIndex(no_idx);
-                new_outputs.push((x, on ^ n ^ clauses[usize::try_from(x).unwrap()].1));
+                let x_u = usize::try_from(x).unwrap();
+                if x_u >= new_input_len {
+                    new_outputs.push((x, on ^ n ^ clauses[x_u - new_input_len].1));
+                } else {
+                    new_outputs.push((x, on ^ n));
+                }
             }
             OutputEntryN::Value(v) => {
                 new_outputs_map[i] = OutputEntry::Value(v ^ on);

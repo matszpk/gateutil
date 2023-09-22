@@ -792,4 +792,32 @@ fn test_optimize_clause_circuit() {
             ClauseCircuit::new(1, [Clause::new_and([(0, false), (0, true)])], [(1, true)]).unwrap()
         )
     );
+
+    assert_eq!(
+        (
+            ClauseCircuit::new(
+                3,
+                [
+                    Clause::new_and([(0, false), (1, true), (2, false)]),
+                    Clause::new_and([(2, false), (3, true)]),
+                ],
+                [(4, false)]
+            )
+            .unwrap(),
+            vec![Some(0), Some(1), Some(2)],
+            vec![OutputEntry::NewIndex(0)]
+        ),
+        optimize_clause_circuit(
+            ClauseCircuit::new(
+                3,
+                [
+                    Clause::new_and([(0, false), (1, true), (2, false)]),
+                    Clause::new_and([(3, false), (3, false)]),
+                    Clause::new_and([(4, true), (2, false)]),
+                ],
+                [(5, false)]
+            )
+            .unwrap()
+        )
+    );
 }
