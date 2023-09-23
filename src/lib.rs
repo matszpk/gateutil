@@ -283,7 +283,7 @@ where
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum OutputEntryN<T> {
+enum OutputEntryN<T> {
     NewIndex(T, bool),
     Value(bool),
 }
