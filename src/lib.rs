@@ -258,10 +258,12 @@ where
                     if *s {
                         *cs = !*cs;
                     }
-                    if let Some(pl) = pl {
-                        if pl == l {
+                    if let Some(xpl) = pl {
+                        if xpl == l {
                             // we have l and l -> reduce 0
                             new_literals.pop();
+                            pl = None;
+                            continue;
                         } else {
                             new_literals.push((*l, false));
                         }
@@ -972,6 +974,25 @@ mod tests {
             ],
             clauses
         );
+
+        for i in 1..8 {
+            let mut clauses = [(
+                Clause::new_xor(std::iter::repeat((2, false)).take(i)),
+                false,
+            )];
+            assert!(reduce_clauses(&mut clauses));
+            assert_eq!(
+                [(
+                    if (i & 1) != 0 {
+                        Clause::new_xor([(2, false)])
+                    } else {
+                        Clause::new_xor([])
+                    },
+                    false
+                ),],
+                clauses
+            );
+        }
     }
 
     #[test]
