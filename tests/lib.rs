@@ -4,6 +4,10 @@ use gateutil::*;
 #[test]
 fn test_deduplicate() {
     assert_eq!(
+        Circuit::new(0, [], [],).unwrap(),
+        deduplicate(Circuit::new(0, [], [],).unwrap())
+    );
+    assert_eq!(
         Circuit::new(
             3,
             [
