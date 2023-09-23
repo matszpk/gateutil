@@ -930,6 +930,36 @@ fn test_optimize_clause_circuit() {
         )
     );
 
+    assert_eq!(
+        (
+            ClauseCircuit::new(
+                3,
+                [Clause::new_xor([(0, false), (1, false), (2, false)]),],
+                [(3, true)]
+            )
+            .unwrap(),
+            vec![None, None, Some(0), Some(1), None, Some(2)],
+            vec![OutputEntry::NewIndex(0)]
+        ),
+        optimize_clause_circuit(
+            ClauseCircuit::new(
+                6,
+                [
+                    Clause::new_and([(0, false), (1, false)]),
+                    Clause::new_xor([(1, false), (2, false)]),
+                    Clause::new_and([(3, false), (4, false)]),
+                    Clause::new_xor([(3, false), (5, true)]),
+                    Clause::new_xor([(1, true), (2, false), (2, false)]),
+                    Clause::new_and([(6, false), (7, false), (8, true), (10, false)]),
+                    Clause::new_xor([(7, true), (9, false), (10, false)]),
+                    Clause::new_and([(11, true), (12, false)]),
+                ],
+                [(13, false)]
+            )
+            .unwrap()
+        )
+    );
+
     for tv in 0..4 {
         let t = (tv & 1) != 0;
         let t1 = (tv & 2) != 0;
