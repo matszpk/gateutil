@@ -273,7 +273,9 @@ where
                 clause.literals = new_literals;
             }
         }
-        if old_len >= 2 && clause.len() < 2 {
+        if old_len >= 1 && clause.len() < 2 {
+            // return signal to next step if some clause have only 1 literal
+            // or reduced to one or zero literals
             to_reduce_tree = true;
         }
     }
@@ -951,6 +953,19 @@ mod tests {
             [
                 (Clause::new_and([(0, false), (1, true), (3, false)]), false),
                 (Clause::new_xor([(4, false)]), false),
+            ],
+            clauses
+        );
+
+        let mut clauses = [
+            (Clause::new_and([(3, false)]), false),
+            (Clause::new_xor([(4, false), (2, false), (3, true)]), true),
+        ];
+        assert!(reduce_clauses(&mut clauses));
+        assert_eq!(
+            [
+                (Clause::new_and([(3, false)]), false),
+                (Clause::new_xor([(2, false), (3, false), (4, false)]), false),
             ],
             clauses
         );
