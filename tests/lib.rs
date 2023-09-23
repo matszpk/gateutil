@@ -930,7 +930,9 @@ fn test_optimize_clause_circuit() {
         )
     );
 
-    for t in [false, true] {
+    for tv in 0..4 {
+        let t = (tv & 1) != 0;
+        let t1 = (tv & 2) != 0;
         assert_eq!(
             (
                 ClauseCircuit::new(
@@ -941,7 +943,7 @@ fn test_optimize_clause_circuit() {
                         (2, false),
                         (3, false)
                     ]),],
-                    [(4, t)]
+                    [(4, t ^ t1)]
                 )
                 .unwrap(),
                 vec![None, Some(0), Some(1), Some(2), None, Some(3)],
@@ -954,7 +956,7 @@ fn test_optimize_clause_circuit() {
                         Clause::new_and([(0, false), (1, false)]),
                         Clause::new_xor([(1, false), (2, false)]),
                         Clause::new_and([(3, false), (4, false)]),
-                        Clause::new_xor([(3, false), (5, true)]),
+                        Clause::new_xor([(3, t1), (5, true)]),
                         Clause::new_and([(1, false), (1, true)]),
                         Clause::new_and([(6, false), (7, false), (8, true), (10, false)]),
                         Clause::new_xor([(7, true), (9, t), (10, false)]),
