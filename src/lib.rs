@@ -255,9 +255,7 @@ where
                 let mut new_literals = vec![];
 
                 for (l, s) in &clause.literals {
-                    if *s {
-                        *cs = !*cs;
-                    }
+                    *cs ^= s;
                     if let Some(xpl) = pl {
                         if xpl == l {
                             // we have l and l -> remove literal
@@ -451,9 +449,7 @@ where
                     let target_clause = &mut clauses[clause_id];
                     target_clause.0.literals.extend(literals_to_add);
                     // resolve negation: only for XOR clauses
-                    if top.negate_join {
-                        target_clause.1 = !target_clause.1;
-                    }
+                    target_clause.1 ^= top.negate_join;
                 } else {
                     // remove literals of clauses
                     let mut to_remove = vec![];
@@ -574,9 +570,7 @@ where
                                         }
                                     }
                                     ClauseKind::Xor => {
-                                        if v {
-                                            neg_clause = !neg_clause;
-                                        }
+                                        neg_clause ^= v;
                                     }
                                 }
                                 do_next_iter = true;
@@ -586,9 +580,7 @@ where
                     {
                         let (clause, clause_neg) = &mut clauses[node_index];
                         clause.literals = new_literals;
-                        if neg_clause {
-                            *clause_neg = !*clause_neg;
-                        }
+                        *clause_neg ^= neg_clause;
                         if clause.literals.len() >= 2 {
                             clause_len_before_second[node_index] = clause.literals.len();
 
