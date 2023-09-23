@@ -262,7 +262,7 @@ where
                         if xpl == l {
                             // we have l and l -> remove literal
                             new_literals.pop();
-                            pl = None;  // reset previous literal
+                            pl = None; // reset previous literal
                             continue;
                         } else {
                             new_literals.push((*l, false));

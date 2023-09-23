@@ -138,6 +138,23 @@ fn test_deduplicate() {
 
 #[test]
 fn test_assign_to_circuit() {
+    // assign 0 input
+    assert_eq!(
+        (
+            Circuit::new(2, [Gate::new_and(0, 1)], [(2, false)]).unwrap(),
+            vec![OutputEntry::NewIndex(0), OutputEntry::NewIndex(1)],
+            vec![OutputEntry::NewIndex(0)],
+        ),
+        assign_to_circuit(
+            &Circuit::new(2, [Gate::new_and(0, 1)], [(2, false)]).unwrap(),
+            []
+        )
+    );
+    // assign 0 input to empty circuit
+    assert_eq!(
+        (Circuit::new(0, [], []).unwrap(), vec![], vec![],),
+        assign_to_circuit(&Circuit::new(0, [], []).unwrap(), [])
+    );
     // assign 1 input
     assert_eq!(
         (
