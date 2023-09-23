@@ -260,7 +260,7 @@ where
                     }
                     if let Some(xpl) = pl {
                         if xpl == l {
-                            // we have l and l -> reduce 0
+                            // we have l and l -> reduce to 0
                             new_literals.pop();
                             pl = None;
                             continue;
