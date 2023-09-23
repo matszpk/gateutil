@@ -303,6 +303,9 @@ where
     usize: TryFrom<T>,
     <usize as TryFrom<T>>::Error: Debug,
 {
+    if clauses.len() + *input_len == 0 {
+        return false;
+    }
     //println!("Start");
     let mut output_usages = vec![0; *input_len + clauses.len()];
     for (c, _) in clauses.iter() {
@@ -793,17 +796,17 @@ where
         .map(|x| OutputEntryN::NewIndex(T::try_from(x).unwrap(), false))
         .collect::<Vec<_>>();
 
-    let mut first = true;
     let mut new_input_len = input_len;
-    while reduce_clauses(&mut clauses) || first {
+    loop {
+        let mut do_next = reduce_clauses(&mut clauses);
         // join clauses and remove unnecessary clauses
-        first = false;
-        if !join_and_remove_clauses(
+        do_next |= join_and_remove_clauses(
             &mut new_input_len,
             &mut clauses,
             circuit.outputs(),
             &mut output_map,
-        ) {
+        );
+        if !do_next {
             break;
         }
     }
@@ -973,6 +976,22 @@ mod tests {
 
     #[test]
     fn test_join_and_remove_clauses() {
+        // testcase
+        // empty
+        let mut input_len = 0;
+        let mut clauses = vec![];
+        let outputs: [(usize, bool); 0] = [];
+        let mut output_map: [OutputEntryN<usize>; 0] = [];
+        assert!(!join_and_remove_clauses(
+            &mut input_len,
+            &mut clauses,
+            &outputs,
+            &mut output_map
+        ));
+        assert_eq!(0, input_len);
+        assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
+        assert_eq!(Vec::<OutputEntryN<usize>>::new(), output_map.to_vec());
+
         // testcase
         // trivial no changes
         let mut input_len = 3;
