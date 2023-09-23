@@ -977,6 +977,15 @@ mod tests {
 
         for i in 1..8 {
             let mut clauses = [(
+                Clause::new_and(std::iter::repeat((2, false)).take(i)),
+                false,
+            )];
+            assert!(reduce_clauses(&mut clauses));
+            assert_eq!([(Clause::new_and([(2, false)]), false),], clauses);
+        }
+
+        for i in 1..8 {
+            let mut clauses = [(
                 Clause::new_xor(std::iter::repeat((2, false)).take(i)),
                 false,
             )];
