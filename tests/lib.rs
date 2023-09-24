@@ -1171,12 +1171,14 @@ fn test_optimize_clause_circuit() {
         );
     }
 
-    for tv in 0..32 {
+    for tv in 0..128 {
         let t0 = (tv & 1) != 0;
         let t1 = (tv & 2) != 0;
         let t2 = (tv & 4) != 0;
         let t3 = (tv & 8) != 0;
         let t4 = (tv & 16) != 0;
+        let t5 = (tv & 32) != 0;
+        let t6 = (tv & 64) != 0;
         assert_eq!(
             (
                 ClauseCircuit::new(
@@ -1188,7 +1190,7 @@ fn test_optimize_clause_circuit() {
                         (3, false),
                         (4, false)
                     ])],
-                    [(5, t0 ^ t1 ^ t2 ^ t3 ^ t4)]
+                    [(5, t0 ^ t1 ^ t2 ^ t3 ^ t4 ^ t5 ^ t6)]
                 )
                 .unwrap(),
                 vec![Some(0), Some(1), Some(2), Some(3), None, Some(4)],
@@ -1206,8 +1208,8 @@ fn test_optimize_clause_circuit() {
                             (8, t2),
                             (5, false),
                             (7, t3),
-                            (1, false),
-                            (6, false)
+                            (1, t6),
+                            (6, t5)
                         ]),
                     ],
                     [(9, false)]
