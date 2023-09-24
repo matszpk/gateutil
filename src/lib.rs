@@ -295,6 +295,7 @@ fn join_and_remove_clauses<T>(
     clauses: &mut Vec<(Clause<T>, bool)>,
     outputs: &[(T, bool)],
     output_map: &mut [OutputEntryN<T>],
+    oim_opt: &mut Option<Vec<usize>>,
 ) -> bool
 where
     T: Clone + Copy + Ord + PartialEq + Eq + Debug,
@@ -323,20 +324,26 @@ where
 
     // generate orig_index_map - convert new indexes to old original indexes
     // include only first entries in output_map
-    let mut oim = vec![None; clauses.len() + *input_len];
-    for (i, x) in output_map.iter().enumerate() {
-        if let OutputEntryN::NewIndex(x, _) = x {
-            let x = usize::try_from(*x).unwrap();
-            if x < oim.len() && oim[x].is_none() {
-                oim[x] = Some(i);
+    let oim: &mut Vec<usize> = if let Some(oim) = oim_opt {
+        oim
+    } else {
+        let mut oim = vec![None; clauses.len() + *input_len];
+        for (i, x) in output_map.iter().enumerate() {
+            if let OutputEntryN::NewIndex(x, _) = x {
+                let x = usize::try_from(*x).unwrap();
+                if x < oim.len() && oim[x].is_none() {
+                    oim[x] = Some(i);
+                }
             }
         }
-    }
-    // to real oim
-    let oim = oim
-        .into_iter()
-        .map(|x| x.unwrap_or_default())
-        .collect::<Vec<_>>();
+        // to real oim
+        let oim = oim
+            .into_iter()
+            .map(|x| x.unwrap_or_default())
+            .collect::<Vec<_>>();
+        *oim_opt = Some(oim);
+        oim_opt.as_mut().unwrap()
+    };
 
     // traversing and join clauses
     #[derive(Clone, Copy, Debug)]
@@ -751,6 +758,14 @@ where
             }
         }
     }
+
+    *oim = used_new_outputs
+        .iter()
+        .enumerate()
+        .filter(|(_, x)| **x)
+        .map(|(i, _)| oim[i])
+        .collect::<Vec<_>>();
+
     for (o, _) in outputs {
         let o = usize::try_from(*o).unwrap();
         if let OutputEntryN::NewIndex(idx, n) = output_map[o] {
@@ -796,6 +811,7 @@ where
         .map(|x| OutputEntryN::NewIndex(T::try_from(x).unwrap(), false))
         .collect::<Vec<_>>();
 
+    let mut oim_opt = None;
     let mut new_input_len = input_len;
     loop {
         let mut do_next = reduce_clauses(&mut clauses);
@@ -805,6 +821,7 @@ where
             &mut clauses,
             circuit.outputs(),
             &mut output_map,
+            &mut oim_opt,
         );
         if !do_next {
             break;
@@ -1009,12 +1026,14 @@ mod tests {
         let mut input_len = 0;
         let mut clauses = vec![];
         let outputs: [(usize, bool); 0] = [];
+        let mut oim_opt = None;
         let mut output_map: [OutputEntryN<usize>; 0] = [];
         assert!(!join_and_remove_clauses(
             &mut input_len,
             &mut clauses,
             &outputs,
-            &mut output_map
+            &mut output_map,
+            &mut oim_opt
         ));
         assert_eq!(0, input_len);
         assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
@@ -1025,6 +1044,7 @@ mod tests {
         let mut input_len = 3;
         let mut clauses = vec![(Clause::new_and([(0, false), (1, false), (2, false)]), false)];
         let outputs = [(3, false)];
+        let mut oim_opt = None;
         let mut output_map = [
             OutputEntryN::NewIndex(0, false),
             OutputEntryN::NewIndex(1, false),
@@ -1035,7 +1055,8 @@ mod tests {
             &mut input_len,
             &mut clauses,
             &outputs,
-            &mut output_map
+            &mut output_map,
+            &mut oim_opt
         ));
         assert_eq!(3, input_len);
         assert_eq!(
@@ -1068,12 +1089,14 @@ mod tests {
                 t,
             )];
             let outputs = [(0, false)];
+            let mut oim_opt = None;
             let mut output_map = [OutputEntryN::NewIndex(0, t1)];
             assert!(join_and_remove_clauses(
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(0, input_len);
             assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
@@ -1099,6 +1122,7 @@ mod tests {
                 (Clause::new_and([(0, false), (1, false), (2, false)]), t),
             ];
             let outputs = [(3, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -1109,7 +1133,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(0, input_len);
             assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
@@ -1140,6 +1165,7 @@ mod tests {
                 (Clause::new_and([(0, false), (1, false), (2, false)]), false),
             ];
             let outputs = [(3, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -1150,7 +1176,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(2, input_len);
             assert_eq!(
@@ -1188,6 +1215,7 @@ mod tests {
                 (Clause::new_xor([(0, false), (1, false), (2, false)]), t2),
             ];
             let outputs = [(3, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -1198,7 +1226,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(2, input_len);
             assert_eq!(
@@ -1234,12 +1263,14 @@ mod tests {
                 t1,
             )];
             let outputs = [(1, false)];
+            let mut oim_opt = None;
             let mut output_map = [OutputEntryN::NewIndex(0, t2), OutputEntryN::NewIndex(1, t3)];
             assert!(join_and_remove_clauses(
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(1, input_len);
             assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
@@ -1273,6 +1304,7 @@ mod tests {
                 (Clause::new_and([(0, t0), (1, false)]), t1),
             ];
             let outputs = [(2, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, t2),
                 OutputEntryN::NewIndex(1, false),
@@ -1282,7 +1314,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(1, input_len);
             assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
@@ -1323,6 +1356,7 @@ mod tests {
                 (Clause::new_xor([(0, t0), (1, t4)]), t1),
             ];
             let outputs = [(2, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, t2),
                 OutputEntryN::NewIndex(1, t6),
@@ -1332,7 +1366,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(1, input_len);
             assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
@@ -1370,12 +1405,14 @@ mod tests {
                 (Clause::new_xor([(0, t1)]), t2),
             ];
             let outputs = [(1, false)];
+            let mut oim_opt = None;
             let mut output_map = [OutputEntryN::NewIndex(0, t3), OutputEntryN::NewIndex(1, t4)];
             assert!(join_and_remove_clauses(
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(0, input_len);
             assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
@@ -1401,6 +1438,7 @@ mod tests {
                 (Clause::new_and([(2, false), (3, t)]), false),
             ];
             let outputs = [(4, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -1412,7 +1450,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(3, input_len);
             assert_eq!(
@@ -1446,6 +1485,7 @@ mod tests {
                 (Clause::new_and([(3, t), (2, false)]), false),
             ];
             let outputs = [(4, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -1457,7 +1497,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(3, input_len);
             assert_eq!(
@@ -1491,6 +1532,7 @@ mod tests {
                 (Clause::new_and([(0, true), (3, t), (2, false)]), false),
             ];
             let outputs = [(4, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -1502,7 +1544,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(3, input_len);
             assert_eq!(
@@ -1539,6 +1582,7 @@ mod tests {
                 (Clause::new_and([(2, false), (3, true ^ t)]), false),
             ];
             let outputs = [(4, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -1550,7 +1594,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(3, input_len);
             assert_eq!(
@@ -1583,6 +1628,7 @@ mod tests {
                 (Clause::new_and([(2, false), (3, t)]), false),
             ];
             let outputs = [(3, false), (4, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -1594,7 +1640,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(3, input_len);
             assert_eq!(
@@ -1632,6 +1679,7 @@ mod tests {
                 (Clause::new_xor([(2, false), (3, t1)]), false),
             ];
             let outputs = [(4, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -1643,7 +1691,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(3, input_len);
             assert_eq!(
@@ -1681,6 +1730,7 @@ mod tests {
                 (Clause::new_and([(1, false), (3, t), (4, true)]), false),
             ];
             let outputs = [(5, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -1693,7 +1743,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(3, input_len);
             assert_eq!(
@@ -1733,6 +1784,7 @@ mod tests {
                 (Clause::new_and([(2, false), (3, t), (4, false)]), false),
             ];
             let outputs = [(5, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -1745,7 +1797,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(0, input_len);
             assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses, "{}", tv);
@@ -1779,6 +1832,7 @@ mod tests {
                 (Clause::new_and([(2, false), (4, t)]), false),
             ];
             let outputs = [(5, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -1791,7 +1845,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(3, input_len);
             assert_eq!(
@@ -1829,6 +1884,7 @@ mod tests {
                 (Clause::new_and([(2, false), (4, true ^ t)]), false),
             ];
             let outputs = [(5, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -1841,7 +1897,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(3, input_len);
             assert_eq!(
@@ -1886,6 +1943,7 @@ mod tests {
                 (Clause::new_and([(2, false), (4, t)]), false),
             ];
             let outputs = [(output, false), (5, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -1898,7 +1956,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(3, input_len);
             assert_eq!(
@@ -1941,6 +2000,7 @@ mod tests {
                 (Clause::new_xor([(2, false), (4, t1)]), false),
             ];
             let outputs = [(5, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -1953,7 +2013,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(3, input_len);
             assert_eq!(
@@ -1995,6 +2056,7 @@ mod tests {
                 (Clause::new_and([(1, false), (4, t), (5, true)]), false),
             ];
             let outputs = [(6, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -2008,7 +2070,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(3, input_len);
             assert_eq!(
@@ -2056,6 +2119,7 @@ mod tests {
                 (Clause::new_and([(1, false), (6, t), (5, true)]), false),
             ];
             let outputs = [(7, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -2070,7 +2134,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(3, input_len);
             assert_eq!(
@@ -2120,6 +2185,7 @@ mod tests {
                 (Clause::new_and([(1, false), (7, t), (6, true)]), false),
             ];
             let outputs = [(8, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -2135,7 +2201,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(3, input_len);
             assert_eq!(
@@ -2184,6 +2251,7 @@ mod tests {
                 (Clause::new_and([(2, false), (4, t), (5, false)]), false),
             ];
             let outputs = [(6, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -2197,7 +2265,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(0, input_len);
             assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses, "{}", tv);
@@ -2233,6 +2302,7 @@ mod tests {
                 (Clause::new_and([(2, false), (5, t), (6, false)]), false),
             ];
             let outputs = [(7, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -2247,7 +2317,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(0, input_len);
             assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses, "{}", tv);
@@ -2289,6 +2360,7 @@ mod tests {
                 (Clause::new_and([(2, false), (5, t)]), false),
             ];
             let outputs = [(6, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -2302,7 +2374,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(3, input_len);
             assert_eq!(
@@ -2349,6 +2422,7 @@ mod tests {
                 ),
             ];
             let outputs = [(10, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -2366,7 +2440,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(8, input_len);
             assert_eq!(
@@ -2422,6 +2497,7 @@ mod tests {
                 ),
             ];
             let outputs = [(10, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -2439,7 +2515,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(7, input_len);
             assert_eq!(
@@ -2502,6 +2579,7 @@ mod tests {
                 ),
             ];
             let outputs = [(13, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -2522,7 +2600,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(8, input_len);
             assert_eq!(
@@ -2589,6 +2668,7 @@ mod tests {
                 ),
             ];
             let outputs = [(13, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -2609,7 +2689,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(8, input_len);
             assert_eq!(
@@ -2675,6 +2756,7 @@ mod tests {
                 (Clause::new_and([(2, false), (5, t)]), false),
             ];
             let outputs = [(9, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -2691,7 +2773,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(3, input_len);
             assert_eq!(
@@ -2740,6 +2823,7 @@ mod tests {
                 (Clause::new_xor([(0, false), (1, false), (2, false)]), t2),
             ];
             let outputs = [(6, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::Value(false),
@@ -2753,7 +2837,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(2, input_len);
             assert_eq!(
@@ -2786,6 +2871,7 @@ mod tests {
             (Clause::new_and([(10, true), (11, false)]), false),
         ];
         let outputs = [(12, false)];
+        let mut oim_opt = None;
         let mut output_map = [
             OutputEntryN::NewIndex(0, false),
             OutputEntryN::NewIndex(1, false),
@@ -2805,7 +2891,8 @@ mod tests {
             &mut input_len,
             &mut clauses,
             &outputs,
-            &mut output_map
+            &mut output_map,
+            &mut oim_opt
         ));
         assert_eq!(6, input_len);
         assert_eq!(
@@ -2853,6 +2940,7 @@ mod tests {
             (Clause::new_and([(10, true), (11, false)]), false),
         ];
         let outputs = [(12, false)];
+        let mut oim_opt = None;
         let mut output_map = [
             OutputEntryN::NewIndex(0, false),
             OutputEntryN::NewIndex(1, false),
@@ -2872,7 +2960,8 @@ mod tests {
             &mut input_len,
             &mut clauses,
             &outputs,
-            &mut output_map
+            &mut output_map,
+            &mut oim_opt
         ));
         assert_eq!(6, input_len);
         assert_eq!(
@@ -2923,6 +3012,7 @@ mod tests {
             (Clause::new_and([(11, true), (12, false)]), false),
         ];
         let outputs = [(13, false)];
+        let mut oim_opt = None;
         let mut output_map = [
             OutputEntryN::NewIndex(0, false),
             OutputEntryN::NewIndex(1, false),
@@ -2943,7 +3033,8 @@ mod tests {
             &mut input_len,
             &mut clauses,
             &outputs,
-            &mut output_map
+            &mut output_map,
+            &mut oim_opt
         ));
         assert_eq!(4, input_len);
         assert_eq!(
@@ -2986,7 +3077,8 @@ mod tests {
             &mut input_len,
             &mut clauses,
             &outputs,
-            &mut output_map
+            &mut output_map,
+            &mut oim_opt
         ));
         assert_eq!(4, input_len);
         assert_eq!(
@@ -3030,6 +3122,7 @@ mod tests {
             (Clause::new_and([(12, true), (13, false)]), false),
         ];
         let outputs = [(14, false)];
+        let mut oim_opt = None;
         let mut output_map = [
             OutputEntryN::NewIndex(0, false),
             OutputEntryN::NewIndex(1, false),
@@ -3051,7 +3144,8 @@ mod tests {
             &mut input_len,
             &mut clauses,
             &outputs,
-            &mut output_map
+            &mut output_map,
+            &mut oim_opt
         ));
         assert_eq!(6, input_len);
         assert_eq!(
@@ -3102,6 +3196,7 @@ mod tests {
                 (Clause::new_and([(12, true), (13, false)]), false),
             ];
             let outputs = [(1, false), (if t { 10 } else { 6 }, false), (14, false)];
+            let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
@@ -3123,7 +3218,8 @@ mod tests {
                 &mut input_len,
                 &mut clauses,
                 &outputs,
-                &mut output_map
+                &mut output_map,
+                &mut oim_opt
             ));
             assert_eq!(6, input_len);
             assert_eq!(
