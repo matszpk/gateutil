@@ -1138,11 +1138,12 @@ fn test_optimize_clause_circuit() {
         )
     );
 
-    for tv in 0..16 {
+    for tv in 0..32 {
         let t0 = (tv & 1) != 0;
         let t1 = (tv & 2) != 0;
         let t2 = (tv & 4) != 0;
         let t3 = (tv & 8) != 0;
+        let t4 = (tv & 16) != 0;
         assert_eq!(
             (
                 ClauseCircuit::new(
@@ -1158,7 +1159,7 @@ fn test_optimize_clause_circuit() {
                 ClauseCircuit::new(
                     6,
                     [
-                        Clause::new_xor([(2, false), (0, false), (3, false), (4, false)]),
+                        Clause::new_xor([(2, false), (0, t4), (3, false), (4, false)]),
                         Clause::new_xor([(6, t0), (1, false), (1, false)]),
                         Clause::new_xor([(0, false), (4, t1), (6, false)]),
                         Clause::new_xor([(0, false), (8, t2), (5, false), (7, t3), (1, false)]),
