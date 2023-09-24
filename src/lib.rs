@@ -450,6 +450,10 @@ where
                     target_clause.0.literals.extend(literals_to_add);
                     // resolve negation: only for XOR clauses
                     target_clause.1 ^= top.negate_join;
+                    {
+                        let (clause, _) = &mut clauses[node_index];
+                        clause.literals.clear();
+                    }
                 } else {
                     // remove literals of clauses
                     let mut to_remove = vec![];
