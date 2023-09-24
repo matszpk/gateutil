@@ -701,7 +701,10 @@ where
     // include new usage from outputs
     for (o, _) in outputs.iter() {
         if let OutputEntryN::NewIndex(o, _) = output_map[usize::try_from(*o).unwrap()] {
-            used_new_outputs[usize::try_from(o).unwrap()] = true;
+            let o = usize::try_from(o).unwrap();
+            if o < used_new_outputs.len() {
+                used_new_outputs[o] = true;
+            }
         }
     }
 
