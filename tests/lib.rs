@@ -1071,4 +1071,96 @@ fn test_optimize_clause_circuit() {
             .unwrap()
         )
     );
+
+    assert_eq!(
+        (
+            ClauseCircuit::new(
+                6,
+                [Clause::new_and([
+                    (0, false),
+                    (1, false),
+                    (2, false),
+                    (3, false),
+                    (4, false),
+                    (5, false)
+                ])],
+                [(6, false)]
+            )
+            .unwrap(),
+            vec![Some(0), Some(1), Some(2), Some(3), Some(4), Some(5)],
+            vec![OutputEntry::NewIndex(0)]
+        ),
+        optimize_clause_circuit(
+            ClauseCircuit::new(
+                6,
+                [
+                    Clause::new_and([(2, false), (0, false), (3, false), (4, false)]),
+                    Clause::new_and([(6, false), (6, false)]),
+                    Clause::new_and([(7, false), (7, false)]),
+                    Clause::new_and([(0, false), (8, false), (5, false), (7, false), (1, false)]),
+                ],
+                [(9, false)]
+            )
+            .unwrap()
+        )
+    );
+
+    assert_eq!(
+        (
+            ClauseCircuit::new(
+                6,
+                [Clause::new_and([
+                    (0, false),
+                    (1, false),
+                    (2, false),
+                    (3, false),
+                    (4, false),
+                    (5, false)
+                ])],
+                [(6, false)]
+            )
+            .unwrap(),
+            vec![Some(0), Some(1), Some(2), Some(3), Some(4), Some(5)],
+            vec![OutputEntry::NewIndex(0)]
+        ),
+        optimize_clause_circuit(
+            ClauseCircuit::new(
+                6,
+                [
+                    Clause::new_and([(2, false), (0, false), (3, false), (4, false)]),
+                    Clause::new_and([(6, false), (6, false)]),
+                    Clause::new_and([(0, false), (4, false), (6, false)]),
+                    Clause::new_and([(0, false), (8, false), (5, false), (7, false), (1, false)]),
+                ],
+                [(9, false)]
+            )
+            .unwrap()
+        )
+    );
+
+    assert_eq!(
+        (
+            ClauseCircuit::new(
+                3,
+                [Clause::new_xor([(0, false), (1, false), (2, false),])],
+                [(3, false)]
+            )
+            .unwrap(),
+            vec![None, Some(0), None, None, Some(1), Some(2)],
+            vec![OutputEntry::NewIndex(0)]
+        ),
+        optimize_clause_circuit(
+            ClauseCircuit::new(
+                6,
+                [
+                    Clause::new_xor([(2, false), (0, false), (3, false), (4, false)]),
+                    Clause::new_xor([(6, false), (1, false), (1, false)]),
+                    Clause::new_xor([(0, false), (4, false), (6, false)]),
+                    Clause::new_xor([(0, false), (8, false), (5, false), (7, false), (1, false)]),
+                ],
+                [(9, false)]
+            )
+            .unwrap()
+        )
+    );
 }

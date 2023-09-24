@@ -323,12 +323,11 @@ where
 
     // generate orig_index_map - convert new indexes to old original indexes
     // include only first entries in output_map
-    let oim_len = clauses.len() + *input_len;
-    let mut oim = vec![None; oim_len];
+    let mut oim = vec![None; clauses.len() + *input_len];
     for (i, x) in output_map.iter().enumerate() {
         if let OutputEntryN::NewIndex(x, _) = x {
             let x = usize::try_from(*x).unwrap();
-            if oim[x].is_none() {
+            if x < oim.len() && oim[x].is_none() {
                 oim[x] = Some(i);
             }
         }
