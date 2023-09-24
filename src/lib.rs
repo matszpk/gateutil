@@ -379,7 +379,7 @@ where
             negate_join: false,
         });
         while !stack.is_empty() {
-            let mut top = stack.last_mut().unwrap();
+            let top = stack.last_mut().unwrap();
             let node_index = top.node;
             let (clause, clause_neg) = &clauses[node_index];
             //println!("Stack top: {:?}", top);
@@ -663,7 +663,7 @@ where
             negate_join: false,
         });
         while !stack.is_empty() {
-            let mut top = stack.last_mut().unwrap();
+            let top = stack.last_mut().unwrap();
             let node_index = top.node;
             let (clause, _) = &clauses[node_index];
             if top.way == 0 {
