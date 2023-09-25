@@ -1138,18 +1138,19 @@ fn test_optimize_clause_circuit() {
         )
     );
 
-    for tv in 0..32 {
+    for tv in 0..64 {
         let t0 = (tv & 1) != 0;
         let t1 = (tv & 2) != 0;
         let t2 = (tv & 4) != 0;
         let t3 = (tv & 8) != 0;
         let t4 = (tv & 16) != 0;
+        let t5 = (tv & 32) != 0;
         assert_eq!(
             (
                 ClauseCircuit::new(
                     3,
                     [Clause::new_xor([(0, false), (1, false), (2, false),])],
-                    [(3, t0 ^ t1 ^ t2 ^ t3)]
+                    [(3, t0 ^ t1 ^ t2 ^ t3 ^ t5)]
                 )
                 .unwrap(),
                 vec![None, Some(0), None, None, Some(1), Some(2)],
@@ -1164,7 +1165,7 @@ fn test_optimize_clause_circuit() {
                         Clause::new_xor([(0, false), (4, t1), (6, false)]),
                         Clause::new_xor([(0, false), (8, t2), (5, false), (7, t3), (1, false)]),
                     ],
-                    [(9, false)]
+                    [(9, t5)]
                 )
                 .unwrap()
             )
@@ -1218,4 +1219,28 @@ fn test_optimize_clause_circuit() {
             )
         );
     }
+
+    assert_eq!(
+        (
+            ClauseCircuit::new(1, [], [(0, false)]).unwrap(),
+            vec![None, Some(0), None, None],
+            vec![OutputEntry::Value(false), OutputEntry::NewIndex(0)]
+        ),
+        optimize_clause_circuit(
+            ClauseCircuit::new(
+                4,
+                [
+                    Clause::new_and([(2, false), (0, true)]),
+                    Clause::new_xor([(3, false), (1, true)]),
+                    Clause::new_and([(3, false), (0, true)]),
+                    Clause::new_and([(0, false), (2, true)]),
+                    Clause::new_and([(5, false), (4, true), (6, false), (7, false)]),
+                    Clause::new_xor([(0, false), (5, true)]),
+                    Clause::new_xor([(9, false), (3, false), (0, false)]),
+                ],
+                [(8, false), (10, false)]
+            )
+            .unwrap()
+        )
+    );
 }
