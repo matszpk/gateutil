@@ -298,7 +298,7 @@ fn join_and_remove_clauses<T>(
     oim_opt: &mut Option<Vec<usize>>,
 ) -> bool
 where
-    T: Clone + Copy + Ord + PartialEq + Eq + Debug,
+    T: Clone + Copy + Ord + PartialEq + Eq,
     T: Default + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
     usize: TryFrom<T>,
@@ -794,7 +794,7 @@ pub fn optimize_clause_circuit<T>(
     circuit: ClauseCircuit<T>,
 ) -> (ClauseCircuit<T>, Vec<Option<T>>, Vec<OutputEntry<T>>)
 where
-    T: Clone + Copy + Ord + PartialEq + Eq + Debug,
+    T: Clone + Copy + Ord + PartialEq + Eq,
     T: Default + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
     usize: TryFrom<T>,
@@ -886,6 +886,30 @@ where
         new_inputs,
         new_outputs_map,
     )
+}
+
+pub fn assign_to_circuit_and_optimize<T>(
+    circuit: &Circuit<T>,
+    inputs: impl IntoIterator<Item = (T, bool)>,
+    seq: bool,
+) -> (Circuit<T>, Vec<OutputEntry<T>>, Vec<OutputEntry<T>>)
+where
+    T: Default + Clone + Copy + PartialEq + Eq + PartialOrd + Ord,
+    T: TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    let (circuit, input_map, output_map) = assign_to_circuit(circuit, inputs);
+    let clause_circuit = ClauseCircuit::from(circuit);
+    let (opt_circuit, opt_input_map, opt_output_map) = optimize_clause_circuit(clause_circuit);
+    let opt_circuit = if seq {
+        Circuit::from_seq(opt_circuit)
+    } else {
+        Circuit::from(opt_circuit)
+    };
+    // fake
+    (opt_circuit, input_map, opt_output_map)
 }
 
 #[cfg(test)]
