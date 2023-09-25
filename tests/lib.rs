@@ -1345,4 +1345,55 @@ fn test_optimize_clause_circuit() {
             .unwrap()
         )
     );
+
+    assert_eq!(
+        (
+            ClauseCircuit::new(
+                2,
+                [
+                    Clause::new_xor([(0, false), (1, false)]),
+                    Clause::new_xor([(0, false), (1, false)]),
+                ],
+                [(2, true), (0, false), (3, false)]
+            )
+            .unwrap(),
+            vec![None, None, Some(0), Some(1)],
+            vec![
+                OutputEntry::Value(false),
+                OutputEntry::NewIndex(0),
+                OutputEntry::NewIndex(1),
+                OutputEntry::Value(true),
+                OutputEntry::Value(false),
+                OutputEntry::NewIndex(2),
+            ]
+        ),
+        optimize_clause_circuit(
+            ClauseCircuit::new(
+                4,
+                [
+                    // false
+                    Clause::new_and([(2, false), (0, true), (0, false)]),
+                    // clause xor
+                    Clause::new_xor([(2, false), (3, true)]),
+                    // (2, true)
+                    Clause::new_xor([(1, false), (2, true), (1, false)]),
+                    // false
+                    Clause::new_and([(0, false), (3, true), (3, false)]),
+                    // false
+                    Clause::new_and([(1, false), (1, true)]),
+                    // clause xor
+                    Clause::new_xor([(2, true), (3, false)]),
+                ],
+                [
+                    (4, false),
+                    (5, false),
+                    (6, true),
+                    (7, true),
+                    (8, false),
+                    (9, true)
+                ]
+            )
+            .unwrap()
+        )
+    );
 }
