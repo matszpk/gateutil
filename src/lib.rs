@@ -908,8 +908,33 @@ where
     } else {
         Circuit::from(opt_circuit)
     };
-    // fake
-    (opt_circuit, input_map, opt_output_map)
+    let mut out_input_map = vec![OutputEntry::Value(false); input_map.len()];
+    for (i, e) in input_map.into_iter().enumerate() {
+        out_input_map[i] = match e {
+            OutputEntry::NewIndex(x) => {
+                let x = usize::try_from(x).unwrap();
+                match opt_input_map[x] {
+                    Some(x) => OutputEntry::NewIndex(x),
+                    None => OutputEntry::Value(false),
+                }
+            }
+            OutputEntry::Value(v) => OutputEntry::Value(v),
+        };
+    }
+    let mut out_output_map = vec![OutputEntry::Value(false); output_map.len()];
+    for (i, e) in output_map.into_iter().enumerate() {
+        out_output_map[i] = match e {
+            OutputEntry::NewIndex(x) => {
+                let x = usize::try_from(x).unwrap();
+                match opt_output_map[x] {
+                    OutputEntry::NewIndex(x) => OutputEntry::NewIndex(x),
+                    OutputEntry::Value(v) => OutputEntry::Value(v),
+                }
+            }
+            OutputEntry::Value(v) => OutputEntry::Value(v),
+        };
+    }
+    (opt_circuit, out_input_map, out_output_map)
 }
 
 #[cfg(test)]
