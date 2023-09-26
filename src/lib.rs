@@ -838,6 +838,8 @@ where
         //println!("OptXPhase: {:?}", clauses);
         //println!("OptXPhaseMap: {:?}", output_map);
         if !do_next {
+            reduce_clauses(&mut clauses);
+            //println!("OptXPhaseF: {:?}", clauses);
             break;
         }
     }
