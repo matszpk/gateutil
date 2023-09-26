@@ -591,8 +591,16 @@ where
                     }
                     {
                         let (clause, clause_neg) = &mut clauses[node_index];
+                        let old_literals_empty = clause.literals.is_empty();
                         clause.literals = new_literals;
                         *clause_neg ^= neg_clause;
+                        if clause.kind == ClauseKind::And
+                            && !old_literals_empty
+                            && clause.literals.is_empty()
+                            && !clause_cleared
+                        {
+                            *clause_neg = !*clause_neg;
+                        }
                         if clause.literals.len() >= 2 {
                             clause_len_before_second[node_index] = clause.literals.len();
 
@@ -636,9 +644,8 @@ where
                             do_next_iter = true;
                         } else {
                             // resolve empty clause
-                            let clause_to_true = clause.kind == ClauseKind::And && !clause_cleared;
                             output_map[oim[*input_len + node_index]] =
-                                OutputEntryN::Value(*clause_neg ^ cur_out_n1 ^ clause_to_true);
+                                OutputEntryN::Value(*clause_neg ^ cur_out_n1);
                             do_next_iter = true;
                         }
                     }
