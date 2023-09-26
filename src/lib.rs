@@ -844,17 +844,37 @@ where
         }
     }
 
+    // resolve XOR clause negations - to output and AND clauses
+    {
+        let mut xor_negs = vec![false; clauses.len()];
+        for (i, clause) in clauses.iter().enumerate() {
+            if clause.0.kind == ClauseKind::Xor {
+                for (l, _) in &clause.0.literals {
+                    let l = usize::try_from(*l).unwrap();
+                    if l >= new_input_len {
+                        xor_negs[i] ^= clauses[l - new_input_len].1 ^ xor_negs[l - new_input_len];
+                    }
+                }
+            }
+        }
+        for (i, clause) in clauses.iter_mut().enumerate() {
+            clause.1 ^= xor_negs[i];
+        }
+    }
+
     // generate new clauses
     let mut new_clauses = clauses
         .iter()
         .map(|(clause, _)| clause.clone())
         .collect::<Vec<_>>();
     for clause in &mut new_clauses {
-        for (l, n) in &mut clause.literals {
-            // resolve sign of literal
-            let l = usize::try_from(*l).unwrap();
-            if l >= new_input_len {
-                *n ^= clauses[l - new_input_len].1;
+        if clause.kind == ClauseKind::And {
+            for (l, n) in &mut clause.literals {
+                // resolve sign of literal
+                let l = usize::try_from(*l).unwrap();
+                if l >= new_input_len {
+                    *n ^= clauses[l - new_input_len].1;
+                }
             }
         }
     }
