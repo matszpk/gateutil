@@ -1452,4 +1452,55 @@ fn test_assign_to_circuit_and_optimize() {
             false
         )
     );
+
+    assert_eq!(
+        (
+            Circuit::new(
+                4,
+                [
+                    Gate::new_nor(2, 3),
+                    Gate::new_xor(1, 4), // out0
+                    Gate::new_xor(0, 1),
+                    Gate::new_nor(1, 6), // out2
+                ],
+                [(5, false), (7, false)],
+            )
+            .unwrap(),
+            vec![
+                OutputEntry::NewIndex(0),
+                OutputEntry::Value(false),
+                OutputEntry::Value(true),
+                OutputEntry::NewIndex(1),
+                OutputEntry::NewIndex(2),
+                OutputEntry::NewIndex(3)
+            ],
+            vec![
+                OutputEntry::NewIndex(0),
+                OutputEntry::Value(true),
+                OutputEntry::NewIndex(1)
+            ],
+        ),
+        assign_to_circuit_and_optimize(
+            &Circuit::new(
+                6,
+                [
+                    Gate::new_and(0, 1), // false
+                    Gate::new_and(2, 3), // 3
+                    Gate::new_nor(4, 5),
+                    Gate::new_xor(6, 7),
+                    Gate::new_xor(8, 9), // out0
+                    Gate::new_and(3, 7),
+                    Gate::new_and(2, 6),
+                    Gate::new_and(11, 12), // out1=false -> true
+                    Gate::new_xor(0, 3),
+                    Gate::new_xor(1, 3),
+                    Gate::new_nor(14, 15), // out2
+                ],
+                [(10, false), (13, true), (16, false)],
+            )
+            .unwrap(),
+            [(1, false), (2, true)],
+            false
+        )
+    );
 }
