@@ -298,7 +298,7 @@ fn join_and_remove_clauses<T>(
     oim_opt: &mut Option<Vec<usize>>,
 ) -> bool
 where
-    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Clone + Copy + Ord + PartialEq + Eq + Debug,
     T: Default + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
     usize: TryFrom<T>,
@@ -546,6 +546,7 @@ where
                     let mut new_literals = vec![];
                     let mut do_second_pass = false;
                     let mut neg_clause = false;
+                    let mut clause_cleared = false;
                     for (l, n) in &clause.literals {
                         let l_u = usize::try_from(*l).unwrap();
                         match output_map[oim[l_u]] {
@@ -576,6 +577,7 @@ where
                                     ClauseKind::And => {
                                         if !v {
                                             new_literals.clear();
+                                            clause_cleared = true;
                                             break;
                                         }
                                     }
@@ -634,8 +636,9 @@ where
                             do_next_iter = true;
                         } else {
                             // resolve empty clause
+                            let clause_to_true = clause.kind == ClauseKind::And && !clause_cleared;
                             output_map[oim[*input_len + node_index]] =
-                                OutputEntryN::Value(*clause_neg ^ cur_out_n1);
+                                OutputEntryN::Value(*clause_neg ^ cur_out_n1 ^ clause_to_true);
                             do_next_iter = true;
                         }
                     }
@@ -794,12 +797,13 @@ pub fn optimize_clause_circuit<T>(
     circuit: ClauseCircuit<T>,
 ) -> (ClauseCircuit<T>, Vec<Option<T>>, Vec<OutputEntry<T>>)
 where
-    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Clone + Copy + Ord + PartialEq + Eq + Debug,
     T: Default + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
     usize: TryFrom<T>,
     <usize as TryFrom<T>>::Error: Debug,
 {
+    //println!("OptStart");
     let mut clauses = circuit
         .clauses()
         .iter()
@@ -815,6 +819,7 @@ where
     let mut new_input_len = input_len;
     loop {
         let mut do_next = reduce_clauses(&mut clauses);
+        //println!("OptXPhase0: {:?}", clauses);
         // join clauses and remove unnecessary clauses
         do_next |= join_and_remove_clauses(
             &mut new_input_len,
@@ -823,6 +828,8 @@ where
             &mut output_map,
             &mut oim_opt,
         );
+        //println!("OptXPhase: {:?}", clauses);
+        //println!("OptXPhaseMap: {:?}", output_map);
         if !do_next {
             break;
         }
@@ -894,7 +901,7 @@ pub fn assign_to_circuit_and_optimize<T>(
     seq: bool,
 ) -> (Circuit<T>, Vec<OutputEntry<T>>, Vec<OutputEntry<T>>)
 where
-    T: Default + Clone + Copy + PartialEq + Eq + PartialOrd + Ord,
+    T: Default + Clone + Copy + PartialEq + Eq + PartialOrd + Ord + Debug,
     T: TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
     usize: TryFrom<T>,
@@ -902,6 +909,7 @@ where
 {
     let (circuit, input_map, output_map) = assign_to_circuit(circuit, inputs);
     let clause_circuit = ClauseCircuit::from(circuit);
+    //println!("ClauseCircuit: {:?}", clause_circuit);
     let (opt_circuit, opt_input_map, opt_output_map) = optimize_clause_circuit(clause_circuit);
     let opt_circuit = if seq {
         Circuit::from_seq(opt_circuit)
@@ -1239,6 +1247,112 @@ mod tests {
                     OutputEntryN::NewIndex(1, false),
                     OutputEntryN::Value(true),
                     OutputEntryN::NewIndex(2, false),
+                ],
+                output_map
+            );
+        }
+
+        // testcase
+        // if parent and clause is after deleting all literals - then must be true
+        for xor in [false, true] {
+            let mut input_len = 2;
+            let mut clauses = vec![
+                (
+                    if xor {
+                        Clause::new_xor([])
+                    } else {
+                        Clause::new_and([])
+                    },
+                    true,
+                ),
+                (
+                    if xor {
+                        Clause::new_xor([])
+                    } else {
+                        Clause::new_and([])
+                    },
+                    true,
+                ),
+                (Clause::new_and([(2, false), (3, false)]), false),
+            ];
+            let outputs = [(4, false)];
+            let mut oim_opt = None;
+            let mut output_map = [
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::NewIndex(1, false),
+                OutputEntryN::NewIndex(2, false),
+                OutputEntryN::NewIndex(3, false),
+                OutputEntryN::NewIndex(4, false),
+            ];
+            assert!(join_and_remove_clauses(
+                &mut input_len,
+                &mut clauses,
+                &outputs,
+                &mut output_map,
+                &mut oim_opt
+            ));
+            assert_eq!(0, input_len);
+            assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
+            assert_eq!(
+                [
+                    OutputEntryN::Value(false),
+                    OutputEntryN::Value(false),
+                    OutputEntryN::Value(true),
+                    OutputEntryN::Value(true),
+                    OutputEntryN::Value(true),
+                ],
+                output_map
+            );
+        }
+
+        // testcase
+        // if parent xor clause is after deleting all literals - then must be false
+        for xor in [false, true] {
+            let mut input_len = 2;
+            let mut clauses = vec![
+                (
+                    if xor {
+                        Clause::new_xor([])
+                    } else {
+                        Clause::new_and([])
+                    },
+                    true,
+                ),
+                (
+                    if xor {
+                        Clause::new_xor([])
+                    } else {
+                        Clause::new_and([])
+                    },
+                    true,
+                ),
+                (Clause::new_xor([(2, false), (3, false)]), false),
+            ];
+            let outputs = [(4, false)];
+            let mut oim_opt = None;
+            let mut output_map = [
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::NewIndex(1, false),
+                OutputEntryN::NewIndex(2, false),
+                OutputEntryN::NewIndex(3, false),
+                OutputEntryN::NewIndex(4, false),
+            ];
+            assert!(join_and_remove_clauses(
+                &mut input_len,
+                &mut clauses,
+                &outputs,
+                &mut output_map,
+                &mut oim_opt
+            ));
+            assert_eq!(0, input_len);
+            assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
+            assert_eq!(
+                [
+                    OutputEntryN::Value(false),
+                    OutputEntryN::Value(false),
+                    OutputEntryN::Value(true),
+                    OutputEntryN::Value(true),
+                    OutputEntryN::Value(false),
                 ],
                 output_map
             );
