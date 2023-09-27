@@ -1603,4 +1603,6 @@ fn test_assign_to_circuit_and_optimize() {
             false
         )
     );
+
+    // TODO: Add testcase for wrong final negation propagation to clauses and outputs.
 }

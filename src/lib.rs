@@ -911,7 +911,7 @@ where
             }
         }
     }
-    
+
     (
         ClauseCircuit::new(
             T::try_from(new_input_len).unwrap(),
@@ -3532,5 +3532,7 @@ mod tests {
                 output_map,
             );
         }
+
+        // TODO: Add testcase for fixed visited_for_collect
     }
 }
