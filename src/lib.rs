@@ -354,7 +354,7 @@ where
         negate_join: bool,
     }
     let mut visited = vec![false; clauses.len()];
-    let mut visited_for_collect = HashSet::new();
+    let mut visited_for_collect = vec![false; clauses.len()];
     // clauses length before second pass
     let mut clause_len_before_second = vec![0; clauses.len()];
 
@@ -392,8 +392,15 @@ where
             if top.way == 0 {
                 if top.clause_id.is_some() {
                     // different visited masks for collection
-                    if !visited_for_collect.contains(&node_index) {
-                        visited_for_collect.insert(node_index);
+                    if !visited_for_collect[node_index] {
+                        if let Some(clause_id) = top.clause_id {
+                            if clause_id != node_index {
+                                // make visited only for children to join
+                                visited_for_collect[node_index] = true;
+                            }
+                        } else {
+                            visited_for_collect[node_index] = true;
+                        }
                     } else {
                         stack.pop();
                         continue;
@@ -506,7 +513,6 @@ where
                 // repeat process??? really needed?? yes - translation.
                 top.way = 0;
                 top.clause_id = None;
-                visited_for_collect.clear();
             } else {
                 // resolve values and indexes for current clause
                 let cur_out_n1 = if let OutputEntryN::NewIndex(_, n) =
@@ -3534,5 +3540,59 @@ mod tests {
         }
 
         // TODO: Add testcase for fixed visited_for_collect
+        // let mut input_len = 6;
+        // let mut clauses = vec![
+        //     (Clause::new_and([(0, false), (1, false)]), false),
+        //     (Clause::new_and([(2, false), (6, false)]), false),
+        //     (Clause::new_and([(3, false), (4, false)]), false),
+        //     (Clause::new_and([(5, false), (8, false)]), false),
+        //     (Clause::new_and([(6, false), (7, false)]), false),
+        //     (Clause::new_and([(10, false), (9, false)]), false),
+        // ];
+        // let outputs = [(11, false)];
+        // let mut oim_opt = None;
+        // let mut output_map = [
+        //     OutputEntryN::NewIndex(0, false),
+        //     OutputEntryN::NewIndex(1, false),
+        //     OutputEntryN::NewIndex(2, false),
+        //     OutputEntryN::NewIndex(3, false),
+        //     OutputEntryN::NewIndex(4, false),
+        //     OutputEntryN::NewIndex(5, false),
+        //     OutputEntryN::NewIndex(6, false),
+        //     OutputEntryN::NewIndex(7, false),
+        //     OutputEntryN::NewIndex(8, false),
+        //     OutputEntryN::NewIndex(9, false),
+        //     OutputEntryN::NewIndex(10, false),
+        //     OutputEntryN::NewIndex(11, false),
+        // ];
+        // assert!(join_and_remove_clauses(
+        //     &mut input_len,
+        //     &mut clauses,
+        //     &outputs,
+        //     &mut output_map,
+        //     &mut oim_opt
+        // ));
+        // assert_eq!(6, input_len);
+        // assert_eq!(
+        //     vec![(Clause::new_and([(2, false), (0, false), (1, false)]), false)],
+        //     clauses
+        // );
+        // assert_eq!(
+        //     [
+        //         OutputEntryN::NewIndex(0, false),
+        //         OutputEntryN::NewIndex(1, false),
+        //         OutputEntryN::NewIndex(2, false),
+        //         OutputEntryN::NewIndex(3, false),
+        //         OutputEntryN::NewIndex(4, false),
+        //         OutputEntryN::NewIndex(5, false),
+        //         OutputEntryN::NewIndex(6, false),
+        //         OutputEntryN::NewIndex(7, false),
+        //         OutputEntryN::NewIndex(8, false),
+        //         OutputEntryN::NewIndex(9, false),
+        //         OutputEntryN::NewIndex(10, false),
+        //         OutputEntryN::NewIndex(11, false),
+        //     ],
+        //     output_map
+        // );
     }
 }
