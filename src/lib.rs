@@ -3539,60 +3539,57 @@ mod tests {
             );
         }
 
-        // TODO: Add testcase for fixed visited_for_collect
-        // let mut input_len = 6;
-        // let mut clauses = vec![
-        //     (Clause::new_and([(0, false), (1, false)]), false),
-        //     (Clause::new_and([(2, false), (6, false)]), false),
-        //     (Clause::new_and([(3, false), (4, false)]), false),
-        //     (Clause::new_and([(5, false), (8, false)]), false),
-        //     (Clause::new_and([(6, false), (7, false)]), false),
-        //     (Clause::new_and([(10, false), (9, false)]), false),
-        // ];
-        // let outputs = [(11, false)];
-        // let mut oim_opt = None;
-        // let mut output_map = [
-        //     OutputEntryN::NewIndex(0, false),
-        //     OutputEntryN::NewIndex(1, false),
-        //     OutputEntryN::NewIndex(2, false),
-        //     OutputEntryN::NewIndex(3, false),
-        //     OutputEntryN::NewIndex(4, false),
-        //     OutputEntryN::NewIndex(5, false),
-        //     OutputEntryN::NewIndex(6, false),
-        //     OutputEntryN::NewIndex(7, false),
-        //     OutputEntryN::NewIndex(8, false),
-        //     OutputEntryN::NewIndex(9, false),
-        //     OutputEntryN::NewIndex(10, false),
-        //     OutputEntryN::NewIndex(11, false),
-        // ];
-        // assert!(join_and_remove_clauses(
-        //     &mut input_len,
-        //     &mut clauses,
-        //     &outputs,
-        //     &mut output_map,
-        //     &mut oim_opt
-        // ));
-        // assert_eq!(6, input_len);
-        // assert_eq!(
-        //     vec![(Clause::new_and([(2, false), (0, false), (1, false)]), false)],
-        //     clauses
-        // );
-        // assert_eq!(
-        //     [
-        //         OutputEntryN::NewIndex(0, false),
-        //         OutputEntryN::NewIndex(1, false),
-        //         OutputEntryN::NewIndex(2, false),
-        //         OutputEntryN::NewIndex(3, false),
-        //         OutputEntryN::NewIndex(4, false),
-        //         OutputEntryN::NewIndex(5, false),
-        //         OutputEntryN::NewIndex(6, false),
-        //         OutputEntryN::NewIndex(7, false),
-        //         OutputEntryN::NewIndex(8, false),
-        //         OutputEntryN::NewIndex(9, false),
-        //         OutputEntryN::NewIndex(10, false),
-        //         OutputEntryN::NewIndex(11, false),
-        //     ],
-        //     output_map
-        // );
+        // testcase
+        // chain of joining of clauses: were second resolved later.
+        // testcase for bug when target join clause will be visited and can't be
+        // joined later.
+        let mut input_len = 3;
+        let mut clauses = vec![
+            (Clause::new_and([(0, false), (1, false)]), false),
+            (Clause::new_and([(2, false), (3, false)]), false),
+            (Clause::new_and([]), false),
+            (Clause::new_and([(4, true), (5, true)]), false), // 6:and(!4,!false)->!4
+            (Clause::new_and([(0, true), (6, true)]), false), // to join: and(!0,!6)
+        ];
+        let outputs = [(7, false)];
+        let mut oim_opt = None;
+        let mut output_map = [
+            OutputEntryN::NewIndex(0, false),
+            OutputEntryN::NewIndex(1, false),
+            OutputEntryN::NewIndex(2, false),
+            OutputEntryN::NewIndex(3, false),
+            OutputEntryN::NewIndex(4, false),
+            OutputEntryN::NewIndex(5, false),
+            OutputEntryN::NewIndex(6, false),
+            OutputEntryN::NewIndex(7, false),
+        ];
+        assert!(join_and_remove_clauses(
+            &mut input_len,
+            &mut clauses,
+            &outputs,
+            &mut output_map,
+            &mut oim_opt
+        ));
+        assert_eq!(3, input_len);
+        assert_eq!(
+            vec![(
+                Clause::new_and([(0, true), (2, false), (0, false), (1, false)]),
+                false
+            )],
+            clauses
+        );
+        assert_eq!(
+            [
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::NewIndex(1, false),
+                OutputEntryN::NewIndex(2, false),
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::Value(false),
+                OutputEntryN::NewIndex(0, true),
+                OutputEntryN::NewIndex(3, false),
+            ],
+            output_map
+        );
     }
 }
