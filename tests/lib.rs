@@ -1396,6 +1396,39 @@ fn test_optimize_clause_circuit() {
             .unwrap()
         )
     );
+
+    assert_eq!(
+        (
+            ClauseCircuit::new(
+                4,
+                [
+                    Clause::new_xor([(0, false), (1, false)]),
+                    Clause::new_xor([(2, false), (3, false)]),
+                    Clause::new_xor([(4, false), (5, false)]),
+                    Clause::new_and([(4, false), (5, true)]),
+                    Clause::new_and([(6, true), (7, true)]),
+                ],
+                [(8, false)]
+            )
+            .unwrap(),
+            vec![Some(0), Some(1), Some(2), Some(3)],
+            vec![OutputEntry::NewIndex(0),]
+        ),
+        optimize_clause_circuit(
+            ClauseCircuit::new(
+                4,
+                [
+                    Clause::new_xor([(0, false), (1, false)]),
+                    Clause::new_xor([(2, false), (3, true)]),
+                    Clause::new_xor([(4, false), (5, false)]),
+                    Clause::new_and([(4, false), (5, false)]),
+                    Clause::new_and([(6, false), (7, true)]),
+                ],
+                [(8, false)]
+            )
+            .unwrap()
+        )
+    );
 }
 
 #[test]
@@ -1603,6 +1636,4 @@ fn test_assign_to_circuit_and_optimize() {
             false
         )
     );
-
-    // TODO: Add testcase for wrong final negation propagation to clauses and outputs.
 }
