@@ -749,6 +749,7 @@ where
         .filter(|(_, x)| **x)
         .map(|(i, _)| clauses[i].clone())
         .collect::<Vec<_>>();
+    // translate literal in clauses
     for (clause, _) in clauses.iter_mut() {
         for (l, n) in &mut clause.literals {
             let l_u = usize::try_from(*l).unwrap();
@@ -759,6 +760,8 @@ where
         }
     }
 
+    // output_to_skip_set - set of outputs (that are circuit outputs) to skip and
+    // that outputs will be translated while processing outputs.
     let output_to_skip_set =
         HashSet::<usize>::from_iter(outputs.iter().map(|(x, _)| usize::try_from(*x).unwrap()));
     for j in 0..old_len {
@@ -782,6 +785,7 @@ where
         .map(|(i, _)| oim[i])
         .collect::<Vec<_>>();
 
+    // translate outputs for circuit outputs
     for (o, _) in outputs {
         let o = usize::try_from(*o).unwrap();
         if let OutputEntryN::NewIndex(idx, n) = output_map[o] {
