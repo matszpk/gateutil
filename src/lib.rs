@@ -354,7 +354,7 @@ where
         negate_join: bool,
     }
     let mut visited = vec![false; clauses.len()];
-    let mut visited_for_collect = vec![false; clauses.len()];
+    let mut visited_for_collect = HashSet::new();
     // clauses length before second pass
     let mut clause_len_before_second = vec![0; clauses.len()];
 
@@ -388,13 +388,12 @@ where
             let top = stack.last_mut().unwrap();
             let node_index = top.node;
             let (clause, clause_neg) = &clauses[node_index];
-            //println!("Stack top: {:?}", top);
 
             if top.way == 0 {
                 if top.clause_id.is_some() {
                     // different visited masks for collection
-                    if !visited_for_collect[node_index] {
-                        visited_for_collect[node_index] = true;
+                    if !visited_for_collect.contains(&node_index) {
+                        visited_for_collect.insert(node_index);
                     } else {
                         stack.pop();
                         continue;
@@ -507,6 +506,7 @@ where
                 // repeat process??? really needed?? yes - translation.
                 top.way = 0;
                 top.clause_id = None;
+                visited_for_collect.clear();
             } else {
                 // resolve values and indexes for current clause
                 let cur_out_n1 = if let OutputEntryN::NewIndex(_, n) =
@@ -911,7 +911,7 @@ where
             }
         }
     }
-
+    
     (
         ClauseCircuit::new(
             T::try_from(new_input_len).unwrap(),
