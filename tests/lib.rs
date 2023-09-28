@@ -1404,9 +1404,9 @@ fn test_optimize_clause_circuit() {
                 [
                     Clause::new_xor([(0, false), (1, false)]),
                     Clause::new_xor([(2, false), (3, false)]),
-                    Clause::new_xor([(4, false), (5, false)]),
+                    Clause::new_xor([(4, false), (5, true)]),
                     Clause::new_and([(4, false), (5, true)]),
-                    Clause::new_and([(6, true), (7, true)]),
+                    Clause::new_and([(6, false), (7, true)]),
                 ],
                 [(8, false)]
             )
