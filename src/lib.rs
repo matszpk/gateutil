@@ -248,6 +248,7 @@ where
                 if zero {
                     // IMPORTANT: empty clauses treat as false.
                     clause.literals.clear();
+                    clause.kind = ClauseKind::Xor; // empty Xor is false
                 }
             }
             ClauseKind::Xor => {
@@ -523,9 +524,10 @@ where
                     panic!("Unexpected");
                 };
                 if clause.literals.is_empty() {
-                    // fill up by zero ^ neg
-                    output_map[oim[*input_len + node_index]] =
-                        OutputEntryN::Value(*clause_neg ^ cur_out_n1);
+                    // fill up by zero ^ neg (and additional negation for And clause)
+                    output_map[oim[*input_len + node_index]] = OutputEntryN::Value(
+                        *clause_neg ^ cur_out_n1 ^ (clause.kind == ClauseKind::And),
+                    );
                     do_next_iter = true;
                 } else if clause.literals.len() == 1 {
                     // propagate to output_map
@@ -552,7 +554,7 @@ where
                     let mut new_literals = vec![];
                     let mut do_second_pass = false;
                     let mut neg_clause = false;
-                    let mut clause_cleared = false;
+                    let mut clause_false = false;
                     for (l, n) in &clause.literals {
                         let l_u = usize::try_from(*l).unwrap();
                         match output_map[oim[l_u]] {
@@ -583,7 +585,8 @@ where
                                     ClauseKind::And => {
                                         if !v {
                                             new_literals.clear();
-                                            clause_cleared = true;
+                                            // set clause to false (change to Xor clause)
+                                            clause_false = true;
                                             break;
                                         }
                                     }
@@ -597,15 +600,10 @@ where
                     }
                     {
                         let (clause, clause_neg) = &mut clauses[node_index];
-                        let old_literals_empty = clause.literals.is_empty();
                         clause.literals = new_literals;
                         *clause_neg ^= neg_clause;
-                        if clause.kind == ClauseKind::And
-                            && !old_literals_empty
-                            && clause.literals.is_empty()
-                            && !clause_cleared
-                        {
-                            *clause_neg = !*clause_neg;
+                        if clause_false {
+                            clause.kind = ClauseKind::Xor;
                         }
                         if clause.literals.len() >= 2 {
                             clause_len_before_second[node_index] = clause.literals.len();
@@ -650,8 +648,10 @@ where
                             do_next_iter = true;
                         } else {
                             // resolve empty clause
-                            output_map[oim[*input_len + node_index]] =
-                                OutputEntryN::Value(*clause_neg ^ cur_out_n1);
+                            // fill up by zero ^ neg (and additional negation for And clause)
+                            output_map[oim[*input_len + node_index]] = OutputEntryN::Value(
+                                *clause_neg ^ cur_out_n1 ^ (clause.kind == ClauseKind::And),
+                            );
                             do_next_iter = true;
                         }
                     }
@@ -1004,8 +1004,8 @@ mod tests {
         assert_eq!(
             [
                 (Clause::new_and([(0, false), (1, true), (3, false)]), false),
-                (Clause::new_and([]), true),
-                (Clause::new_and([]), false),
+                (Clause::new_xor([]), true),
+                (Clause::new_xor([]), false),
                 (Clause::new_and([(0, false), (1, true), (3, true)]), false),
                 (
                     Clause::new_xor([(1, false), (2, false), (3, false), (4, false)]),
@@ -1176,7 +1176,7 @@ mod tests {
             ));
             assert_eq!(0, input_len);
             assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
-            assert_eq!([OutputEntryN::Value(t ^ t1),], output_map);
+            assert_eq!([OutputEntryN::Value(t ^ t1 ^ !xor),], output_map);
         }
 
         // testcase
@@ -1193,7 +1193,7 @@ mod tests {
                     } else {
                         Clause::new_and([])
                     },
-                    false,
+                    !xor,
                 ),
                 (Clause::new_and([(0, false), (1, false), (2, false)]), t),
             ];
@@ -1236,7 +1236,7 @@ mod tests {
                     } else {
                         Clause::new_and([])
                     },
-                    true,
+                    true ^ !xor,
                 ),
                 (Clause::new_and([(0, false), (1, false), (2, false)]), false),
             ];
@@ -1282,7 +1282,7 @@ mod tests {
                     } else {
                         Clause::new_and([])
                     },
-                    true,
+                    true ^ !xor,
                 ),
                 (
                     if xor {
@@ -1290,7 +1290,7 @@ mod tests {
                     } else {
                         Clause::new_and([])
                     },
-                    true,
+                    true ^ !xor,
                 ),
                 (Clause::new_and([(2, false), (3, false)]), false),
             ];
@@ -1335,7 +1335,7 @@ mod tests {
                     } else {
                         Clause::new_and([])
                     },
-                    true,
+                    true ^ !xor,
                 ),
                 (
                     if xor {
@@ -1343,7 +1343,7 @@ mod tests {
                     } else {
                         Clause::new_and([])
                     },
-                    true,
+                    true ^ !xor,
                 ),
                 (Clause::new_xor([(2, false), (3, false)]), false),
             ];
@@ -1392,7 +1392,7 @@ mod tests {
                     } else {
                         Clause::new_and([])
                     },
-                    t,
+                    t ^ !xor,
                 ),
                 (Clause::new_xor([(0, false), (1, false), (2, false)]), t2),
             ];
@@ -1481,7 +1481,7 @@ mod tests {
                     } else {
                         Clause::new_and([])
                     },
-                    true,
+                    true ^ !xor,
                 ),
                 (Clause::new_and([(0, t0), (1, false)]), t1),
             ];
@@ -1533,7 +1533,7 @@ mod tests {
                     } else {
                         Clause::new_and([])
                     },
-                    t5,
+                    t5 ^ !xor,
                 ),
                 (Clause::new_xor([(0, t0), (1, t4)]), t1),
             ];
@@ -1582,7 +1582,7 @@ mod tests {
                     } else {
                         Clause::new_and([])
                     },
-                    t0,
+                    t0 ^ !xor,
                 ),
                 (Clause::new_xor([(0, t1)]), t2),
             ];
@@ -1962,7 +1962,7 @@ mod tests {
             let t1 = (tv & 2) != 0;
             let mut clauses = vec![
                 (Clause::new_and([(0, false), (1, false)]), t ^ t1),
-                (Clause::new_and([]), false),
+                (Clause::new_xor([]), false),
                 (Clause::new_and([(2, false), (3, t), (4, false)]), false),
             ];
             let outputs = [(5, false)];
@@ -2360,7 +2360,7 @@ mod tests {
             let t3 = (tv & 8) != 0;
             let mut clauses = vec![
                 (Clause::new_and([(0, false), (1, false)]), t ^ t1 ^ t2 ^ t3),
-                (Clause::new_and([]), false),
+                (Clause::new_xor([]), false),
                 (Clause::new_xor([(3, t2), (4, false)]), t3),
                 (Clause::new_and([(2, false), (5, t)]), false),
                 (Clause::new_xor([(3, t2)]), t3),
@@ -2429,7 +2429,7 @@ mod tests {
             let mut clauses = vec![
                 (Clause::new_and([(0, false), (1, false)]), t ^ t1 ^ t2 ^ t3),
                 (Clause::new_xor([(3, t2)]), t3),
-                (Clause::new_and([]), false),
+                (Clause::new_xor([]), false),
                 (Clause::new_and([(2, false), (4, t), (5, false)]), false),
             ];
             let outputs = [(6, false)];
@@ -2478,9 +2478,9 @@ mod tests {
             let t3 = (tv & 8) != 0;
             let mut clauses = vec![
                 (Clause::new_and([(0, false), (1, false)]), t ^ t1 ^ t2 ^ t3),
-                (Clause::new_and([]), false),
+                (Clause::new_and([]), true),
                 (Clause::new_xor([(3, t2), (4, false)]), t3),
-                (Clause::new_and([]), false),
+                (Clause::new_and([]), true),
                 (Clause::new_and([(2, false), (5, t), (6, false)]), false),
             ];
             let outputs = [(7, false)];
@@ -3084,7 +3084,7 @@ mod tests {
                     } else {
                         Clause::new_and([])
                     },
-                    t,
+                    t ^ !xor,
                 ),
                 (Clause::new_xor([(0, false), (1, false), (2, false)]), t2),
             ];
@@ -3269,7 +3269,7 @@ mod tests {
             (Clause::new_xor([(1, false), (2, false)]), false),
             (Clause::new_and([(3, false), (4, false)]), true),
             (Clause::new_xor([(3, false), (5, false)]), true),
-            (Clause::new_and([]), false),
+            (Clause::new_xor([]), false),
             (
                 Clause::new_and([(6, false), (7, false), (8, false), (10, false)]),
                 false,
@@ -3531,7 +3531,7 @@ mod tests {
         let mut clauses = vec![
             (Clause::new_and([(0, false), (1, false)]), false),
             (Clause::new_and([(2, false), (3, false)]), false),
-            (Clause::new_and([]), false),
+            (Clause::new_xor([]), false),
             (Clause::new_and([(4, true), (5, true)]), false), // 6:and(!4,!false)->!4
             (Clause::new_and([(0, true), (6, true)]), false), // to join: and(!0,!6)
         ];
