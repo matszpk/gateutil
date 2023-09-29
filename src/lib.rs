@@ -391,15 +391,11 @@ where
             let (clause, clause_neg) = &clauses[node_index];
 
             if top.way == 0 {
-                if top.clause_id.is_some() {
+                if let Some(clause_id) = top.clause_id {
                     // different visited masks for collection
                     if !visited_for_collect[node_index] {
-                        if let Some(clause_id) = top.clause_id {
-                            if clause_id != node_index {
-                                // make visited only for children to join
-                                visited_for_collect[node_index] = true;
-                            }
-                        } else {
+                        if clause_id != node_index {
+                            // make visited only for children to join
                             visited_for_collect[node_index] = true;
                         }
                     } else {
