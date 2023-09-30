@@ -671,6 +671,7 @@ where
             OutputEntryN::NewIndex(o, _) => {
                 let o = usize::try_from(o).unwrap();
                 if o < *input_len {
+                    used_new_outputs[o] = true;
                     continue;
                 }
                 o
@@ -713,16 +714,6 @@ where
                 }
             } else {
                 stack.pop();
-            }
-        }
-    }
-
-    // include new usage from outputs
-    for (o, _) in outputs.iter() {
-        if let OutputEntryN::NewIndex(o, _) = output_map[usize::try_from(*o).unwrap()] {
-            let o = usize::try_from(o).unwrap();
-            if o < used_new_outputs.len() {
-                used_new_outputs[o] = true;
             }
         }
     }
