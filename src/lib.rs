@@ -408,6 +408,7 @@ fn deduplicate_clauses<T>(
     if clauses.is_empty() {
         return;
     }
+    clauses.sort_by_key(|(orig_idx, extra_idx, _)| (*orig_idx, *extra_idx));
 }
 
 fn join_deduplicates_to_clause_circuit<T>(
