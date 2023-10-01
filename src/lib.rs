@@ -391,6 +391,44 @@ where
     )
 }
 
+fn deduplicate_clauses<T>(input_len: T, clauses: &mut [(usize, Clause<T>)]) -> Vec<Clause<T>>
+where
+    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Default + TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    if clauses.is_empty() {
+        return vec![];
+    }
+    vec![]
+}
+
+// deduplicate clauses and clause literals
+pub fn deduplicate_clause_circuit<T>(circuit: ClauseCircuit<T>) -> ClauseCircuit<T>
+where
+    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Default + TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    let and_clauses = circuit
+        .clauses()
+        .iter()
+        .enumerate()
+        .filter(|(_, c)| c.kind == ClauseKind::And)
+        .collect::<Vec<_>>();
+    let xor_clauses = circuit
+        .clauses()
+        .iter()
+        .enumerate()
+        .filter(|(_, c)| c.kind == ClauseKind::And)
+        .collect::<Vec<_>>();
+    ClauseCircuit::new(T::default(), [], []).unwrap()
+}
+
 pub fn assign_to_circuit_and_optimize<T>(
     circuit: &Circuit<T>,
     inputs: impl IntoIterator<Item = (T, bool)>,
