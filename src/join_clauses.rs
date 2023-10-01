@@ -20,7 +20,7 @@ pub(crate) fn join_and_remove_clauses<T>(
     oim_opt: &mut Option<Vec<usize>>,
 ) -> bool
 where
-    T: Clone + Copy + Ord + PartialEq + Eq + Debug,
+    T: Clone + Copy + Ord + PartialEq + Eq,
     T: Default + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
     usize: TryFrom<T>,
