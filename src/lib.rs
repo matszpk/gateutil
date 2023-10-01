@@ -393,7 +393,7 @@ where
 
 // return extra clauses with range of placement.
 // argument is clause slice: element: (clause_index, Option<extra_clause_index>, clause)
-// extra_clause_index >= input + total_clause_num
+// extra_clause_index >= input_len + total_clause_num
 fn deduplicate_clauses<T>(
     input_len: usize,
     total_clause_num: usize,
@@ -408,6 +408,22 @@ fn deduplicate_clauses<T>(
     if clauses.is_empty() {
         return;
     }
+}
+
+fn join_deduplicates_to_clause_circuit<T>(
+    input_len: usize,
+    total_clause_num: usize,
+    and_clauses: &Vec<(usize, Option<usize>, Clause<T>)>,
+    xor_clauses: &Vec<(usize, Option<usize>, Clause<T>)>,
+) -> ClauseCircuit<T>
+where
+    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Default + TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    ClauseCircuit::new(T::default(), [], []).unwrap()
 }
 
 // deduplicate clauses and clause literals
@@ -433,7 +449,7 @@ where
             }
         })
         .collect::<Vec<_>>();
-    // return (clause_index, is_extra_clause, clause) vector
+    // return (clause_index, Option<extra_clause_index>, clause) vector
     let xor_clauses = circuit
         .clauses()
         .iter()
