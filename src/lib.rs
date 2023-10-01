@@ -396,9 +396,8 @@ where
 fn deduplicate_clauses<T>(
     input_len: usize,
     total_clause_num: usize,
-    clauses: &mut Vec<(usize, Clause<T>)>,
-)
-where
+    clauses: &mut Vec<(usize, bool, Clause<T>)>,
+) where
     T: Clone + Copy + Ord + PartialEq + Eq,
     T: Default + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
@@ -420,24 +419,30 @@ where
     <usize as TryFrom<T>>::Error: Debug,
 {
     let input_len = usize::try_from(circuit.input_len()).unwrap();
+    // return (clause_index, is_extra_clause, clause) vector
     let and_clauses = circuit
         .clauses()
         .iter()
         .enumerate()
-        .filter_map(|(i, c)| if c.kind == ClauseKind::And {
-            Some((input_len + i, c))
-        } else {
-            None
+        .filter_map(|(i, c)| {
+            if c.kind == ClauseKind::And {
+                Some((input_len + i, false, c))
+            } else {
+                None
+            }
         })
         .collect::<Vec<_>>();
+    // return (clause_index, is_extra_clause, clause) vector
     let xor_clauses = circuit
         .clauses()
         .iter()
         .enumerate()
-        .filter_map(|(i, c)| if c.kind == ClauseKind::Xor {
-            Some((input_len + i, c))
-        } else {
-            None
+        .filter_map(|(i, c)| {
+            if c.kind == ClauseKind::Xor {
+                Some((input_len + i, false, c))
+            } else {
+                None
+            }
         })
         .collect::<Vec<_>>();
     ClauseCircuit::new(T::default(), [], []).unwrap()
