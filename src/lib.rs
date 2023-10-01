@@ -393,8 +393,6 @@ where
 
 // return extra clauses with range of placement.
 // argument is clause slice with original indexes of clause.
-// indexes less than input_len + total_clause_num are old clauses.
-// indexes equal or greater than input_len + total_clause_num are new extra clauses.
 fn deduplicate_clauses<T>(
     input_len: usize,
     total_clause_num: usize,
