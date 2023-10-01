@@ -391,7 +391,15 @@ where
     )
 }
 
-fn deduplicate_clauses<T>(input_len: T, clauses: &mut [(usize, Clause<T>)]) -> Vec<Clause<T>>
+// return extra clauses with range of placement.
+// argument is clause slice with original indexes of clause.
+// indexes less than input_len + total_clause_num are old clauses.
+// indexes equal or greater than input_len + total_clause_num are new extra clauses.
+fn deduplicate_clauses<T>(
+    input_len: usize,
+    total_clause_num: usize,
+    clauses: &mut [(usize, Clause<T>)],
+) -> Vec<(usize, usize, Clause<T>)>
 where
     T: Clone + Copy + Ord + PartialEq + Eq,
     T: Default + TryFrom<usize>,
@@ -403,6 +411,24 @@ where
         return vec![];
     }
     vec![]
+}
+
+fn join_deduplicates_to_circuit<T>(
+    input_len: usize,
+    outputs: &[(T, bool)],
+    and_clauses: &[(usize, Clause<T>)],
+    and_extras: Vec<(usize, usize, Clause<T>)>,
+    xor_clauses: &[(usize, Clause<T>)],
+    xor_extras: Vec<(usize, usize, Clause<T>)>,
+) -> ClauseCircuit<T>
+where
+    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Default + TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    ClauseCircuit::new(T::default(), [], []).unwrap()
 }
 
 // deduplicate clauses and clause literals
