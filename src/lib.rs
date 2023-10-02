@@ -433,12 +433,12 @@ fn deduplicate_clauses<T>(
             occurs.sort();
         }
         lit_clause_tbl.sort_by_key(|(_, o)| o.clone());
-        let mut prev = None;
+        let mut prev: Option<Vec<usize>> = None;
         // collect literals with same occurrence into same list
         let mut same_occur_lits: Vec<(Vec<(T, bool)>, Vec<usize>)> = vec![];
         for (l, occurs) in lit_clause_tbl.drain(..) {
             if let Some(p) = prev {
-                if p == occurs {
+                if p.len() >= 2 && p == occurs {
                     same_occur_lits
                         .last_mut()
                         .unwrap()
