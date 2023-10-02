@@ -432,8 +432,10 @@ fn deduplicate_clauses<T>(
         for (i, occurs) in lit_clause_tbl.drain(..).enumerate() {
             if let Some(p) = prev {
                 if p == occurs {
-                    same_occur_lits.last_mut().unwrap().push(
-                        (T::try_from(i >> 1).unwrap(), (i & 1) != 0));
+                    same_occur_lits
+                        .last_mut()
+                        .unwrap()
+                        .push((T::try_from(i >> 1).unwrap(), (i & 1) != 0));
                     prev = Some(occurs);
                     continue;
                 }
@@ -444,7 +446,7 @@ fn deduplicate_clauses<T>(
         }
         (same_occur_lits, lit_clause_tbl)
     };
-    
+
     // collect and create clause-chains: c0=(l0,l1), c1=(c0,l0,l1),...
     clauses.sort_by_key(|(orig_idx, extra_idx, _)| (*orig_idx, *extra_idx));
 }
@@ -564,7 +566,7 @@ where
     usize: TryFrom<T>,
     <usize as TryFrom<T>>::Error: Debug,
 {
-    // assertion for sorted clauses
+    // assertion for sorted and deduplicated clauses
     assert!(circuit.clauses().iter().all(|c| {
         let mut prev = None;
         for l in &c.literals {
