@@ -418,7 +418,7 @@ fn deduplicate_clauses<T>(
     let kind = clauses.first().unwrap().2.kind;
 
     let total_output_num = input_len + total_clause_num;
-    let (same_occur_lits, lit_clause_tbl) = {
+    let same_occur_lits = {
         let mut lit_clause_tbl = vec![(0, vec![]); total_output_num << 1];
         for (i, (l, _)) in lit_clause_tbl.iter_mut().enumerate() {
             *l = i;
@@ -432,27 +432,31 @@ fn deduplicate_clauses<T>(
         lit_clause_tbl.sort();
         let mut prev = None;
         // collect literals with same occurrence into same list
-        let mut same_occur_lits: Vec<Vec<(T, bool)>> = vec![];
-        let mut new_lit_clause_tbl = vec![];
+        let mut same_occur_lits: Vec<(Vec<(T, bool)>, Vec<usize>)> = vec![];
         for (l, occurs) in lit_clause_tbl.drain(..) {
             if let Some(p) = prev {
                 if p == occurs {
                     same_occur_lits
                         .last_mut()
                         .unwrap()
+                        .0
                         .push((T::try_from(l >> 1).unwrap(), (l & 1) != 0));
                     prev = Some(occurs);
                     continue;
                 }
             }
-            same_occur_lits.push(vec![(T::try_from(l >> 1).unwrap(), (l & 1) != 0)]);
-            new_lit_clause_tbl.push((l, occurs.clone()));
+            same_occur_lits.push((
+                vec![(T::try_from(l >> 1).unwrap(), (l & 1) != 0)],
+                occurs.clone(),
+            ));
             prev = Some(occurs);
         }
-        (same_occur_lits, lit_clause_tbl)
+        same_occur_lits
     };
 
     // apply same_occurrence literals list (clauses) into clauses
+    for (same_lits, occurs) in same_occur_lits.iter() {
+    }
 
     // collect and create clause-chains: c0=(l0,l1), c1=(c0,l0,l1),...
     clauses.sort_by_key(|(orig_idx, extra_idx, _)| (*orig_idx, *extra_idx));
