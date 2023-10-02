@@ -521,7 +521,9 @@ where
 }
 
 // deduplicate clauses and clause literals
-pub fn deduplicate_clause_circuit<T>(circuit: ClauseCircuit<T>) -> ClauseCircuit<T>
+// return new circuit and boolean value.
+// if some possible literal duplicates then returns true, otherwise return false
+pub fn deduplicate_clause_circuit<T>(circuit: ClauseCircuit<T>) -> (ClauseCircuit<T>, bool)
 where
     T: Clone + Copy + Ord + PartialEq + Eq,
     T: Default + TryFrom<usize>,
@@ -545,6 +547,7 @@ where
         .collect::<Vec<_>>();
     let old_and_clauses_len = and_clauses.len();
     deduplicate_clauses(input_len, circuit.len(), &mut and_clauses);
+    let mut need_optimize = and_clauses.iter().any(|(_, _, c)| c.len() == 0);
     // return (clause_index, Option<extra_clause_index>, clause) vector
     let mut xor_clauses = circuit
         .clauses()
@@ -564,14 +567,18 @@ where
         circuit.len() + and_clauses.len() - old_and_clauses_len,
         &mut xor_clauses,
     );
-    join_deduplicates_to_clause_circuit(
-        input_len,
-        circuit.len()
-            + (and_clauses.len() - old_and_clauses_len)
-            + (xor_clauses.len() - old_xor_clauses_len),
-        and_clauses,
-        xor_clauses,
-        circuit.outputs(),
+    need_optimize |= xor_clauses.iter().any(|(_, _, c)| c.len() == 0);
+    (
+        join_deduplicates_to_clause_circuit(
+            input_len,
+            circuit.len()
+                + (and_clauses.len() - old_and_clauses_len)
+                + (xor_clauses.len() - old_xor_clauses_len),
+            and_clauses,
+            xor_clauses,
+            circuit.outputs(),
+        ),
+        need_optimize,
     )
 }
 
