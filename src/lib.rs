@@ -438,7 +438,7 @@ where
                 sorted.push(av.take().unwrap());
                 av = ai.next();
                 if av.is_none() {
-                    sorted.push(bv.clone().unwrap());
+                    sorted.push(bv.take().unwrap());
                     sorted.extend(bi);
                     break;
                 }
@@ -446,7 +446,7 @@ where
                 sorted.push(bv.take().unwrap());
                 bv = bi.next();
                 if bv.is_none() {
-                    sorted.push(av.clone().unwrap());
+                    sorted.push(av.take().unwrap());
                     sorted.extend(ai);
                     break;
                 }
