@@ -1024,12 +1024,12 @@ mod tests {
                 8,
                 vec![
                     (4, None, Clause::new_and([(0, false), (1, true)])),
+                    (6, Some(4), Clause::new_and([])),
                     (
                         6,
                         Some(10),
                         Clause::new_and([(0, false), (3, true), (4, false)])
                     ),
-                    (6, Some(4), Clause::new_and([])),
                     (
                         8,
                         None,
@@ -1038,12 +1038,12 @@ mod tests {
                 ],
                 vec![
                     (5, None, Clause::new_xor([(0, false), (3, true)])),
+                    (7, Some(5), Clause::new_xor([])),
                     (
                         7,
                         Some(11),
                         Clause::new_xor([(0, false), (2, true), (5, true)])
                     ),
-                    (7, Some(5), Clause::new_xor([])),
                     (
                         9,
                         None,
