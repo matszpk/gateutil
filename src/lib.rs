@@ -399,9 +399,11 @@ where
 // if clause empty and extra_clause_index is not None -
 //    clause_index - original index of removed clause
 //    extra_clause_index - index of clause that replace removed clause.
+// extra_clause_start - start index for new extra clauses
 fn deduplicate_clauses<T>(
     input_len: usize,
     total_clause_num: usize,
+    extra_clause_start: usize,
     clauses: &mut Vec<(usize, Option<usize>, Clause<T>)>,
 ) where
     T: Clone + Copy + Ord + PartialEq + Eq,
@@ -413,6 +415,35 @@ fn deduplicate_clauses<T>(
     if clauses.is_empty() {
         return;
     }
+    let total_output_num = input_len + total_clause_num;
+    let same_occur_lits = {
+        let mut lit_clause_tbl = vec![vec![]; total_output_num << 1];
+        for (i, (_, _, clause)) in clauses.iter().enumerate() {
+            for (l, n) in &clause.literals {
+                let l = (usize::try_from(*l).unwrap() << 1) + usize::from(*n);
+                lit_clause_tbl[l].push(i);
+            }
+        }
+        lit_clause_tbl.sort();
+        let mut prev = None;
+        // collect literals with same occurrence into single clause
+        let mut same_occur_lits: Vec<Vec<(T, bool)>> = vec![];
+        for (i, occurs) in lit_clause_tbl.iter().enumerate() {
+            if let Some(p) = prev {
+                if p == occurs {
+                    same_occur_lits.last_mut().unwrap().push(
+                        (T::try_from(i >> 1).unwrap(), (i & 1) != 0));
+                    prev = Some(occurs);
+                    continue;
+                }
+            }
+            same_occur_lits.push(vec![(T::try_from(i >> 1).unwrap(), (i & 1) != 0)]);
+            prev = Some(occurs);
+        }
+        same_occur_lits
+    };
+    
+    // collect and create clause-chains: c0=(l0,l1), c1=(c0,l0,l1),...
     clauses.sort_by_key(|(orig_idx, extra_idx, _)| (*orig_idx, *extra_idx));
 }
 
@@ -546,7 +577,7 @@ where
         })
         .collect::<Vec<_>>();
     let old_and_clauses_len = and_clauses.len();
-    deduplicate_clauses(input_len, circuit.len(), &mut and_clauses);
+    deduplicate_clauses(input_len, circuit.len(), circuit.len(), &mut and_clauses);
     let mut need_optimize = and_clauses.iter().any(|(_, _, c)| c.len() == 0);
     // return (clause_index, Option<extra_clause_index>, clause) vector
     let mut xor_clauses = circuit
@@ -564,6 +595,7 @@ where
     let old_xor_clauses_len = xor_clauses.len();
     deduplicate_clauses(
         input_len,
+        circuit.len(),
         circuit.len() + and_clauses.len() - old_and_clauses_len,
         &mut xor_clauses,
     );
