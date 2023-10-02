@@ -461,6 +461,7 @@ fn join_deduplicates_to_clause_circuit<T>(
     total_clause_num: usize,
     and_clauses: Vec<(usize, Option<usize>, Clause<T>)>,
     xor_clauses: Vec<(usize, Option<usize>, Clause<T>)>,
+    outputs: &[(T, bool)],
 ) -> ClauseCircuit<T>
 where
     T: Clone + Copy + Ord + PartialEq + Eq,
@@ -469,10 +470,39 @@ where
     usize: TryFrom<T>,
     <usize as TryFrom<T>>::Error: Debug,
 {
-    let out_clauses = merge_sorted_by_key(and_clauses, xor_clauses, |(orig_idx, extra_idx, _)| {
-        (*orig_idx, *extra_idx)
-    });
-    ClauseCircuit::new(T::default(), [], []).unwrap()
+    let mut out_clauses =
+        merge_sorted_by_key(and_clauses, xor_clauses, |(orig_idx, extra_idx, _)| {
+            (*orig_idx, *extra_idx)
+        });
+    let mut trans_table = vec![0; input_len + total_clause_num];
+    for (i, (j, extra_j, _)) in out_clauses.iter().enumerate() {
+        if let Some(ej) = extra_j {
+            trans_table[*ej] = i + input_len;
+        } else {
+            trans_table[*j] = i + input_len;
+        }
+    }
+    for (_, _, clause) in &mut out_clauses {
+        for (l, _) in &mut clause.literals {
+            let l_u = usize::try_from(*l).unwrap();
+            if l_u >= input_len {
+                *l = T::try_from(trans_table[l_u]).unwrap();
+            }
+        }
+    }
+    ClauseCircuit::new(
+        T::try_from(input_len).unwrap(),
+        out_clauses.into_iter().map(|(_, _, c)| c),
+        outputs.iter().map(|(l, n)| {
+            let l_u = usize::try_from(*l).unwrap();
+            if l_u >= input_len {
+                (T::try_from(trans_table[l_u]).unwrap(), *n)
+            } else {
+                (*l, *n)
+            }
+        }),
+    )
+    .unwrap()
 }
 
 // deduplicate clauses and clause literals
@@ -498,6 +528,7 @@ where
             }
         })
         .collect::<Vec<_>>();
+    let old_and_clauses_len = and_clauses.len();
     deduplicate_clauses(input_len, circuit.len(), &mut and_clauses);
     // return (clause_index, Option<extra_clause_index>, clause) vector
     let mut xor_clauses = circuit
@@ -512,8 +543,21 @@ where
             }
         })
         .collect::<Vec<_>>();
-    deduplicate_clauses(input_len, circuit.len(), &mut xor_clauses);
-    join_deduplicates_to_clause_circuit(input_len, circuit.len(), and_clauses, xor_clauses)
+    let old_xor_clauses_len = xor_clauses.len();
+    deduplicate_clauses(
+        input_len,
+        circuit.len() + and_clauses.len() - old_and_clauses_len,
+        &mut xor_clauses,
+    );
+    join_deduplicates_to_clause_circuit(
+        input_len,
+        circuit.len()
+            + (and_clauses.len() - old_and_clauses_len)
+            + (xor_clauses.len() - old_xor_clauses_len),
+        and_clauses,
+        xor_clauses,
+        circuit.outputs(),
+    )
 }
 
 pub fn assign_to_circuit_and_optimize<T>(
