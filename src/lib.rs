@@ -415,37 +415,44 @@ fn deduplicate_clauses<T>(
     if clauses.is_empty() {
         return;
     }
+    let kind = clauses.first().unwrap().2.kind;
+
     let total_output_num = input_len + total_clause_num;
     let (same_occur_lits, lit_clause_tbl) = {
-        let mut lit_clause_tbl = vec![vec![]; total_output_num << 1];
+        let mut lit_clause_tbl = vec![(0, vec![]); total_output_num << 1];
+        for (i, (l, _)) in lit_clause_tbl.iter_mut().enumerate() {
+            *l = i;
+        }
         for (i, (_, _, clause)) in clauses.iter().enumerate() {
             for (l, n) in &clause.literals {
                 let l = (usize::try_from(*l).unwrap() << 1) + usize::from(*n);
-                lit_clause_tbl[l].push(i);
+                lit_clause_tbl[l].1.push(i);
             }
         }
         lit_clause_tbl.sort();
         let mut prev = None;
-        // collect literals with same occurrence into single clause
+        // collect literals with same occurrence into same list
         let mut same_occur_lits: Vec<Vec<(T, bool)>> = vec![];
         let mut new_lit_clause_tbl = vec![];
-        for (i, occurs) in lit_clause_tbl.drain(..).enumerate() {
+        for (l, occurs) in lit_clause_tbl.drain(..) {
             if let Some(p) = prev {
                 if p == occurs {
                     same_occur_lits
                         .last_mut()
                         .unwrap()
-                        .push((T::try_from(i >> 1).unwrap(), (i & 1) != 0));
+                        .push((T::try_from(l >> 1).unwrap(), (l & 1) != 0));
                     prev = Some(occurs);
                     continue;
                 }
             }
-            same_occur_lits.push(vec![(T::try_from(i >> 1).unwrap(), (i & 1) != 0)]);
-            new_lit_clause_tbl.push(occurs.clone());
+            same_occur_lits.push(vec![(T::try_from(l >> 1).unwrap(), (l & 1) != 0)]);
+            new_lit_clause_tbl.push((l, occurs.clone()));
             prev = Some(occurs);
         }
         (same_occur_lits, lit_clause_tbl)
     };
+
+    // apply same_occurrence literals list (clauses) into clauses
 
     // collect and create clause-chains: c0=(l0,l1), c1=(c0,l0,l1),...
     clauses.sort_by_key(|(orig_idx, extra_idx, _)| (*orig_idx, *extra_idx));
