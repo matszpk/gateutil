@@ -414,8 +414,8 @@ fn deduplicate_clauses<T>(
 fn join_deduplicates_to_clause_circuit<T>(
     input_len: usize,
     total_clause_num: usize,
-    and_clauses: &Vec<(usize, Option<usize>, Clause<T>)>,
-    xor_clauses: &Vec<(usize, Option<usize>, Clause<T>)>,
+    and_clauses: Vec<(usize, Option<usize>, Clause<T>)>,
+    xor_clauses: Vec<(usize, Option<usize>, Clause<T>)>,
 ) -> ClauseCircuit<T>
 where
     T: Clone + Copy + Ord + PartialEq + Eq,
@@ -424,6 +424,21 @@ where
     usize: TryFrom<T>,
     <usize as TryFrom<T>>::Error: Debug,
 {
+    let mut ai = 0;
+    let mut xi = 0;
+    //let out_clauses = vec![];
+    loop {
+        let and_clause = and_clauses.get(ai);
+        let xor_clause = xor_clauses.get(xi);
+        if let Some(and_clause) = and_clause {
+            if let Some(xor_clause) = xor_clause {
+            } else {
+            }
+        } else if let Some(xor_clause) = xor_clause {
+        } else {
+            break;
+        }
+    }
     ClauseCircuit::new(T::default(), [], []).unwrap()
 }
 
@@ -438,32 +453,34 @@ where
 {
     let input_len = usize::try_from(circuit.input_len()).unwrap();
     // return (clause_index, Option<extra_clause_index>, clause) vector
-    let and_clauses = circuit
+    let mut and_clauses = circuit
         .clauses()
         .iter()
         .enumerate()
         .filter_map(|(i, c)| {
             if c.kind == ClauseKind::And {
-                Some((input_len + i, Option::<usize>::None, c))
+                Some((input_len + i, Option::<usize>::None, c.clone()))
             } else {
                 None
             }
         })
         .collect::<Vec<_>>();
+    deduplicate_clauses(input_len, circuit.len(), &mut and_clauses);
     // return (clause_index, Option<extra_clause_index>, clause) vector
-    let xor_clauses = circuit
+    let mut xor_clauses = circuit
         .clauses()
         .iter()
         .enumerate()
         .filter_map(|(i, c)| {
             if c.kind == ClauseKind::Xor {
-                Some((input_len + i, Option::<usize>::None, c))
+                Some((input_len + i, Option::<usize>::None, c.clone()))
             } else {
                 None
             }
         })
         .collect::<Vec<_>>();
-    ClauseCircuit::new(T::default(), [], []).unwrap()
+    deduplicate_clauses(input_len, circuit.len(), &mut xor_clauses);
+    join_deduplicates_to_clause_circuit(input_len, circuit.len(), and_clauses, xor_clauses)
 }
 
 pub fn assign_to_circuit_and_optimize<T>(
