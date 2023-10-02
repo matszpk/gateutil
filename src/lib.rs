@@ -456,6 +456,13 @@ where
     sorted
 }
 
+// clause list - (clause_index, Option<extra_clause_index>, clause):
+// if extra_clause_index is not None - new index of new extra clause
+// if extra_clause_index is None - old clause
+// if clause empty and extra_clause_index is not None -
+//    clause_index - original index of removed clause
+//    extra_clause_index - index of clause that replace removed clause.
+
 fn join_deduplicates_to_clause_circuit<T>(
     input_len: usize,
     total_clause_num: usize,
