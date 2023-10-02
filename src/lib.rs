@@ -429,7 +429,10 @@ fn deduplicate_clauses<T>(
                 lit_clause_tbl[l].1.push(i);
             }
         }
-        lit_clause_tbl.sort();
+        for (_, occurs) in &mut lit_clause_tbl {
+            occurs.sort();
+        }
+        lit_clause_tbl.sort_by_key(|(_, o)| o.clone());
         let mut prev = None;
         // collect literals with same occurrence into same list
         let mut same_occur_lits: Vec<(Vec<(T, bool)>, Vec<usize>)> = vec![];
