@@ -842,5 +842,52 @@ mod tests {
                 &[(6, false), (7, false)]
             )
         );
+
+        assert_eq!(
+            ClauseCircuit::new(
+                4,
+                [
+                    Clause::new_and([(0, false), (1, true)]),
+                    Clause::new_and([(0, false), (3, true), (4, false)]),
+                    Clause::new_xor([(0, false), (3, true)]),
+                    Clause::new_xor([(0, false), (2, true), (6, true)]),
+                    Clause::new_and([(1, true), (2, true), (4, false), (5, false)]),
+                    Clause::new_xor([(1, true), (3, true), (6, false), (7, false)]),
+                ],
+                [(8, false), (9, false)]
+            )
+            .unwrap(),
+            join_deduplicates_to_clause_circuit(
+                4,
+                6,
+                vec![
+                    (4, None, Clause::new_and([(0, false), (1, true)])),
+                    (
+                        4,
+                        Some(8),
+                        Clause::new_and([(0, false), (3, true), (4, false)])
+                    ),
+                    (
+                        6,
+                        None,
+                        Clause::new_and([(1, true), (2, true), (4, false), (8, false)])
+                    ),
+                ],
+                vec![
+                    (5, None, Clause::new_xor([(0, false), (3, true)])),
+                    (
+                        5,
+                        Some(9),
+                        Clause::new_xor([(0, false), (2, true), (5, true)])
+                    ),
+                    (
+                        7,
+                        None,
+                        Clause::new_xor([(1, true), (3, true), (5, false), (9, false)])
+                    ),
+                ],
+                &[(6, false), (7, false)]
+            )
+        );
     }
 }
