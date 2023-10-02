@@ -641,7 +641,7 @@ mod tests {
                         Clause::new_xor([])
                     },
                     false
-                ),],
+                )],
                 clauses
             );
         }
