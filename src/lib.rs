@@ -555,13 +555,17 @@ fn deduplicate_literal_clauses<T>(
             j += 1;
         }
     }
+    // sort clause literals
+    for (_, _, clause) in clauses.iter_mut() {
+        clause.literals.sort();
+    }
 
     // collect and create clause-chains: c0=(l0,l1), c1=(c0,l0,l1),...
     let mut lit_clause_tbl = vec![(0, vec![]); total_output_num << 1];
     for (i, (l, _)) in lit_clause_tbl.iter_mut().enumerate() {
         *l = i;
     }
-    for (i, (_, _, clause)) in clauses[0..clause_num].iter().enumerate() {
+    for (i, (_, _, clause)) in &mut clauses[0..clause_num].iter().enumerate() {
         for (l, n) in &clause.literals {
             let l = (usize::try_from(*l).unwrap() << 1) + usize::from(*n);
             lit_clause_tbl[l].1.push(i);
@@ -571,7 +575,7 @@ fn deduplicate_literal_clauses<T>(
         occurs.sort();
     }
     lit_clause_tbl.sort_by_key(|(_, o)| o.len());
-    
+
     // loop {
     //     // find first two literals
     // }
@@ -1526,5 +1530,36 @@ mod tests {
                 (5, None, Clause::new_xor([(0, false), (2, true)])),
             ]
         );
+    }
+
+    #[test]
+    fn test_remove_sorted_ref() {
+        let mut avec = vec![0, 3, 5, 7, 8];
+        remove_sorted_ref(&mut avec, &[1, 4, 6]);
+        assert_eq!(vec![0, 3, 5, 7, 8], avec);
+
+        let mut avec = vec![0, 3, 4, 5, 7, 8];
+        remove_sorted_ref(&mut avec, &[1, 4, 7]);
+        assert_eq!(vec![0, 3, 5, 8], avec);
+
+        let mut avec = vec![1, 3, 4, 5, 7, 8];
+        remove_sorted_ref(&mut avec, &[1, 4, 8]);
+        assert_eq!(vec![3, 5, 7], avec);
+
+        let mut avec = vec![1, 3, 4, 5, 7, 8];
+        remove_sorted_ref(&mut avec, &[]);
+        assert_eq!(vec![1, 3, 4, 5, 7, 8], avec);
+
+        let mut avec = vec![];
+        remove_sorted_ref(&mut avec, &[5, 6, 11]);
+        assert_eq!(Vec::<u32>::new(), avec);
+
+        let mut avec = vec![1, 3, 4, 5, 7, 8];
+        remove_sorted_ref(&mut avec, &[0, 9]);
+        assert_eq!(vec![1, 3, 4, 5, 7, 8], avec);
+
+        let mut avec = vec![1, 3, 4, 5, 7, 8];
+        remove_sorted_ref(&mut avec, &[0]);
+        assert_eq!(vec![1, 3, 4, 5, 7, 8], avec);
     }
 }
