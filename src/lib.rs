@@ -425,7 +425,9 @@ where
             }
         }
         clause.literals.sort();
-        clause.literals.dedup();
+        if clause.kind == ClauseKind::And {
+            clause.literals.dedup();
+        }
     }
     old_clause_len != new_clause_len
 }
@@ -1002,6 +1004,41 @@ mod tests {
                     Clause::new_and([(1, true), (3, false), (4, false)])
                 ),
                 (8, None, Clause::new_and([(3, true), (5, false)]))
+            ],
+            clauses
+        );
+
+        // link two duplicates to some clause. and do not remove one because is xor.
+        let mut clauses = vec![
+            (
+                7,
+                None,
+                Clause::new_xor([(1, true), (3, false), (4, false)]),
+            ),
+            (4, None, Clause::new_xor([(0, false), (1, true)])),
+            (5, None, Clause::new_xor([(0, false), (2, true)])),
+            (
+                8,
+                None,
+                Clause::new_xor([(3, true), (5, false), (6, false)]),
+            ),
+            (6, None, Clause::new_xor([(0, false), (2, true)])),
+        ];
+        assert!(deduplicate_clauses(&mut clauses));
+        assert_eq!(
+            vec![
+                (4, None, Clause::new_xor([(0, false), (1, true)])),
+                (5, None, Clause::new_xor([(0, false), (2, true)])),
+                (
+                    7,
+                    None,
+                    Clause::new_xor([(1, true), (3, false), (4, false)])
+                ),
+                (
+                    8,
+                    None,
+                    Clause::new_xor([(3, true), (5, false), (5, false)])
+                )
             ],
             clauses
         );
