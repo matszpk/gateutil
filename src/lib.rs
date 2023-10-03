@@ -602,6 +602,33 @@ where
     .unwrap()
 }
 
+pub fn check_if_clauses_need_optimization<T>(clauses: &[(usize, Option<usize>, Clause<T>)]) -> bool
+where
+    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Default + TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    for (_, _, clause) in clauses {
+        if clause.literals.len() == 1 {
+            return true;
+        }
+        let mut prev = None;
+        for (l, _) in &clause.literals {
+            if let Some(prev_l) = prev {
+                if prev_l == *l {
+                    // and((l,false), (l,true)) -> false
+                    // or xor((l,false), (l,true)) -> true
+                    return true;
+                }
+            }
+            prev = Some(*l);
+        }
+    }
+    false
+}
+
 // deduplicate clauses and clause literals
 // return new circuit and boolean value.
 // if some possible literal duplicates then returns true, otherwise return false
@@ -640,9 +667,12 @@ where
             }
         })
         .collect::<Vec<_>>();
-    let orig_and_removed = deduplicate_clauses(&mut and_clauses);
-    let old_and_clauses_len = and_clauses.len();
-    deduplicate_literal_clauses(input_len, circuit.len(), circuit.len(), &mut and_clauses);
+    let and_clauses_need_optim = if deduplicate_clauses(&mut and_clauses) {
+        // check whether clauses need optimizations
+        check_if_clauses_need_optimization(&and_clauses)
+    } else {
+        false
+    };
 
     // return (clause_index, Option<extra_clause_index>, clause) vector
     let mut xor_clauses = circuit
@@ -657,14 +687,26 @@ where
             }
         })
         .collect::<Vec<_>>();
-    let orig_xor_removed = deduplicate_clauses(&mut xor_clauses);
+    let xor_clauses_need_optim = if deduplicate_clauses(&mut xor_clauses) {
+        check_if_clauses_need_optimization(&xor_clauses)
+    } else {
+        false
+    };
+
+    let old_and_clauses_len = and_clauses.len();
+    if !and_clauses_need_optim {
+        deduplicate_literal_clauses(input_len, circuit.len(), circuit.len(), &mut and_clauses);
+    }
+
     let old_xor_clauses_len = xor_clauses.len();
-    deduplicate_literal_clauses(
-        input_len,
-        circuit.len(),
-        circuit.len() + and_clauses.len() - old_and_clauses_len,
-        &mut xor_clauses,
-    );
+    if !xor_clauses_need_optim {
+        deduplicate_literal_clauses(
+            input_len,
+            circuit.len(),
+            circuit.len() + and_clauses.len() - old_and_clauses_len,
+            &mut xor_clauses,
+        );
+    }
 
     (
         join_deduplicates_to_clause_circuit(
@@ -676,7 +718,7 @@ where
             xor_clauses,
             circuit.outputs(),
         ),
-        orig_and_removed | orig_xor_removed,
+        and_clauses_need_optim | xor_clauses_need_optim,
     )
 }
 
