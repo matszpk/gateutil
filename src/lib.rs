@@ -432,6 +432,37 @@ where
     old_clause_len != new_clause_len
 }
 
+// remove b from a
+pub fn remove_sorted_ref<'a, T, I2>(a: &mut Vec<T>, b: I2)
+where
+    T: Clone + Copy + Default + std::cmp::Ord + 'a,
+    I2: IntoIterator<Item = &'a T>,
+{
+    let mut b = b.into_iter();
+    let alen = a.len();
+    let mut i = 0;
+    let mut j = 0;
+    while let Some(bv) = b.next() {
+        while i < a.len() && a[i] < *bv {
+            a[j] = a[i];
+            i += 1;
+            j += 1;
+        }
+        if i == alen {
+            break;
+        }
+        if a[i] == *bv {
+            i += 1;
+        }
+    }
+    while i < alen {
+        a[j] = a[i];
+        i += 1;
+        j += 1;
+    }
+    a.resize(j, T::default());
+}
+
 // return extra clauses with range of placement.
 // argument is clause slice: element: (clause_index, Option<extra_clause_index>, clause)
 // extra_clause_index >= input_len + total_clause_num
@@ -495,11 +526,34 @@ fn deduplicate_literal_clauses<T>(
             ));
             prev = Some(occurs);
         }
+        // sort before using
+        for (same_lits, _) in &mut same_occur_lits {
+            same_lits.sort();
+        }
         same_occur_lits
     };
 
-    // apply same_occurrence literals list (clauses) into clauses
-    for (same_lits, occurs) in same_occur_lits.iter() {}
+    let mut j = 0;
+    // apply same occurrence literals list (clauses) into clauses
+    for (same_lits, occurs) in same_occur_lits.into_iter() {
+        if same_lits.len() > 1 {
+            for occur in &occurs {
+                let clause = &mut clauses[*occur].2;
+                remove_sorted_ref(&mut clause.literals, &same_lits);
+                let extra_lit = T::try_from(extra_clause_start + j).unwrap();
+                clause.literals.push((extra_lit, false));
+            }
+            clauses.push((
+                *occurs.first().unwrap(),
+                Some(extra_clause_start + j),
+                Clause {
+                    kind,
+                    literals: same_lits.clone(),
+                },
+            ));
+            j += 1;
+        }
+    }
 
     // collect and create clause-chains: c0=(l0,l1), c1=(c0,l0,l1),...
     clauses.sort_by_key(|(orig_idx, extra_idx, _)| (*orig_idx, *extra_idx));
