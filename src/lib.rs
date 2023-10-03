@@ -602,7 +602,9 @@ where
     .unwrap()
 }
 
-pub fn check_if_clauses_need_optimization<T>(clauses: &[(usize, Option<usize>, Clause<T>)]) -> bool
+pub fn check_if_clauses_need_optimization_and_fix<T>(
+    clauses: &mut [(usize, Option<usize>, Clause<T>)],
+) -> bool
 where
     T: Clone + Copy + Ord + PartialEq + Eq,
     T: Default + TryFrom<usize>,
@@ -612,6 +614,8 @@ where
 {
     for (_, _, clause) in clauses {
         if clause.literals.len() == 1 {
+            clause.literals.push(*clause.literals.first().unwrap());
+            clause.kind = ClauseKind::And;
             return true;
         }
         let mut prev = None;
@@ -669,7 +673,7 @@ where
         .collect::<Vec<_>>();
     let and_clauses_need_optim = if deduplicate_clauses(&mut and_clauses) {
         // check whether clauses need optimizations
-        check_if_clauses_need_optimization(&and_clauses)
+        check_if_clauses_need_optimization_and_fix(&mut and_clauses)
     } else {
         false
     };
@@ -688,7 +692,7 @@ where
         })
         .collect::<Vec<_>>();
     let xor_clauses_need_optim = if deduplicate_clauses(&mut xor_clauses) {
-        check_if_clauses_need_optimization(&xor_clauses)
+        check_if_clauses_need_optimization_and_fix(&mut xor_clauses)
     } else {
         false
     };
