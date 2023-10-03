@@ -416,7 +416,7 @@ where
     }
     clauses.dedup_by_key(|(_, _, c)| (c.kind, c.literals.clone()));
     let new_clause_len = clauses.len();
-    // translate literals
+    // translate literals and sort and deduplicate literals
     for (_, _, clause) in clauses {
         for (l, _) in &mut clause.literals {
             let l_u = usize::try_from(*l).unwrap();
@@ -424,6 +424,8 @@ where
                 *l = T::try_from(*trans_l).unwrap();
             }
         }
+        clause.literals.sort();
+        clause.literals.dedup();
     }
     old_clause_len != new_clause_len
 }
@@ -932,7 +934,7 @@ mod tests {
                 (
                     8,
                     None,
-                    Clause::new_and([(3, true), (5, false), (4, false)])
+                    Clause::new_and([(3, true), (4, false), (5, false)])
                 ),
             ],
             clauses
@@ -969,6 +971,65 @@ mod tests {
                     Clause::new_and([(3, true), (4, false), (6, false)])
                 ),
                 (6, None, Clause::new_xor([(0, false), (2, true)]))
+            ],
+            clauses
+        );
+
+        // link two duplicates to some clause. and remove one.
+        let mut clauses = vec![
+            (
+                7,
+                None,
+                Clause::new_and([(1, true), (3, false), (4, false)]),
+            ),
+            (4, None, Clause::new_and([(0, false), (1, true)])),
+            (5, None, Clause::new_and([(0, false), (2, true)])),
+            (
+                8,
+                None,
+                Clause::new_and([(3, true), (5, false), (6, false)]),
+            ),
+            (6, None, Clause::new_and([(0, false), (2, true)])),
+        ];
+        assert!(deduplicate_clauses(&mut clauses));
+        assert_eq!(
+            vec![
+                (4, None, Clause::new_and([(0, false), (1, true)])),
+                (5, None, Clause::new_and([(0, false), (2, true)])),
+                (
+                    7,
+                    None,
+                    Clause::new_and([(1, true), (3, false), (4, false)])
+                ),
+                (8, None, Clause::new_and([(3, true), (5, false)]))
+            ],
+            clauses
+        );
+
+        // link two duplicates to some clause.
+        // and do not remove any because negation is different.
+        let mut clauses = vec![
+            (
+                7,
+                None,
+                Clause::new_and([(1, true), (3, false), (4, false)]),
+            ),
+            (4, None, Clause::new_and([(0, false), (1, true)])),
+            (5, None, Clause::new_and([(0, false), (2, true)])),
+            (8, None, Clause::new_and([(3, true), (5, false), (6, true)])),
+            (6, None, Clause::new_and([(0, false), (2, true)])),
+        ];
+        assert!(deduplicate_clauses(&mut clauses));
+        assert_eq!(
+            vec![
+                (4, None, Clause::new_and([(0, false), (1, true)])),
+                (5, None, Clause::new_and([(0, false), (2, true)])),
+                (
+                    7,
+                    None,
+                    Clause::new_and([(1, true), (3, false), (4, false)])
+                ),
+                (8, None, Clause::new_and([(3, true), (5, false), (5, true)]))
             ],
             clauses
         );
