@@ -489,6 +489,7 @@ fn deduplicate_literal_clauses<T>(
     }
     let kind = clauses.first().unwrap().2.kind;
 
+    let clause_num = clauses.len();
     let total_output_num = input_len + total_clause_num;
     let same_occur_lits = {
         let mut lit_clause_tbl = vec![(0, vec![]); total_output_num << 1];
@@ -556,6 +557,26 @@ fn deduplicate_literal_clauses<T>(
     }
 
     // collect and create clause-chains: c0=(l0,l1), c1=(c0,l0,l1),...
+    let mut lit_clause_tbl = vec![(0, vec![]); total_output_num << 1];
+    for (i, (l, _)) in lit_clause_tbl.iter_mut().enumerate() {
+        *l = i;
+    }
+    for (i, (_, _, clause)) in clauses[0..clause_num].iter().enumerate() {
+        for (l, n) in &clause.literals {
+            let l = (usize::try_from(*l).unwrap() << 1) + usize::from(*n);
+            lit_clause_tbl[l].1.push(i);
+        }
+    }
+    for (_, occurs) in &mut lit_clause_tbl {
+        occurs.sort();
+    }
+    lit_clause_tbl.sort_by_key(|(_, o)| o.len());
+    
+    // loop {
+    //     // find first two literals
+    // }
+
+    // final clauses
     clauses.sort_by_key(|(orig_idx, extra_idx, _)| (*orig_idx, *extra_idx));
 }
 
