@@ -391,7 +391,7 @@ where
     )
 }
 
-fn deduplicate_clauses<T>(clauses: &mut Vec<(usize, Option<usize>, Clause<T>)>)
+fn deduplicate_clauses<T>(clauses: &mut Vec<(usize, Option<usize>, Clause<T>)>) -> bool
 where
     T: Clone + Copy + Ord + PartialEq + Eq,
     T: Default + TryFrom<usize>,
@@ -399,6 +399,7 @@ where
     usize: TryFrom<T>,
     <usize as TryFrom<T>>::Error: Debug,
 {
+    let old_clause_len = clauses.len();
     clauses.sort_by_key(|(i, _, c)| (c.kind, c.literals.clone(), *i));
     let mut trans_table = HashMap::<usize, usize>::new();
     {
@@ -413,7 +414,8 @@ where
             prev = Some((i, *orig_i));
         }
     }
-    clauses.dedup_by_key(|(i, _, c)| (c.kind, c.literals.clone()));
+    clauses.dedup_by_key(|(_, _, c)| (c.kind, c.literals.clone()));
+    let new_clause_len = clauses.len();
     // translate literals
     for (_, _, clause) in clauses {
         for (l, _) in &mut clause.literals {
@@ -423,6 +425,7 @@ where
             }
         }
     }
+    old_clause_len != new_clause_len
 }
 
 // return extra clauses with range of placement.
@@ -876,7 +879,7 @@ mod tests {
             ),
             (6, None, Clause::new_and([(0, false), (2, true)])),
         ];
-        deduplicate_clauses(&mut clauses);
+        assert!(deduplicate_clauses(&mut clauses));
         assert_eq!(
             vec![
                 (4, None, Clause::new_and([(0, false), (1, true)])),
@@ -891,6 +894,86 @@ mod tests {
                     None,
                     Clause::new_and([(3, true), (4, false), (5, false)])
                 ),
+            ],
+            clauses
+        );
+
+        let mut clauses = vec![
+            (
+                7,
+                None,
+                Clause::new_and([(1, true), (3, false), (5, false)]),
+            ),
+            (5, None, Clause::new_and([(0, false), (1, true)])),
+            (4, None, Clause::new_and([(0, false), (2, true)])),
+            (
+                8,
+                None,
+                Clause::new_and([(3, true), (5, false), (6, false)]),
+            ),
+            (6, None, Clause::new_and([(0, false), (2, true)])),
+            (9, None, Clause::new_and([(0, false), (2, true)])),
+            (
+                10,
+                None,
+                Clause::new_and([(1, true), (2, false), (9, false)]),
+            ),
+        ];
+        assert!(deduplicate_clauses(&mut clauses));
+        assert_eq!(
+            vec![
+                (5, None, Clause::new_and([(0, false), (1, true)])),
+                (4, None, Clause::new_and([(0, false), (2, true)])),
+                (
+                    10,
+                    None,
+                    Clause::new_and([(1, true), (2, false), (4, false)]),
+                ),
+                (
+                    7,
+                    None,
+                    Clause::new_and([(1, true), (3, false), (5, false)])
+                ),
+                (
+                    8,
+                    None,
+                    Clause::new_and([(3, true), (5, false), (4, false)])
+                ),
+            ],
+            clauses
+        );
+
+        let mut clauses = vec![
+            (
+                7,
+                None,
+                Clause::new_and([(1, true), (3, false), (5, false)]),
+            ),
+            (4, None, Clause::new_and([(0, false), (1, true)])),
+            (5, None, Clause::new_and([(0, false), (2, true)])),
+            (
+                8,
+                None,
+                Clause::new_and([(3, true), (4, false), (6, false)]),
+            ),
+            (6, None, Clause::new_xor([(0, false), (2, true)])),
+        ];
+        assert!(!deduplicate_clauses(&mut clauses));
+        assert_eq!(
+            vec![
+                (4, None, Clause::new_and([(0, false), (1, true)])),
+                (5, None, Clause::new_and([(0, false), (2, true)])),
+                (
+                    7,
+                    None,
+                    Clause::new_and([(1, true), (3, false), (5, false)])
+                ),
+                (
+                    8,
+                    None,
+                    Clause::new_and([(3, true), (4, false), (6, false)])
+                ),
+                (6, None, Clause::new_xor([(0, false), (2, true)]))
             ],
             clauses
         );
