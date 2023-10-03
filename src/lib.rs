@@ -565,19 +565,12 @@ where
             (*orig_idx, *extra_idx)
         });
     let mut trans_table = vec![0; input_len + total_clause_num];
-    for (i, (j, extra_j, _)) in out_clauses
-        .iter()
-        .filter(|(_, _, c)| c.len() != 0)
-        .enumerate()
-    {
+    for (i, (j, extra_j, _)) in out_clauses.iter().enumerate() {
         if let Some(ej) = extra_j {
             trans_table[*ej] = i + input_len;
         } else {
             trans_table[*j] = i + input_len;
         }
-    }
-    for (j, extra_j, _) in out_clauses.iter().filter(|(_, _, c)| c.len() == 0) {
-        trans_table[*j] = trans_table[extra_j.unwrap()];
     }
     for (_, _, clause) in &mut out_clauses {
         for (l, _) in &mut clause.literals {
@@ -643,9 +636,10 @@ where
             }
         })
         .collect::<Vec<_>>();
+    let orig_and_removed = deduplicate_clauses(&mut and_clauses);
     let old_and_clauses_len = and_clauses.len();
     deduplicate_literal_clauses(input_len, circuit.len(), circuit.len(), &mut and_clauses);
-    let mut need_optimize = and_clauses.iter().any(|(_, _, c)| c.len() == 0);
+
     // return (clause_index, Option<extra_clause_index>, clause) vector
     let mut xor_clauses = circuit
         .clauses()
@@ -659,6 +653,7 @@ where
             }
         })
         .collect::<Vec<_>>();
+    let orig_xor_removed = deduplicate_clauses(&mut xor_clauses);
     let old_xor_clauses_len = xor_clauses.len();
     deduplicate_literal_clauses(
         input_len,
@@ -666,7 +661,7 @@ where
         circuit.len() + and_clauses.len() - old_and_clauses_len,
         &mut xor_clauses,
     );
-    need_optimize |= xor_clauses.iter().any(|(_, _, c)| c.len() == 0);
+
     (
         join_deduplicates_to_clause_circuit(
             input_len,
@@ -677,7 +672,7 @@ where
             xor_clauses,
             circuit.outputs(),
         ),
-        need_optimize,
+        orig_and_removed | orig_xor_removed,
     )
 }
 
@@ -1213,104 +1208,6 @@ mod tests {
                 vec![
                     (5, None, Clause::new_xor([(0, false), (3, true)])),
                     (7, None, Clause::new_xor([(1, false), (3, true)])),
-                    (
-                        7,
-                        Some(11),
-                        Clause::new_xor([(0, false), (2, true), (5, true)])
-                    ),
-                    (
-                        9,
-                        None,
-                        Clause::new_xor([(1, true), (3, true), (7, false), (11, false)])
-                    ),
-                ],
-                &[(8, false), (9, false)]
-            )
-        );
-
-        assert_eq!(
-            ClauseCircuit::new(
-                4,
-                [
-                    Clause::new_and([(0, false), (1, true)]),
-                    Clause::new_xor([(0, false), (3, true)]),
-                    Clause::new_and([(0, false), (3, true), (4, false)]),
-                    Clause::new_xor([(0, false), (2, true), (5, true)]),
-                    Clause::new_and([(1, true), (2, true), (4, false), (6, false)]),
-                    Clause::new_xor([(1, true), (3, true), (5, false), (7, false)])
-                ],
-                [(8, false), (9, false)]
-            )
-            .unwrap(),
-            join_deduplicates_to_clause_circuit(
-                4,
-                8,
-                vec![
-                    (4, None, Clause::new_and([(0, false), (1, true)])),
-                    (6, Some(4), Clause::new_and([])),
-                    (
-                        6,
-                        Some(10),
-                        Clause::new_and([(0, false), (3, true), (4, false)])
-                    ),
-                    (
-                        8,
-                        None,
-                        Clause::new_and([(1, true), (2, true), (6, false), (10, false)])
-                    ),
-                ],
-                vec![
-                    (5, None, Clause::new_xor([(0, false), (3, true)])),
-                    (7, Some(5), Clause::new_xor([])),
-                    (
-                        7,
-                        Some(11),
-                        Clause::new_xor([(0, false), (2, true), (5, true)])
-                    ),
-                    (
-                        9,
-                        None,
-                        Clause::new_xor([(1, true), (3, true), (7, false), (11, false)])
-                    ),
-                ],
-                &[(8, false), (9, false)]
-            )
-        );
-
-        assert_eq!(
-            ClauseCircuit::new(
-                4,
-                [
-                    Clause::new_and([(0, false), (1, true)]),
-                    Clause::new_and([(0, false), (3, true), (4, false)]),
-                    Clause::new_xor([(0, false), (3, true)]),
-                    Clause::new_xor([(0, false), (2, true), (6, true)]),
-                    Clause::new_and([(1, true), (2, true), (4, false), (5, false)]),
-                    Clause::new_xor([(1, true), (3, true), (6, false), (7, false)])
-                ],
-                [(8, false), (9, false)]
-            )
-            .unwrap(),
-            join_deduplicates_to_clause_circuit(
-                4,
-                8,
-                vec![
-                    (4, Some(6), Clause::new_and([])),
-                    (6, None, Clause::new_and([(0, false), (1, true)])),
-                    (
-                        6,
-                        Some(10),
-                        Clause::new_and([(0, false), (3, true), (4, false)])
-                    ),
-                    (
-                        8,
-                        None,
-                        Clause::new_and([(1, true), (2, true), (6, false), (10, false)])
-                    ),
-                ],
-                vec![
-                    (5, Some(7), Clause::new_xor([])),
-                    (7, None, Clause::new_xor([(0, false), (3, true)])),
                     (
                         7,
                         Some(11),
