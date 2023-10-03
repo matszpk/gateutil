@@ -391,6 +391,40 @@ where
     )
 }
 
+fn deduplicate_clauses<T>(clauses: &mut Vec<(usize, Option<usize>, Clause<T>)>)
+where
+    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Default + TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    clauses.sort_by_key(|(i, _, c)| (c.kind, c.literals.clone(), *i));
+    let mut trans_table = HashMap::<usize, usize>::new();
+    {
+        let mut prev: Option<(usize, usize)> = None;
+        for (i, (orig_i, _, clause)) in clauses.iter().enumerate() {
+            if let Some((prev_i, prev_orig_i)) = prev {
+                if clauses[prev_i].2 == *clause {
+                    trans_table.insert(*orig_i, prev_orig_i);
+                    continue;
+                }
+            }
+            prev = Some((i, *orig_i));
+        }
+    }
+    clauses.dedup_by_key(|(i, _, c)| (c.kind, c.literals.clone()));
+    // translate literals
+    for (_, _, clause) in clauses {
+        for (l, _) in &mut clause.literals {
+            let l_u = usize::try_from(*l).unwrap();
+            if let Some(trans_l) = trans_table.get(&l_u) {
+                *l = T::try_from(*trans_l).unwrap();
+            }
+        }
+    }
+}
+
 // return extra clauses with range of placement.
 // argument is clause slice: element: (clause_index, Option<extra_clause_index>, clause)
 // extra_clause_index >= input_len + total_clause_num
@@ -400,7 +434,7 @@ where
 //    clause_index - original index of removed clause
 //    extra_clause_index - index of clause that replace removed clause.
 // extra_clause_start - start index for new extra clauses
-fn deduplicate_clauses<T>(
+fn deduplicate_literal_clauses<T>(
     input_len: usize,
     total_clause_num: usize,
     extra_clause_start: usize,
@@ -458,8 +492,7 @@ fn deduplicate_clauses<T>(
     };
 
     // apply same_occurrence literals list (clauses) into clauses
-    for (same_lits, occurs) in same_occur_lits.iter() {
-    }
+    for (same_lits, occurs) in same_occur_lits.iter() {}
 
     // collect and create clause-chains: c0=(l0,l1), c1=(c0,l0,l1),...
     clauses.sort_by_key(|(orig_idx, extra_idx, _)| (*orig_idx, *extra_idx));
@@ -608,7 +641,7 @@ where
         })
         .collect::<Vec<_>>();
     let old_and_clauses_len = and_clauses.len();
-    deduplicate_clauses(input_len, circuit.len(), circuit.len(), &mut and_clauses);
+    deduplicate_literal_clauses(input_len, circuit.len(), circuit.len(), &mut and_clauses);
     let mut need_optimize = and_clauses.iter().any(|(_, _, c)| c.len() == 0);
     // return (clause_index, Option<extra_clause_index>, clause) vector
     let mut xor_clauses = circuit
@@ -624,7 +657,7 @@ where
         })
         .collect::<Vec<_>>();
     let old_xor_clauses_len = xor_clauses.len();
-    deduplicate_clauses(
+    deduplicate_literal_clauses(
         input_len,
         circuit.len(),
         circuit.len() + and_clauses.len() - old_and_clauses_len,
@@ -824,6 +857,43 @@ mod tests {
                 clauses
             );
         }
+    }
+
+    #[test]
+    fn test_deduplicate_clauses() {
+        let mut clauses = vec![
+            (
+                7,
+                None,
+                Clause::new_and([(1, true), (3, false), (5, false)]),
+            ),
+            (4, None, Clause::new_and([(0, false), (1, true)])),
+            (5, None, Clause::new_and([(0, false), (2, true)])),
+            (
+                8,
+                None,
+                Clause::new_and([(3, true), (4, false), (6, false)]),
+            ),
+            (6, None, Clause::new_and([(0, false), (2, true)])),
+        ];
+        deduplicate_clauses(&mut clauses);
+        assert_eq!(
+            vec![
+                (4, None, Clause::new_and([(0, false), (1, true)])),
+                (5, None, Clause::new_and([(0, false), (2, true)])),
+                (
+                    7,
+                    None,
+                    Clause::new_and([(1, true), (3, false), (5, false)])
+                ),
+                (
+                    8,
+                    None,
+                    Clause::new_and([(3, true), (4, false), (5, false)])
+                ),
+            ],
+            clauses
+        );
     }
 
     #[test]
