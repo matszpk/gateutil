@@ -1559,6 +1559,10 @@ mod tests {
         assert_eq!(vec![1, 3, 4, 5, 7, 8], avec);
 
         let mut avec = vec![1, 3, 4, 5, 7, 8];
+        remove_sorted_ref(&mut avec, &[0, 5, 9]);
+        assert_eq!(vec![1, 3, 4, 7, 8], avec);
+
+        let mut avec = vec![1, 3, 4, 5, 7, 8];
         remove_sorted_ref(&mut avec, &[0]);
         assert_eq!(vec![1, 3, 4, 5, 7, 8], avec);
     }
