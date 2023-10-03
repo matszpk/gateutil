@@ -624,6 +624,7 @@ where
                 if prev_l == *l {
                     // and((l,false), (l,true)) -> false
                     // or xor((l,false), (l,true)) -> true
+                    // or xor((l,false), (l,true)) -> false (duplicates allowed)
                     return true;
                 }
             }
@@ -1365,6 +1366,90 @@ mod tests {
                 ],
                 &[(8, false), (9, false)]
             )
+        );
+    }
+
+    #[test]
+    fn test_check_if_clauses_need_optimization_and_fix() {
+        let mut clauses = vec![
+            (
+                4,
+                None,
+                Clause::new_and([(0, false), (1, true), (2, false)]),
+            ),
+            (5, None, Clause::new_and([(0, false), (2, true)])),
+        ];
+        assert!(!check_if_clauses_need_optimization_and_fix(&mut clauses));
+        assert_eq!(
+            clauses,
+            vec![
+                (
+                    4,
+                    None,
+                    Clause::new_and([(0, false), (1, true), (2, false)])
+                ),
+                (5, None, Clause::new_and([(0, false), (2, true)])),
+            ]
+        );
+
+        let mut clauses = vec![
+            (
+                4,
+                None,
+                Clause::new_and([(0, false), (1, true), (1, false)]),
+            ),
+            (5, None, Clause::new_and([(0, false), (2, true)])),
+        ];
+        assert!(check_if_clauses_need_optimization_and_fix(&mut clauses));
+        assert_eq!(
+            clauses,
+            vec![
+                (
+                    4,
+                    None,
+                    Clause::new_and([(0, false), (1, true), (1, false)])
+                ),
+                (5, None, Clause::new_and([(0, false), (2, true)])),
+            ]
+        );
+
+        let mut clauses = vec![
+            (4, None, Clause::new_xor([(0, false), (1, true), (1, true)])),
+            (5, None, Clause::new_xor([(0, false), (2, true)])),
+        ];
+        assert!(check_if_clauses_need_optimization_and_fix(&mut clauses));
+        assert_eq!(
+            clauses,
+            vec![
+                (4, None, Clause::new_xor([(0, false), (1, true), (1, true)])),
+                (5, None, Clause::new_xor([(0, false), (2, true)])),
+            ]
+        );
+
+        let mut clauses = vec![
+            (4, None, Clause::new_and([(0, true)])),
+            (5, None, Clause::new_and([(0, false), (2, true)])),
+        ];
+        assert!(check_if_clauses_need_optimization_and_fix(&mut clauses));
+        assert_eq!(
+            clauses,
+            vec![
+                (4, None, Clause::new_and([(0, true), (0, true)])),
+                (5, None, Clause::new_and([(0, false), (2, true)])),
+            ]
+        );
+
+        let mut clauses = vec![
+            (4, None, Clause::new_xor([(0, true)])),
+            (5, None, Clause::new_xor([(0, false), (2, true)])),
+        ];
+        assert!(check_if_clauses_need_optimization_and_fix(&mut clauses));
+        assert_eq!(
+            clauses,
+            vec![
+                (4, None, Clause::new_and([(0, true), (0, true)])),
+                (5, None, Clause::new_xor([(0, false), (2, true)])),
+            ]
         );
     }
 }
