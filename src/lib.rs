@@ -525,7 +525,7 @@ impl<'a, T> TreeIterator<'a, T> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum TreeStackOp {
     Push,
     Pop,
@@ -543,26 +543,33 @@ impl<'a, T> Iterator for TreeIterator<'a, T> {
                     .map(|ch| child_index < ch.len())
                     .unwrap_or_default()
                 {
-                    let value = &top.node.value;
                     top.child_index = Some(child_index + 1);
                     let child = &top.node.children.as_ref().unwrap()[child_index];
+                    let value = &child.value;
                     self.0.push(TreeStackElem {
                         node: child,
-                        child_index: None,
+                        child_index: Some(0),
                     });
                     Some((TreeStackOp::Push, value))
                 } else {
+                    let value = &top.node.value;
                     self.0.pop();
-                    if let Some(top) = self.0.last() {
-                        Some((TreeStackOp::Pop, &top.node.value))
-                    } else {
-                        None
-                    }
+                    Some((TreeStackOp::Pop, &value))
                 }
             } else {
                 let value = &top.node.value;
-                self.0.pop();
-                Some((TreeStackOp::Push, value))
+                if let Some(children) = &top.node.children {
+                    if children.is_empty() {
+                        self.0.pop();
+                        Some((TreeStackOp::Pop, &value))
+                    } else {
+                        top.child_index = Some(0);
+                        Some((TreeStackOp::Push, value))
+                    }
+                } else {
+                    self.0.pop();
+                    Some((TreeStackOp::Pop, &value))
+                }
             }
         } else {
             None
@@ -1696,5 +1703,104 @@ mod tests {
         let mut avec = vec![1, 3, 4, 5, 7, 8];
         remove_sorted_ref(&mut avec, &[0]);
         assert_eq!(vec![1, 3, 4, 5, 7, 8], avec);
+    }
+
+    #[test]
+    fn test_tree() {
+        use TreeStackOp::*;
+        let root = TreeNode {
+            value: 1,
+            children: Some(vec![
+                TreeNode {
+                    value: 2,
+                    children: None,
+                },
+                TreeNode {
+                    value: 4,
+                    children: Some(vec![
+                        TreeNode {
+                            value: 5,
+                            children: None,
+                        },
+                        TreeNode {
+                            value: 6,
+                            children: None,
+                        },
+                        TreeNode {
+                            value: 7,
+                            children: Some(vec![
+                                TreeNode {
+                                    value: 11,
+                                    children: None,
+                                },
+                                TreeNode {
+                                    value: 13,
+                                    children: None,
+                                },
+                            ]),
+                        },
+                    ]),
+                },
+                TreeNode {
+                    value: 3,
+                    children: Some(vec![
+                        TreeNode {
+                            value: 8,
+                            children: None,
+                        },
+                        TreeNode {
+                            value: 9,
+                            children: Some(vec![
+                                TreeNode {
+                                    value: 12,
+                                    children: None,
+                                },
+                                TreeNode {
+                                    value: 14,
+                                    children: None,
+                                },
+                            ]),
+                        },
+                        TreeNode {
+                            value: 10,
+                            children: None,
+                        },
+                    ]),
+                },
+            ]),
+        };
+        assert_eq!(
+            vec![
+                (Push, 1),
+                (Push, 2),
+                (Pop, 2),
+                (Push, 4),
+                (Push, 5),
+                (Pop, 5),
+                (Push, 6),
+                (Pop, 6),
+                (Push, 7),
+                (Push, 11),
+                (Pop, 11),
+                (Push, 13),
+                (Pop, 13),
+                (Pop, 7),
+                (Pop, 4),
+                (Push, 3),
+                (Push, 8),
+                (Pop, 8),
+                (Push, 9),
+                (Push, 12),
+                (Pop, 12),
+                (Push, 14),
+                (Pop, 14),
+                (Pop, 9),
+                (Push, 10),
+                (Pop, 10),
+                (Pop, 3),
+                (Pop, 1)
+            ],
+            Vec::from_iter(root.iter().map(|(op, x)| (op, *x)))
+        );
     }
 }
