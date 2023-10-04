@@ -481,6 +481,95 @@ pub fn sorted_is_set_contains_set<T: Copy + std::cmp::Ord>(a: &[T], b: &[T]) -> 
     ai == a.len()
 }
 
+// TreeNode for traversing between tree structure for clause-chain (clause-tree).
+
+struct TreeNode<T> {
+    value: T,
+    children: Option<Vec<TreeNode<T>>>,
+}
+
+impl<T> TreeNode<T> {
+    fn new(value: T) -> Self {
+        Self {
+            value,
+            children: None,
+        }
+    }
+
+    fn append_child(&mut self, child: TreeNode<T>) {
+        if let Some(children) = &mut self.children {
+            children.push(child);
+        } else {
+            self.children = Some(vec![child]);
+        }
+    }
+
+    fn iter<'a>(&'a self) -> TreeIterator<'a, T> {
+        TreeIterator::new(self)
+    }
+}
+
+struct TreeStackElem<'a, T> {
+    node: &'a TreeNode<T>,
+    child_index: Option<usize>,
+}
+
+struct TreeIterator<'a, T>(Vec<TreeStackElem<'a, T>>);
+
+impl<'a, T> TreeIterator<'a, T> {
+    fn new(root: &'a TreeNode<T>) -> Self {
+        Self(vec![TreeStackElem {
+            node: root,
+            child_index: None,
+        }])
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum TreeStackOp {
+    Push,
+    Pop,
+}
+
+impl<'a, T> Iterator for TreeIterator<'a, T> {
+    type Item = (TreeStackOp, &'a T);
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(top) = self.0.last_mut() {
+            if let Some(child_index) = top.child_index {
+                if top
+                    .node
+                    .children
+                    .as_ref()
+                    .map(|ch| child_index < ch.len())
+                    .unwrap_or_default()
+                {
+                    let value = &top.node.value;
+                    top.child_index = Some(child_index + 1);
+                    let child = &top.node.children.as_ref().unwrap()[child_index];
+                    self.0.push(TreeStackElem {
+                        node: child,
+                        child_index: None,
+                    });
+                    Some((TreeStackOp::Push, value))
+                } else {
+                    self.0.pop();
+                    if let Some(top) = self.0.last() {
+                        Some((TreeStackOp::Pop, &top.node.value))
+                    } else {
+                        None
+                    }
+                }
+            } else {
+                let value = &top.node.value;
+                self.0.pop();
+                Some((TreeStackOp::Push, value))
+            }
+        } else {
+            None
+        }
+    }
+}
+
 // return extra clauses with range of placement.
 // argument is clause slice: element: (clause_index, Option<extra_clause_index>, clause)
 // extra_clause_index >= input_len + total_clause_num
@@ -577,9 +666,9 @@ fn deduplicate_literal_clauses<T>(
     for (_, _, clause) in clauses.iter_mut() {
         clause.literals.sort();
     }
-    
+
     // algorithm: first find smallest subclauses with greatest occurrences.
-    
+
     loop {
         // get pair_count_map sorted by count descending
         let mut pairlit_clause_map = {
@@ -599,7 +688,7 @@ fn deduplicate_literal_clauses<T>(
             pairlit_clause_map.sort_by_key(|(k, list)| (std::cmp::Reverse(list.len()), *k));
             pairlit_clause_map
         };
-        
+
         let mut chain_found = false;
         let threshold = std::cmp::max((pairlit_clause_map.len() + 9) / 10, 9);
         for ((ls1, ls2), list) in &mut pairlit_clause_map[0..threshold] {
@@ -608,14 +697,15 @@ fn deduplicate_literal_clauses<T>(
             let mut prev = Option::<usize>::None;
             for ci in list {
                 if let Some(prev_ci) = prev {
-                    if sorted_is_set_contains_set(&clauses[prev_ci].2.literals,
-                                &clauses[*ci].2.literals) {
-                    }
+                    if sorted_is_set_contains_set(
+                        &clauses[prev_ci].2.literals,
+                        &clauses[*ci].2.literals,
+                    ) {}
                 }
                 prev = Some(*ci);
             }
         }
-        
+
         if !chain_found {
             break;
         }
