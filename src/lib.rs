@@ -504,8 +504,18 @@ impl<T> TreeNode<T> {
         }
     }
 
-    fn iter<'a>(&'a self) -> TreeIterator<'a, T> {
-        TreeIterator::new(self)
+    fn stack_iter<'a>(&'a self) -> TreeStackIterator<'a, T> {
+        TreeStackIterator::new(self)
+    }
+
+    fn iter<'a>(&'a self) -> impl Iterator<Item = &'a T> {
+        TreeStackIterator::new(self).filter_map(|(op, x)| {
+            if op == TreeStackOp::Push {
+                Some(x)
+            } else {
+                None
+            }
+        })
     }
 }
 
@@ -514,9 +524,9 @@ struct TreeStackElem<'a, T> {
     child_index: Option<usize>,
 }
 
-struct TreeIterator<'a, T>(Vec<TreeStackElem<'a, T>>);
+struct TreeStackIterator<'a, T>(Vec<TreeStackElem<'a, T>>);
 
-impl<'a, T> TreeIterator<'a, T> {
+impl<'a, T> TreeStackIterator<'a, T> {
     fn new(root: &'a TreeNode<T>) -> Self {
         Self(vec![TreeStackElem {
             node: root,
@@ -531,7 +541,7 @@ enum TreeStackOp {
     Pop,
 }
 
-impl<'a, T> Iterator for TreeIterator<'a, T> {
+impl<'a, T> Iterator for TreeStackIterator<'a, T> {
     type Item = (TreeStackOp, &'a T);
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(top) = self.0.last_mut() {
@@ -1800,7 +1810,12 @@ mod tests {
                 (Pop, 3),
                 (Pop, 1)
             ],
-            Vec::from_iter(root.iter().map(|(op, x)| (op, *x)))
+            Vec::from_iter(root.stack_iter().map(|(op, x)| (op, *x)))
+        );
+
+        assert_eq!(
+            vec![1, 2, 4, 5, 6, 7, 11, 13, 3, 8, 9, 12, 14, 10],
+            Vec::from_iter(root.iter().copied())
         );
     }
 }
