@@ -463,6 +463,24 @@ where
     a.resize(j, T::default());
 }
 
+pub fn sorted_is_set_contains_set<T: Copy + std::cmp::Ord>(a: &[T], b: &[T]) -> bool {
+    let (mut ai, mut bi) = (0, 0);
+    while ai < a.len() {
+        let (ac, bc) = (a[ai], b[bi]);
+        if ac < bc {
+            break;
+        } else if ac > bc {
+            bi += 1;
+            if bi >= b.len() {
+                break;
+            }
+        } else {
+            ai += 1;
+        }
+    }
+    ai == a.len()
+}
+
 // return extra clauses with range of placement.
 // argument is clause slice: element: (clause_index, Option<extra_clause_index>, clause)
 // extra_clause_index >= input_len + total_clause_num
@@ -478,7 +496,7 @@ fn deduplicate_literal_clauses<T>(
     extra_clause_start: usize,
     clauses: &mut Vec<(usize, Option<usize>, Clause<T>)>,
 ) where
-    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Clone + Copy + Ord + PartialEq + Eq + Hash,
     T: Default + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
     usize: TryFrom<T>,
@@ -559,26 +577,49 @@ fn deduplicate_literal_clauses<T>(
     for (_, _, clause) in clauses.iter_mut() {
         clause.literals.sort();
     }
-
-    // collect and create clause-chains: c0=(l0,l1), c1=(c0,l0,l1),...
-    let mut lit_clause_tbl = vec![(0, vec![]); total_output_num << 1];
-    for (i, (l, _)) in lit_clause_tbl.iter_mut().enumerate() {
-        *l = i;
-    }
-    for (i, (_, _, clause)) in &mut clauses[0..clause_num].iter().enumerate() {
-        for (l, n) in &clause.literals {
-            let l = (usize::try_from(*l).unwrap() << 1) + usize::from(*n);
-            lit_clause_tbl[l].1.push(i);
+    
+    // algorithm: first find smallest subclauses with greatest occurrences.
+    
+    loop {
+        // get pair_count_map sorted by count descending
+        let mut pairlit_clause_map = {
+            let mut pairlit_clause_map = HashMap::<((T, bool), (T, bool)), Vec<usize>>::new();
+            for (ci, (_, _, clause)) in clauses.iter().enumerate() {
+                for (i, ls1) in clause.literals.iter().enumerate() {
+                    for ls2 in &clause.literals[i + 1..] {
+                        if let Some(list) = pairlit_clause_map.get_mut(&(*ls1, *ls2)) {
+                            list.push(ci);
+                        } else {
+                            pairlit_clause_map.insert((*ls1, *ls2), vec![ci]);
+                        }
+                    }
+                }
+            }
+            let mut pairlit_clause_map = Vec::from_iter(pairlit_clause_map.into_iter());
+            pairlit_clause_map.sort_by_key(|(k, list)| (std::cmp::Reverse(list.len()), *k));
+            pairlit_clause_map
+        };
+        
+        let mut chain_found = false;
+        let threshold = std::cmp::max((pairlit_clause_map.len() + 9) / 10, 9);
+        for ((ls1, ls2), list) in &mut pairlit_clause_map[0..threshold] {
+            list.sort_by_key(|ci| (clauses[*ci].2.len(), clauses[*ci].2.literals.clone()));
+            // find clause chain
+            let mut prev = Option::<usize>::None;
+            for ci in list {
+                if let Some(prev_ci) = prev {
+                    if sorted_is_set_contains_set(&clauses[prev_ci].2.literals,
+                                &clauses[*ci].2.literals) {
+                    }
+                }
+                prev = Some(*ci);
+            }
+        }
+        
+        if !chain_found {
+            break;
         }
     }
-    for (_, occurs) in &mut lit_clause_tbl {
-        occurs.sort();
-    }
-    lit_clause_tbl.sort_by_key(|(_, o)| o.len());
-
-    // loop {
-    //     // find first two literals
-    // }
 
     // final clauses
     clauses.sort_by_key(|(orig_idx, extra_idx, _)| (*orig_idx, *extra_idx));
@@ -718,7 +759,7 @@ where
 // if some possible literal duplicates then returns true, otherwise return false
 pub fn deduplicate_clause_circuit<T>(circuit: ClauseCircuit<T>) -> (ClauseCircuit<T>, bool)
 where
-    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Clone + Copy + Ord + PartialEq + Eq + Hash,
     T: Default + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
     usize: TryFrom<T>,
