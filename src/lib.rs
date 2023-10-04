@@ -564,21 +564,21 @@ impl<'a, T> Iterator for TreeStackIterator<'a, T> {
                 } else {
                     let value = &top.node.value;
                     self.0.pop();
-                    Some((TreeStackOp::Pop, &value))
+                    Some((TreeStackOp::Pop, value))
                 }
             } else {
                 let value = &top.node.value;
                 if let Some(children) = &top.node.children {
                     if children.is_empty() {
                         self.0.pop();
-                        Some((TreeStackOp::Pop, &value))
+                        Some((TreeStackOp::Pop, value))
                     } else {
                         top.child_index = Some(0);
                         Some((TreeStackOp::Push, value))
                     }
                 } else {
                     self.0.pop();
-                    Some((TreeStackOp::Pop, &value))
+                    Some((TreeStackOp::Pop, value))
                 }
             }
         } else {
