@@ -585,7 +585,7 @@ impl<'a, T> Iterator for TreeStackIterator<'a, T> {
 //    clause_index - original index of removed clause
 //    extra_clause_index - index of clause that replace removed clause.
 // extra_clause_start - start index for new extra clauses
-fn deduplicate_literal_clauses<T>(
+fn deduplicate_literal_clauses_0<T>(
     input_len: usize,
     total_clause_num: usize,
     extra_clause_start: usize,
@@ -672,6 +672,24 @@ fn deduplicate_literal_clauses<T>(
     for (_, _, clause) in clauses.iter_mut() {
         clause.literals.sort();
     }
+}
+
+fn deduplicate_literal_clauses<T>(
+    input_len: usize,
+    total_clause_num: usize,
+    extra_clause_start: usize,
+    clauses: &mut Vec<(usize, Option<usize>, Clause<T>)>,
+) where
+    T: Clone + Copy + Ord + PartialEq + Eq + Hash,
+    T: Default + TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    if clauses.is_empty() {
+        return;
+    }
+    let kind = clauses.first().unwrap().2.kind;
 
     // algorithm: first find smallest subclauses with greatest occurrences.
 
@@ -701,22 +719,36 @@ fn deduplicate_literal_clauses<T>(
             list.sort_by_key(|ci| (clauses[*ci].2.len(), clauses[*ci].2.literals.clone()));
             // find clause chain
             let mut tree = TreeNode {
-                value: list[0],
+                value: (list[0], *ls1),
                 children: vec![TreeNode {
-                    value: list[1],
+                    value: (list[0], *ls2),
                     children: vec![],
                 }],
             };
-            let mut prev = Option::<usize>::None;
+            let (mut best_ci, mut best_match_depth, mut best_node) = (0, 0, &tree);
+            let mut depth_count = 0;
             for ci in list {
-                if let Some(prev_ci) = prev {
-                    if sorted_is_set_contains_set(
-                        &clauses[prev_ci].2.literals,
-                        &clauses[*ci].2.literals,
-                    ) {}
+                let mut tree_iter = tree.stack_node_iter();
+                let clause = &clauses[*ci].2;
+                while let Some((op, t)) = tree_iter.next() {
+                    if op == TreeStackOp::Push {
+                        if clause.literals.binary_search(&t.value.1).is_ok() {
+                            if depth_count > best_match_depth {
+                                // collect all matches or find first that ...
+                                // or just find first
+                                (best_ci, best_match_depth, best_node) = (*ci, depth_count, t);
+                            }
+                        } else {
+                            tree_iter.pop();
+                            depth_count -= 1;
+                        }
+                    } else {
+                        depth_count -= 1;
+                    }
                 }
-                prev = Some(*ci);
             }
+            // find free literal in clause and push to children
+            // best_node.push();
         }
 
         if !chain_found {
