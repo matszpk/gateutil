@@ -674,27 +674,15 @@ fn deduplicate_literal_clauses_0<T>(
         same_occur_lits
     };
 
-    let mut orig_clauses = Vec::from_iter(clauses.iter().cloned().enumerate());
-    orig_clauses.sort_by_key(|(_, DedupClause { clause, .. })| (clause.literals.clone()));
-
     let mut j = 0;
     // apply same occurrence literals list (clauses) into clauses
     for (same_lits, occurs) in same_occur_lits.into_iter() {
         if same_lits.len() > 1 {
-            if let Ok(pos) = orig_clauses
-                .binary_search_by_key(&same_lits, |(_, DedupClause { clause, .. })| {
-                    clause.literals.clone()
-                })
-            {
-                clauses[orig_clauses[pos].0].clause.literals.clear();
-            }
             let extra_lit = T::try_from(extra_clause_start + j).unwrap();
             for occur in &occurs {
                 let clause = &mut clauses[*occur].clause;
-                if !clause.literals.is_empty() {
-                    remove_sorted_ref(&mut clause.literals, &same_lits);
-                    clause.literals.push((extra_lit, false));
-                }
+                remove_sorted_ref(&mut clause.literals, &same_lits);
+                clause.literals.push((extra_lit, false));
             }
             clauses.push(DedupClause {
                 orig_index: input_len + *occurs.first().unwrap() - 1,
@@ -707,7 +695,7 @@ fn deduplicate_literal_clauses_0<T>(
             j += 1;
         }
     }
-    clauses.retain(|x| !x.clause.literals.is_empty());
+    clauses.retain(|x| x.clause.literals.len() != 1);
     // sort clause literals
     for DedupClause { clause, .. } in clauses.iter_mut() {
         clause.literals.sort();
