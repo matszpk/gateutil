@@ -2430,18 +2430,6 @@ mod tests {
                 ]),
             ),
             dedup_clause(
-                13,
-                None,
-                Clause::new_and([
-                    (0, false), // 3 (c0, c1, c3)
-                    (2, false), // 3 (c0, c1, c3)
-                    (3, false), // 2 (c1, c2, c3)
-                    (4, false), // 3 (c0, c1, c3)
-                    (6, false), // 2 (c1, c2, c3)
-                    (7, false), // 2 (c1, c2, c3)
-                ]),
-            ),
-            dedup_clause(
                 14,
                 None,
                 Clause::new_and([
@@ -2455,14 +2443,6 @@ mod tests {
             vec![
                 DedupClause {
                     orig_index: 11,
-                    extra_index: None,
-                    clause: Clause {
-                        kind: ClauseKind::And,
-                        literals: vec![(30, false), (31, false)]
-                    }
-                },
-                DedupClause {
-                    orig_index: 13,
                     extra_index: None,
                     clause: Clause {
                         kind: ClauseKind::And,
