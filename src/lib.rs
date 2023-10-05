@@ -391,7 +391,14 @@ where
     )
 }
 
-fn deduplicate_clauses<T>(clauses: &mut Vec<(usize, Option<usize>, Clause<T>)>) -> bool
+#[derive(Clone, PartialEq, Eq, Debug)]
+struct DedupClause<T> {
+    orig_index: usize,
+    extra_index: Option<usize>,
+    clause: Clause<T>,
+}
+
+fn deduplicate_clauses<T>(clauses: &mut Vec<DedupClause<T>>) -> bool
 where
     T: Clone + Copy + Ord + PartialEq + Eq,
     T: Default + TryFrom<usize>,
@@ -400,13 +407,27 @@ where
     <usize as TryFrom<T>>::Error: Debug,
 {
     let old_clause_len = clauses.len();
-    clauses.sort_by_key(|(i, _, c)| (c.kind, c.literals.clone(), *i));
+    clauses.sort_by_key(
+        |DedupClause {
+             orig_index: i,
+             clause: c,
+             ..
+         }| (c.kind, c.literals.clone(), *i),
+    );
     let mut trans_table = HashMap::<usize, usize>::new();
     {
         let mut prev: Option<(usize, usize)> = None;
-        for (i, (orig_i, _, clause)) in clauses.iter().enumerate() {
+        for (
+            i,
+            DedupClause {
+                orig_index: orig_i,
+                clause,
+                ..
+            },
+        ) in clauses.iter().enumerate()
+        {
             if let Some((prev_i, prev_orig_i)) = prev {
-                if clauses[prev_i].2 == *clause {
+                if clauses[prev_i].clause == *clause {
                     trans_table.insert(*orig_i, prev_orig_i);
                     continue;
                 }
@@ -414,10 +435,10 @@ where
             prev = Some((i, *orig_i));
         }
     }
-    clauses.dedup_by_key(|(_, _, c)| (c.kind, c.literals.clone()));
+    clauses.dedup_by_key(|DedupClause { clause: c, .. }| (c.kind, c.literals.clone()));
     let new_clause_len = clauses.len();
     // translate literals and sort and deduplicate literals
-    for (_, _, clause) in clauses {
+    for DedupClause { clause, .. } in clauses {
         for (l, _) in &mut clause.literals {
             let l_u = usize::try_from(*l).unwrap();
             if let Some(trans_l) = trans_table.get(&l_u) {
@@ -589,7 +610,7 @@ fn deduplicate_literal_clauses_0<T>(
     input_len: usize,
     total_clause_num: usize,
     extra_clause_start: usize,
-    clauses: &mut Vec<(usize, Option<usize>, Clause<T>)>,
+    clauses: &mut Vec<DedupClause<T>>,
 ) where
     T: Clone + Copy + Ord + PartialEq + Eq + Hash,
     T: Default + TryFrom<usize>,
@@ -600,7 +621,7 @@ fn deduplicate_literal_clauses_0<T>(
     if clauses.is_empty() {
         return;
     }
-    let kind = clauses.first().unwrap().2.kind;
+    let kind = clauses.first().unwrap().clause.kind;
 
     let clause_num = clauses.len();
     let total_output_num = input_len + total_clause_num;
@@ -609,7 +630,7 @@ fn deduplicate_literal_clauses_0<T>(
         for (i, (l, _)) in lit_clause_tbl.iter_mut().enumerate() {
             *l = i;
         }
-        for (i, (_, _, clause)) in clauses.iter().enumerate() {
+        for (i, DedupClause { clause, .. }) in clauses.iter().enumerate() {
             for (l, n) in &clause.literals {
                 let l = (usize::try_from(*l).unwrap() << 1) + usize::from(*n);
                 lit_clause_tbl[l].1.push(i);
@@ -652,24 +673,24 @@ fn deduplicate_literal_clauses_0<T>(
     for (same_lits, occurs) in same_occur_lits.into_iter() {
         if same_lits.len() > 1 {
             for occur in &occurs {
-                let clause = &mut clauses[*occur].2;
+                let clause = &mut clauses[*occur].clause;
                 remove_sorted_ref(&mut clause.literals, &same_lits);
                 let extra_lit = T::try_from(extra_clause_start + j).unwrap();
                 clause.literals.push((extra_lit, false));
             }
-            clauses.push((
-                *occurs.first().unwrap(),
-                Some(extra_clause_start + j),
-                Clause {
+            clauses.push(DedupClause {
+                orig_index: *occurs.first().unwrap(),
+                extra_index: Some(extra_clause_start + j),
+                clause: Clause {
                     kind,
                     literals: same_lits.clone(),
                 },
-            ));
+            });
             j += 1;
         }
     }
     // sort clause literals
-    for (_, _, clause) in clauses.iter_mut() {
+    for DedupClause { clause, .. } in clauses.iter_mut() {
         clause.literals.sort();
     }
 }
@@ -678,7 +699,7 @@ fn deduplicate_literal_clauses<T>(
     input_len: usize,
     total_clause_num: usize,
     extra_clause_start: usize,
-    clauses: &mut Vec<(usize, Option<usize>, Clause<T>)>,
+    clauses: &mut Vec<DedupClause<T>>,
 ) where
     T: Clone + Copy + Ord + PartialEq + Eq + Hash,
     T: Default + TryFrom<usize>,
@@ -689,7 +710,7 @@ fn deduplicate_literal_clauses<T>(
     if clauses.is_empty() {
         return;
     }
-    let kind = clauses.first().unwrap().2.kind;
+    let kind = clauses.first().unwrap().clause.kind;
 
     // algorithm: first find smallest subclauses with greatest occurrences.
 
@@ -697,7 +718,7 @@ fn deduplicate_literal_clauses<T>(
         // get pair_count_map sorted by count descending
         let mut pairlit_clause_map = {
             let mut pairlit_clause_map = HashMap::<((T, bool), (T, bool)), Vec<usize>>::new();
-            for (ci, (_, _, clause)) in clauses.iter().enumerate() {
+            for (ci, DedupClause { clause, .. }) in clauses.iter().enumerate() {
                 for (i, ls1) in clause.literals.iter().enumerate() {
                     for ls2 in &clause.literals[i + 1..] {
                         if let Some(list) = pairlit_clause_map.get_mut(&(*ls1, *ls2)) {
@@ -716,7 +737,12 @@ fn deduplicate_literal_clauses<T>(
         let mut chain_found = false;
         let threshold = std::cmp::max((pairlit_clause_map.len() + 9) / 10, 9);
         for ((ls1, ls2), list) in &mut pairlit_clause_map[0..threshold] {
-            list.sort_by_key(|ci| (clauses[*ci].2.len(), clauses[*ci].2.literals.clone()));
+            list.sort_by_key(|ci| {
+                (
+                    clauses[*ci].clause.len(),
+                    clauses[*ci].clause.literals.clone(),
+                )
+            });
             // find clause chain
             let mut tree = TreeNode {
                 value: (list[0], *ls1),
@@ -729,7 +755,7 @@ fn deduplicate_literal_clauses<T>(
             let mut depth_count = 0;
             for ci in list {
                 let mut tree_iter = tree.stack_node_iter();
-                let clause = &clauses[*ci].2;
+                let clause = &clauses[*ci].clause;
                 while let Some((op, t)) = tree_iter.next() {
                     if op == TreeStackOp::Push {
                         if clause.literals.binary_search(&t.value.1).is_ok() {
@@ -757,7 +783,13 @@ fn deduplicate_literal_clauses<T>(
     }
 
     // final clauses
-    clauses.sort_by_key(|(orig_idx, extra_idx, _)| (*orig_idx, *extra_idx));
+    clauses.sort_by_key(
+        |DedupClause {
+             orig_index: orig_idx,
+             extra_index: extra_idx,
+             ..
+         }| (*orig_idx, *extra_idx),
+    );
 }
 
 pub fn merge_sorted_by_key<T, I1, I2, F, B>(a: I1, b: I2, mut f: F) -> Vec<T>
@@ -808,8 +840,8 @@ where
 fn join_deduplicates_to_clause_circuit<T>(
     input_len: usize,
     total_clause_num: usize,
-    and_clauses: Vec<(usize, Option<usize>, Clause<T>)>,
-    xor_clauses: Vec<(usize, Option<usize>, Clause<T>)>,
+    and_clauses: Vec<DedupClause<T>>,
+    xor_clauses: Vec<DedupClause<T>>,
     outputs: &[(T, bool)],
 ) -> ClauseCircuit<T>
 where
@@ -819,19 +851,32 @@ where
     usize: TryFrom<T>,
     <usize as TryFrom<T>>::Error: Debug,
 {
-    let mut out_clauses =
-        merge_sorted_by_key(and_clauses, xor_clauses, |(orig_idx, extra_idx, _)| {
-            (*orig_idx, *extra_idx)
-        });
+    let mut out_clauses = merge_sorted_by_key(
+        and_clauses,
+        xor_clauses,
+        |DedupClause {
+             orig_index: orig_idx,
+             extra_index: extra_idx,
+             ..
+         }| { (*orig_idx, *extra_idx) },
+    );
     let mut trans_table = vec![0; input_len + total_clause_num];
-    for (i, (j, extra_j, _)) in out_clauses.iter().enumerate() {
+    for (
+        i,
+        DedupClause {
+            orig_index: j,
+            extra_index: extra_j,
+            ..
+        },
+    ) in out_clauses.iter().enumerate()
+    {
         if let Some(ej) = extra_j {
             trans_table[*ej] = i + input_len;
         } else {
             trans_table[*j] = i + input_len;
         }
     }
-    for (_, _, clause) in &mut out_clauses {
+    for DedupClause { clause, .. } in &mut out_clauses {
         for (l, _) in &mut clause.literals {
             let l_u = usize::try_from(*l).unwrap();
             if l_u >= input_len {
@@ -843,7 +888,7 @@ where
         T::try_from(input_len).unwrap(),
         out_clauses
             .into_iter()
-            .map(|(_, _, c)| c)
+            .map(|DedupClause { clause, .. }| clause)
             .filter(|c| c.len() != 0),
         outputs.iter().map(|(l, n)| {
             let l_u = usize::try_from(*l).unwrap();
@@ -857,9 +902,7 @@ where
     .unwrap()
 }
 
-pub fn check_if_clauses_need_optimization_and_fix<T>(
-    clauses: &mut [(usize, Option<usize>, Clause<T>)],
-) -> bool
+fn check_if_clauses_need_optimization_and_fix<T>(clauses: &mut [DedupClause<T>]) -> bool
 where
     T: Clone + Copy + Ord + PartialEq + Eq,
     T: Default + TryFrom<usize>,
@@ -867,7 +910,7 @@ where
     usize: TryFrom<T>,
     <usize as TryFrom<T>>::Error: Debug,
 {
-    for (_, _, clause) in clauses {
+    for DedupClause { clause, .. } in clauses {
         if clause.literals.len() == 1 {
             clause.literals.push(*clause.literals.first().unwrap());
             clause.kind = ClauseKind::And;
@@ -921,7 +964,11 @@ where
         .enumerate()
         .filter_map(|(i, c)| {
             if c.kind == ClauseKind::And {
-                Some((input_len + i, Option::<usize>::None, c.clone()))
+                Some(DedupClause {
+                    orig_index: input_len + i,
+                    extra_index: None,
+                    clause: c.clone(),
+                })
             } else {
                 None
             }
@@ -941,7 +988,11 @@ where
         .enumerate()
         .filter_map(|(i, c)| {
             if c.kind == ClauseKind::Xor {
-                Some((input_len + i, Option::<usize>::None, c.clone()))
+                Some(DedupClause {
+                    orig_index: input_len + i,
+                    extra_index: None,
+                    clause: c.clone(),
+                })
             } else {
                 None
             }
@@ -1163,34 +1214,46 @@ mod tests {
         }
     }
 
+    fn dedup_clause<T>(
+        orig_index: usize,
+        extra_index: Option<usize>,
+        clause: Clause<T>,
+    ) -> DedupClause<T> {
+        DedupClause {
+            orig_index,
+            extra_index,
+            clause,
+        }
+    }
+
     #[test]
     fn test_deduplicate_clauses() {
         let mut clauses = vec![
-            (
+            dedup_clause(
                 7,
                 None,
                 Clause::new_and([(1, true), (3, false), (5, false)]),
             ),
-            (4, None, Clause::new_and([(0, false), (1, true)])),
-            (5, None, Clause::new_and([(0, false), (2, true)])),
-            (
+            dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
+            dedup_clause(5, None, Clause::new_and([(0, false), (2, true)])),
+            dedup_clause(
                 8,
                 None,
                 Clause::new_and([(3, true), (4, false), (6, false)]),
             ),
-            (6, None, Clause::new_and([(0, false), (2, true)])),
+            dedup_clause(6, None, Clause::new_and([(0, false), (2, true)])),
         ];
         assert!(deduplicate_clauses(&mut clauses));
         assert_eq!(
             vec![
-                (4, None, Clause::new_and([(0, false), (1, true)])),
-                (5, None, Clause::new_and([(0, false), (2, true)])),
-                (
+                dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
+                dedup_clause(5, None, Clause::new_and([(0, false), (2, true)])),
+                dedup_clause(
                     7,
                     None,
                     Clause::new_and([(1, true), (3, false), (5, false)])
                 ),
-                (
+                dedup_clause(
                     8,
                     None,
                     Clause::new_and([(3, true), (4, false), (5, false)])
@@ -1200,21 +1263,21 @@ mod tests {
         );
 
         let mut clauses = vec![
-            (
+            dedup_clause(
                 7,
                 None,
                 Clause::new_and([(1, true), (3, false), (5, false)]),
             ),
-            (5, None, Clause::new_and([(0, false), (1, true)])),
-            (4, None, Clause::new_and([(0, false), (2, true)])),
-            (
+            dedup_clause(5, None, Clause::new_and([(0, false), (1, true)])),
+            dedup_clause(4, None, Clause::new_and([(0, false), (2, true)])),
+            dedup_clause(
                 8,
                 None,
                 Clause::new_and([(3, true), (5, false), (6, false)]),
             ),
-            (6, None, Clause::new_and([(0, false), (2, true)])),
-            (9, None, Clause::new_and([(0, false), (2, true)])),
-            (
+            dedup_clause(6, None, Clause::new_and([(0, false), (2, true)])),
+            dedup_clause(9, None, Clause::new_and([(0, false), (2, true)])),
+            dedup_clause(
                 10,
                 None,
                 Clause::new_and([(1, true), (2, false), (9, false)]),
@@ -1223,19 +1286,19 @@ mod tests {
         assert!(deduplicate_clauses(&mut clauses));
         assert_eq!(
             vec![
-                (5, None, Clause::new_and([(0, false), (1, true)])),
-                (4, None, Clause::new_and([(0, false), (2, true)])),
-                (
+                dedup_clause(5, None, Clause::new_and([(0, false), (1, true)])),
+                dedup_clause(4, None, Clause::new_and([(0, false), (2, true)])),
+                dedup_clause(
                     10,
                     None,
                     Clause::new_and([(1, true), (2, false), (4, false)]),
                 ),
-                (
+                dedup_clause(
                     7,
                     None,
                     Clause::new_and([(1, true), (3, false), (5, false)])
                 ),
-                (
+                dedup_clause(
                     8,
                     None,
                     Clause::new_and([(3, true), (4, false), (5, false)])
@@ -1245,98 +1308,98 @@ mod tests {
         );
 
         let mut clauses = vec![
-            (
+            dedup_clause(
                 7,
                 None,
                 Clause::new_and([(1, true), (3, false), (5, false)]),
             ),
-            (4, None, Clause::new_and([(0, false), (1, true)])),
-            (5, None, Clause::new_and([(0, false), (2, true)])),
-            (
+            dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
+            dedup_clause(5, None, Clause::new_and([(0, false), (2, true)])),
+            dedup_clause(
                 8,
                 None,
                 Clause::new_and([(3, true), (4, false), (6, false)]),
             ),
-            (6, None, Clause::new_xor([(0, false), (2, true)])),
+            dedup_clause(6, None, Clause::new_xor([(0, false), (2, true)])),
         ];
         assert!(!deduplicate_clauses(&mut clauses));
         assert_eq!(
             vec![
-                (4, None, Clause::new_and([(0, false), (1, true)])),
-                (5, None, Clause::new_and([(0, false), (2, true)])),
-                (
+                dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
+                dedup_clause(5, None, Clause::new_and([(0, false), (2, true)])),
+                dedup_clause(
                     7,
                     None,
                     Clause::new_and([(1, true), (3, false), (5, false)])
                 ),
-                (
+                dedup_clause(
                     8,
                     None,
                     Clause::new_and([(3, true), (4, false), (6, false)])
                 ),
-                (6, None, Clause::new_xor([(0, false), (2, true)]))
+                dedup_clause(6, None, Clause::new_xor([(0, false), (2, true)]))
             ],
             clauses
         );
 
         // link two duplicates to some clause. and remove one.
         let mut clauses = vec![
-            (
+            dedup_clause(
                 7,
                 None,
                 Clause::new_and([(1, true), (3, false), (4, false)]),
             ),
-            (4, None, Clause::new_and([(0, false), (1, true)])),
-            (5, None, Clause::new_and([(0, false), (2, true)])),
-            (
+            dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
+            dedup_clause(5, None, Clause::new_and([(0, false), (2, true)])),
+            dedup_clause(
                 8,
                 None,
                 Clause::new_and([(3, true), (5, false), (6, false)]),
             ),
-            (6, None, Clause::new_and([(0, false), (2, true)])),
+            dedup_clause(6, None, Clause::new_and([(0, false), (2, true)])),
         ];
         assert!(deduplicate_clauses(&mut clauses));
         assert_eq!(
             vec![
-                (4, None, Clause::new_and([(0, false), (1, true)])),
-                (5, None, Clause::new_and([(0, false), (2, true)])),
-                (
+                dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
+                dedup_clause(5, None, Clause::new_and([(0, false), (2, true)])),
+                dedup_clause(
                     7,
                     None,
                     Clause::new_and([(1, true), (3, false), (4, false)])
                 ),
-                (8, None, Clause::new_and([(3, true), (5, false)]))
+                dedup_clause(8, None, Clause::new_and([(3, true), (5, false)]))
             ],
             clauses
         );
 
         // link two duplicates to some clause. and do not remove one because is xor.
         let mut clauses = vec![
-            (
+            dedup_clause(
                 7,
                 None,
                 Clause::new_xor([(1, true), (3, false), (4, false)]),
             ),
-            (4, None, Clause::new_xor([(0, false), (1, true)])),
-            (5, None, Clause::new_xor([(0, false), (2, true)])),
-            (
+            dedup_clause(4, None, Clause::new_xor([(0, false), (1, true)])),
+            dedup_clause(5, None, Clause::new_xor([(0, false), (2, true)])),
+            dedup_clause(
                 8,
                 None,
                 Clause::new_xor([(3, true), (5, false), (6, false)]),
             ),
-            (6, None, Clause::new_xor([(0, false), (2, true)])),
+            dedup_clause(6, None, Clause::new_xor([(0, false), (2, true)])),
         ];
         assert!(deduplicate_clauses(&mut clauses));
         assert_eq!(
             vec![
-                (4, None, Clause::new_xor([(0, false), (1, true)])),
-                (5, None, Clause::new_xor([(0, false), (2, true)])),
-                (
+                dedup_clause(4, None, Clause::new_xor([(0, false), (1, true)])),
+                dedup_clause(5, None, Clause::new_xor([(0, false), (2, true)])),
+                dedup_clause(
                     7,
                     None,
                     Clause::new_xor([(1, true), (3, false), (4, false)])
                 ),
-                (
+                dedup_clause(
                     8,
                     None,
                     Clause::new_xor([(3, true), (5, false), (5, false)])
@@ -1348,27 +1411,27 @@ mod tests {
         // link two duplicates to some clause.
         // and do not remove any because negation is different.
         let mut clauses = vec![
-            (
+            dedup_clause(
                 7,
                 None,
                 Clause::new_and([(1, true), (3, false), (4, false)]),
             ),
-            (4, None, Clause::new_and([(0, false), (1, true)])),
-            (5, None, Clause::new_and([(0, false), (2, true)])),
-            (8, None, Clause::new_and([(3, true), (5, false), (6, true)])),
-            (6, None, Clause::new_and([(0, false), (2, true)])),
+            dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
+            dedup_clause(5, None, Clause::new_and([(0, false), (2, true)])),
+            dedup_clause(8, None, Clause::new_and([(3, true), (5, false), (6, true)])),
+            dedup_clause(6, None, Clause::new_and([(0, false), (2, true)])),
         ];
         assert!(deduplicate_clauses(&mut clauses));
         assert_eq!(
             vec![
-                (4, None, Clause::new_and([(0, false), (1, true)])),
-                (5, None, Clause::new_and([(0, false), (2, true)])),
-                (
+                dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
+                dedup_clause(5, None, Clause::new_and([(0, false), (2, true)])),
+                dedup_clause(
                     7,
                     None,
                     Clause::new_and([(1, true), (3, false), (4, false)])
                 ),
-                (8, None, Clause::new_and([(3, true), (5, false), (5, true)]))
+                dedup_clause(8, None, Clause::new_and([(3, true), (5, false), (5, true)]))
             ],
             clauses
         );
@@ -1416,18 +1479,18 @@ mod tests {
                 4,
                 6,
                 vec![
-                    (4, None, Clause::new_and([(0, false), (1, true)])),
-                    (4, Some(8), Clause::new_and([(0, false), (3, true)])),
-                    (
+                    dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
+                    dedup_clause(4, Some(8), Clause::new_and([(0, false), (3, true)])),
+                    dedup_clause(
                         5,
                         None,
                         Clause::new_and([(1, true), (2, true), (4, false), (8, false)])
                     ),
                 ],
                 vec![
-                    (6, None, Clause::new_xor([(0, false), (3, true)])),
-                    (6, Some(9), Clause::new_xor([(0, false), (2, true)])),
-                    (
+                    dedup_clause(6, None, Clause::new_xor([(0, false), (3, true)])),
+                    dedup_clause(6, Some(9), Clause::new_xor([(0, false), (2, true)])),
+                    dedup_clause(
                         7,
                         None,
                         Clause::new_xor([(1, true), (3, true), (6, false), (9, false)])
@@ -1455,18 +1518,18 @@ mod tests {
                 4,
                 6,
                 vec![
-                    (4, None, Clause::new_and([(0, false), (1, true)])),
-                    (4, Some(8), Clause::new_and([(0, false), (3, true)])),
-                    (
+                    dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
+                    dedup_clause(4, Some(8), Clause::new_and([(0, false), (3, true)])),
+                    dedup_clause(
                         6,
                         None,
                         Clause::new_and([(1, true), (2, true), (4, false), (8, false)])
                     ),
                 ],
                 vec![
-                    (5, None, Clause::new_xor([(0, false), (3, true)])),
-                    (5, Some(9), Clause::new_xor([(0, false), (2, true)])),
-                    (
+                    dedup_clause(5, None, Clause::new_xor([(0, false), (3, true)])),
+                    dedup_clause(5, Some(9), Clause::new_xor([(0, false), (2, true)])),
+                    dedup_clause(
                         7,
                         None,
                         Clause::new_xor([(1, true), (3, true), (5, false), (9, false)])
@@ -1494,26 +1557,26 @@ mod tests {
                 4,
                 6,
                 vec![
-                    (4, None, Clause::new_and([(0, false), (1, true)])),
-                    (
+                    dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
+                    dedup_clause(
                         4,
                         Some(8),
                         Clause::new_and([(0, false), (3, true), (4, false)])
                     ),
-                    (
+                    dedup_clause(
                         6,
                         None,
                         Clause::new_and([(1, true), (2, true), (4, false), (8, false)])
                     ),
                 ],
                 vec![
-                    (5, None, Clause::new_xor([(0, false), (3, true)])),
-                    (
+                    dedup_clause(5, None, Clause::new_xor([(0, false), (3, true)])),
+                    dedup_clause(
                         5,
                         Some(9),
                         Clause::new_xor([(0, false), (2, true), (5, true)])
                     ),
-                    (
+                    dedup_clause(
                         7,
                         None,
                         Clause::new_xor([(1, true), (3, true), (5, false), (9, false)])
@@ -1542,28 +1605,28 @@ mod tests {
                 4,
                 8,
                 vec![
-                    (4, None, Clause::new_and([(0, false), (1, true)])),
-                    (
+                    dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
+                    dedup_clause(
                         4,
                         Some(8),
                         Clause::new_and([(0, false), (3, true), (4, false)])
                     ),
-                    (4, Some(10), Clause::new_and([(0, false), (8, false)])),
-                    (
+                    dedup_clause(4, Some(10), Clause::new_and([(0, false), (8, false)])),
+                    dedup_clause(
                         6,
                         None,
                         Clause::new_and([(1, true), (2, true), (4, false), (10, false)])
                     ),
                 ],
                 vec![
-                    (5, None, Clause::new_xor([(0, false), (3, true)])),
-                    (
+                    dedup_clause(5, None, Clause::new_xor([(0, false), (3, true)])),
+                    dedup_clause(
                         5,
                         Some(9),
                         Clause::new_xor([(0, false), (2, true), (5, true)])
                     ),
-                    (5, Some(11), Clause::new_xor([(2, true), (9, true)])),
-                    (
+                    dedup_clause(5, Some(11), Clause::new_xor([(2, true), (9, true)])),
+                    dedup_clause(
                         7,
                         None,
                         Clause::new_xor([(1, true), (3, true), (5, false), (11, false)])
@@ -1592,28 +1655,28 @@ mod tests {
                 4,
                 8,
                 vec![
-                    (4, None, Clause::new_and([(0, false), (1, true)])),
-                    (6, None, Clause::new_and([(0, false), (2, true)])),
-                    (
+                    dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
+                    dedup_clause(6, None, Clause::new_and([(0, false), (2, true)])),
+                    dedup_clause(
                         6,
                         Some(10),
                         Clause::new_and([(0, false), (3, true), (4, false)])
                     ),
-                    (
+                    dedup_clause(
                         8,
                         None,
                         Clause::new_and([(1, true), (2, true), (6, false), (10, false)])
                     ),
                 ],
                 vec![
-                    (5, None, Clause::new_xor([(0, false), (3, true)])),
-                    (7, None, Clause::new_xor([(1, false), (3, true)])),
-                    (
+                    dedup_clause(5, None, Clause::new_xor([(0, false), (3, true)])),
+                    dedup_clause(7, None, Clause::new_xor([(1, false), (3, true)])),
+                    dedup_clause(
                         7,
                         Some(11),
                         Clause::new_xor([(0, false), (2, true), (5, true)])
                     ),
-                    (
+                    dedup_clause(
                         9,
                         None,
                         Clause::new_xor([(1, true), (3, true), (7, false), (11, false)])
@@ -1627,83 +1690,83 @@ mod tests {
     #[test]
     fn test_check_if_clauses_need_optimization_and_fix() {
         let mut clauses = vec![
-            (
+            dedup_clause(
                 4,
                 None,
                 Clause::new_and([(0, false), (1, true), (2, false)]),
             ),
-            (5, None, Clause::new_and([(0, false), (2, true)])),
+            dedup_clause(5, None, Clause::new_and([(0, false), (2, true)])),
         ];
         assert!(!check_if_clauses_need_optimization_and_fix(&mut clauses));
         assert_eq!(
             clauses,
             vec![
-                (
+                dedup_clause(
                     4,
                     None,
                     Clause::new_and([(0, false), (1, true), (2, false)])
                 ),
-                (5, None, Clause::new_and([(0, false), (2, true)])),
+                dedup_clause(5, None, Clause::new_and([(0, false), (2, true)])),
             ]
         );
 
         let mut clauses = vec![
-            (
+            dedup_clause(
                 4,
                 None,
                 Clause::new_and([(0, false), (1, true), (1, false)]),
             ),
-            (5, None, Clause::new_and([(0, false), (2, true)])),
+            dedup_clause(5, None, Clause::new_and([(0, false), (2, true)])),
         ];
         assert!(check_if_clauses_need_optimization_and_fix(&mut clauses));
         assert_eq!(
             clauses,
             vec![
-                (
+                dedup_clause(
                     4,
                     None,
                     Clause::new_and([(0, false), (1, true), (1, false)])
                 ),
-                (5, None, Clause::new_and([(0, false), (2, true)])),
+                dedup_clause(5, None, Clause::new_and([(0, false), (2, true)])),
             ]
         );
 
         let mut clauses = vec![
-            (4, None, Clause::new_xor([(0, false), (1, true), (1, true)])),
-            (5, None, Clause::new_xor([(0, false), (2, true)])),
+            dedup_clause(4, None, Clause::new_xor([(0, false), (1, true), (1, true)])),
+            dedup_clause(5, None, Clause::new_xor([(0, false), (2, true)])),
         ];
         assert!(check_if_clauses_need_optimization_and_fix(&mut clauses));
         assert_eq!(
             clauses,
             vec![
-                (4, None, Clause::new_xor([(0, false), (1, true), (1, true)])),
-                (5, None, Clause::new_xor([(0, false), (2, true)])),
+                dedup_clause(4, None, Clause::new_xor([(0, false), (1, true), (1, true)])),
+                dedup_clause(5, None, Clause::new_xor([(0, false), (2, true)])),
             ]
         );
 
         let mut clauses = vec![
-            (4, None, Clause::new_and([(0, true)])),
-            (5, None, Clause::new_and([(0, false), (2, true)])),
+            dedup_clause(4, None, Clause::new_and([(0, true)])),
+            dedup_clause(5, None, Clause::new_and([(0, false), (2, true)])),
         ];
         assert!(check_if_clauses_need_optimization_and_fix(&mut clauses));
         assert_eq!(
             clauses,
             vec![
-                (4, None, Clause::new_and([(0, true), (0, true)])),
-                (5, None, Clause::new_and([(0, false), (2, true)])),
+                dedup_clause(4, None, Clause::new_and([(0, true), (0, true)])),
+                dedup_clause(5, None, Clause::new_and([(0, false), (2, true)])),
             ]
         );
 
         let mut clauses = vec![
-            (4, None, Clause::new_xor([(0, true)])),
-            (5, None, Clause::new_xor([(0, false), (2, true)])),
+            dedup_clause(4, None, Clause::new_xor([(0, true)])),
+            dedup_clause(5, None, Clause::new_xor([(0, false), (2, true)])),
         ];
         assert!(check_if_clauses_need_optimization_and_fix(&mut clauses));
         assert_eq!(
             clauses,
             vec![
-                (4, None, Clause::new_and([(0, true), (0, true)])),
-                (5, None, Clause::new_xor([(0, false), (2, true)])),
+                dedup_clause(4, None, Clause::new_and([(0, true), (0, true)])),
+                dedup_clause(5, None, Clause::new_xor([(0, false), (2, true)])),
             ]
         );
     }
