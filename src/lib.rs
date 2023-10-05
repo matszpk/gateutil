@@ -606,6 +606,9 @@ impl<'a, T> Iterator for TreeStackIterator<'a, T> {
 //    clause_index - original index of removed clause
 //    extra_clause_index - index of clause that replace removed clause.
 // extra_clause_start - start index for new extra clauses
+
+// TODO: add translation table for reordered clauses
+// (removed and added while adding extra clauses)
 fn deduplicate_literal_clauses_0<T>(
     input_len: usize,
     total_clause_num: usize,
