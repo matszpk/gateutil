@@ -719,6 +719,15 @@ fn deduplicate_literal_clauses<T>(
         for ((ls1, ls2), list) in &mut pairlit_clause_map[0..threshold] {
             list.sort_by_key(|ci| (clauses[*ci].2.len(), clauses[*ci].2.literals.clone()));
             // find clause chain
+            let mut tree = TreeNode {
+                value: list[0],
+                children: Some(vec![
+                    TreeNode {
+                        value: list[1],
+                        children: None
+                    }
+                ])
+            };
             let mut prev = Option::<usize>::None;
             for ci in list {
                 if let Some(prev_ci) = prev {
