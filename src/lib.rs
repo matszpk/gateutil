@@ -504,14 +504,18 @@ impl<T> TreeNode<T> {
         }
     }
 
-    fn stack_iter<'a>(&'a self) -> TreeStackIterator<'a, T> {
+    fn stack_node_iter<'a>(&'a self) -> TreeStackIterator<'a, T> {
         TreeStackIterator::new(self)
+    }
+
+    fn stack_iter<'a>(&'a self) -> impl Iterator<Item = (TreeStackOp, &'a T)> {
+        TreeStackIterator::new(self).map(|(op, x)| (op, &x.value))
     }
 
     fn iter<'a>(&'a self) -> impl Iterator<Item = &'a T> {
         TreeStackIterator::new(self).filter_map(|(op, x)| {
             if op == TreeStackOp::Push {
-                Some(x)
+                Some(&x.value)
             } else {
                 None
             }
@@ -541,8 +545,15 @@ enum TreeStackOp {
     Pop,
 }
 
+impl<'a, T> TreeStackIterator<'a, T> {
+    #[inline]
+    fn pop(&mut self) -> bool {
+        self.0.pop().is_some()
+    }
+}
+
 impl<'a, T> Iterator for TreeStackIterator<'a, T> {
-    type Item = (TreeStackOp, &'a T);
+    type Item = (TreeStackOp, &'a TreeNode<T>);
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(top) = self.0.last_mut() {
             if let Some(child_index) = top.child_index {
@@ -555,30 +566,27 @@ impl<'a, T> Iterator for TreeStackIterator<'a, T> {
                 {
                     top.child_index = Some(child_index + 1);
                     let child = &top.node.children.as_ref().unwrap()[child_index];
-                    let value = &child.value;
                     self.0.push(TreeStackElem {
                         node: child,
                         child_index: Some(0),
                     });
-                    Some((TreeStackOp::Push, value))
+                    Some((TreeStackOp::Push, child))
                 } else {
-                    let value = &top.node.value;
-                    self.0.pop();
-                    Some((TreeStackOp::Pop, value))
+                    let node = self.0.pop().unwrap().node;
+                    Some((TreeStackOp::Pop, node))
                 }
             } else {
-                let value = &top.node.value;
                 if let Some(children) = &top.node.children {
                     if children.is_empty() {
-                        self.0.pop();
-                        Some((TreeStackOp::Pop, value))
+                        let node = self.0.pop().unwrap().node;
+                        Some((TreeStackOp::Pop, node))
                     } else {
                         top.child_index = Some(0);
-                        Some((TreeStackOp::Push, value))
+                        Some((TreeStackOp::Push, &top.node))
                     }
                 } else {
-                    self.0.pop();
-                    Some((TreeStackOp::Pop, value))
+                    let node = self.0.pop().unwrap().node;
+                    Some((TreeStackOp::Pop, node))
                 }
             }
         } else {
@@ -1817,5 +1825,13 @@ mod tests {
             vec![1, 2, 4, 5, 6, 7, 11, 13, 3, 8, 9, 12, 14, 10],
             Vec::from_iter(root.iter().copied())
         );
+
+        let mut node_iter = root.stack_node_iter();
+        assert_eq!(1, node_iter.next().unwrap().1.value);
+        assert_eq!(2, node_iter.next().unwrap().1.value);
+        assert_eq!(2, node_iter.next().unwrap().1.value);
+        assert_eq!(4, node_iter.next().unwrap().1.value);
+        node_iter.pop();
+        assert_eq!(3, node_iter.next().unwrap().1.value);
     }
 }
