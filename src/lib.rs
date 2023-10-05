@@ -398,6 +398,8 @@ struct DedupClause<T> {
     clause: Clause<T>,
 }
 
+// TODO: add translation table for reordered clauses
+// (removed and added while adding extra clauses)
 fn deduplicate_clauses<T>(clauses: &mut Vec<DedupClause<T>>) -> bool
 where
     T: Clone + Copy + Ord + PartialEq + Eq,
