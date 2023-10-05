@@ -1833,5 +1833,6 @@ mod tests {
         assert_eq!(4, node_iter.next().unwrap().1.value);
         node_iter.pop();
         assert_eq!(3, node_iter.next().unwrap().1.value);
+        assert_eq!(8, node_iter.next().unwrap().1.value);
     }
 }
