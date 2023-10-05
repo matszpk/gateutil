@@ -485,22 +485,14 @@ pub fn sorted_is_set_contains_set<T: Copy + std::cmp::Ord>(a: &[T], b: &[T]) -> 
 
 struct TreeNode<T> {
     value: T,
-    children: Option<Vec<TreeNode<T>>>,
+    children: Vec<TreeNode<T>>,
 }
 
 impl<T> TreeNode<T> {
     fn new(value: T) -> Self {
         Self {
             value,
-            children: None,
-        }
-    }
-
-    fn append_child(&mut self, child: TreeNode<T>) {
-        if let Some(children) = &mut self.children {
-            children.push(child);
-        } else {
-            self.children = Some(vec![child]);
+            children: vec![],
         }
     }
 
@@ -557,15 +549,9 @@ impl<'a, T> Iterator for TreeStackIterator<'a, T> {
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(top) = self.0.last_mut() {
             if let Some(child_index) = top.child_index {
-                if top
-                    .node
-                    .children
-                    .as_ref()
-                    .map(|ch| child_index < ch.len())
-                    .unwrap_or_default()
-                {
+                if child_index < top.node.children.len() {
                     top.child_index = Some(child_index + 1);
-                    let child = &top.node.children.as_ref().unwrap()[child_index];
+                    let child = &top.node.children[child_index];
                     self.0.push(TreeStackElem {
                         node: child,
                         child_index: Some(0),
@@ -576,17 +562,12 @@ impl<'a, T> Iterator for TreeStackIterator<'a, T> {
                     Some((TreeStackOp::Pop, node))
                 }
             } else {
-                if let Some(children) = &top.node.children {
-                    if children.is_empty() {
-                        let node = self.0.pop().unwrap().node;
-                        Some((TreeStackOp::Pop, node))
-                    } else {
-                        top.child_index = Some(0);
-                        Some((TreeStackOp::Push, &top.node))
-                    }
-                } else {
+                if top.node.children.is_empty() {
                     let node = self.0.pop().unwrap().node;
                     Some((TreeStackOp::Pop, node))
+                } else {
+                    top.child_index = Some(0);
+                    Some((TreeStackOp::Push, &top.node))
                 }
             }
         } else {
@@ -721,12 +702,10 @@ fn deduplicate_literal_clauses<T>(
             // find clause chain
             let mut tree = TreeNode {
                 value: list[0],
-                children: Some(vec![
-                    TreeNode {
-                        value: list[1],
-                        children: None
-                    }
-                ])
+                children: vec![TreeNode {
+                    value: list[1],
+                    children: vec![],
+                }],
             };
             let mut prev = Option::<usize>::None;
             for ci in list {
@@ -1737,64 +1716,64 @@ mod tests {
         use TreeStackOp::*;
         let root = TreeNode {
             value: 1,
-            children: Some(vec![
+            children: vec![
                 TreeNode {
                     value: 2,
-                    children: None,
+                    children: vec![],
                 },
                 TreeNode {
                     value: 4,
-                    children: Some(vec![
+                    children: vec![
                         TreeNode {
                             value: 5,
-                            children: None,
+                            children: vec![],
                         },
                         TreeNode {
                             value: 6,
-                            children: None,
+                            children: vec![],
                         },
                         TreeNode {
                             value: 7,
-                            children: Some(vec![
+                            children: vec![
                                 TreeNode {
                                     value: 11,
-                                    children: None,
+                                    children: vec![],
                                 },
                                 TreeNode {
                                     value: 13,
-                                    children: None,
+                                    children: vec![],
                                 },
-                            ]),
+                            ],
                         },
-                    ]),
+                    ],
                 },
                 TreeNode {
                     value: 3,
-                    children: Some(vec![
+                    children: vec![
                         TreeNode {
                             value: 8,
-                            children: None,
+                            children: vec![],
                         },
                         TreeNode {
                             value: 9,
-                            children: Some(vec![
+                            children: vec![
                                 TreeNode {
                                     value: 12,
-                                    children: None,
+                                    children: vec![],
                                 },
                                 TreeNode {
                                     value: 14,
-                                    children: None,
+                                    children: vec![],
                                 },
-                            ]),
+                            ],
                         },
                         TreeNode {
                             value: 10,
-                            children: None,
+                            children: vec![],
                         },
-                    ]),
+                    ],
                 },
-            ]),
+            ],
         };
         assert_eq!(
             vec![
