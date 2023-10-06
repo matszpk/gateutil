@@ -418,14 +418,11 @@ where
     let mut trans_table = HashMap::<T, T>::new();
     {
         let mut prev: Option<(T, &mut Clause<T>)> = None;
-        for (
-            i,
-            DedupClause {
-                orig_index: orig_i,
-                clause,
-                ..
-            },
-        ) in clauses.iter_mut().enumerate()
+        for DedupClause {
+            orig_index: orig_i,
+            clause,
+            ..
+        } in clauses.iter_mut()
         {
             if let Some((prev_orig_i, ref prev_clause)) = prev {
                 if **prev_clause == *clause {
@@ -613,7 +610,8 @@ fn deduplicate_literal_clauses_0<T>(
     total_clause_num: usize,
     extra_clause_start: usize,
     clauses: &mut Vec<DedupClause<T>>,
-) where
+) -> HashMap<T, T>
+where
     T: Clone + Copy + Ord + PartialEq + Eq + Hash,
     T: Default + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
@@ -621,7 +619,7 @@ fn deduplicate_literal_clauses_0<T>(
     <usize as TryFrom<T>>::Error: Debug,
 {
     if clauses.is_empty() {
-        return;
+        return HashMap::new();
     }
 
     let kind = clauses.first().unwrap().clause.kind;
@@ -671,19 +669,25 @@ fn deduplicate_literal_clauses_0<T>(
         same_occur_lits
     };
 
+    let mut trans_table = HashMap::<T, T>::new();
     let mut j = 0;
     // apply same occurrence literals list (clauses) into clauses
     for (same_lits, occurs) in same_occur_lits.into_iter() {
         if same_lits.len() > 1 {
             let extra_lit = T::try_from(extra_clause_start + j).unwrap();
             for occur in &occurs {
-                let clause = &mut clauses[*occur].clause;
+                let DedupClause {
+                    orig_index, clause, ..
+                } = &mut clauses[*occur];
                 remove_sorted_ref(&mut clause.literals, &same_lits);
                 clause.literals.push((extra_lit, false));
+                if clause.literals.len() == 1 {
+                    trans_table.insert(*orig_index, clause.literals.first().unwrap().0);
+                }
             }
             clauses.push(DedupClause {
                 orig_index: T::try_from(input_len + *occurs.first().unwrap() - 1).unwrap(),
-                extra_index: Some(T::try_from(extra_clause_start + j).unwrap()),
+                extra_index: Some(extra_lit),
                 clause: Clause {
                     kind,
                     literals: same_lits.clone(),
@@ -693,10 +697,20 @@ fn deduplicate_literal_clauses_0<T>(
         }
     }
     clauses.retain(|x| x.clause.literals.len() != 1);
-    // sort clause literals
-    for DedupClause { clause, .. } in clauses.iter_mut() {
+
+    // translate literals and sort and deduplicate literals
+    for DedupClause { clause, .. } in clauses {
+        for (l, _) in &mut clause.literals {
+            if let Some(trans_l) = trans_table.get(&l) {
+                *l = *trans_l;
+            }
+        }
         clause.literals.sort();
+        if clause.kind == ClauseKind::And {
+            clause.literals.dedup();
+        }
     }
+    trans_table
 }
 
 fn deduplicate_literal_clauses<T>(
@@ -1993,7 +2007,10 @@ mod tests {
                 ]),
             ),
         ];
-        deduplicate_literal_clauses_0(10, 20, 30, &mut clauses);
+        assert_eq!(
+            HashMap::from_iter([(14, 30), (12, 31)]),
+            deduplicate_literal_clauses_0(10, 20, 30, &mut clauses)
+        );
         assert_eq!(
             vec![
                 DedupClause {
@@ -2102,7 +2119,10 @@ mod tests {
                 ]),
             ),
         ];
-        deduplicate_literal_clauses_0(10, 20, 30, &mut clauses);
+        assert_eq!(
+            HashMap::from_iter([(14, 30), (12, 31)]),
+            deduplicate_literal_clauses_0(10, 20, 30, &mut clauses)
+        );
         assert_eq!(
             vec![
                 DedupClause {
@@ -2212,7 +2232,10 @@ mod tests {
                 ]),
             ),
         ];
-        deduplicate_literal_clauses_0(10, 20, 30, &mut clauses);
+        assert_eq!(
+            HashMap::new(),
+            deduplicate_literal_clauses_0(10, 20, 30, &mut clauses)
+        );
         assert_eq!(
             vec![
                 DedupClause {
@@ -2339,7 +2362,10 @@ mod tests {
                 ]),
             ),
         ];
-        deduplicate_literal_clauses_0(10, 20, 30, &mut clauses);
+        assert_eq!(
+            HashMap::new(),
+            deduplicate_literal_clauses_0(10, 20, 30, &mut clauses)
+        );
         assert_eq!(
             vec![
                 DedupClause {
@@ -2442,7 +2468,10 @@ mod tests {
                 ]),
             ),
         ];
-        deduplicate_literal_clauses_0(10, 20, 30, &mut clauses);
+        assert_eq!(
+            HashMap::from_iter([(12, 31), (10, 30)]),
+            deduplicate_literal_clauses_0(10, 20, 30, &mut clauses)
+        );
         assert_eq!(
             vec![
                 DedupClause {
