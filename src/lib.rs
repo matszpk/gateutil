@@ -393,15 +393,15 @@ where
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 struct DedupClause<T> {
-    orig_index: usize,
-    extra_index: Option<usize>,
+    orig_index: T,
+    extra_index: Option<T>,
     clause: Clause<T>,
 }
 
 // duplicates will be replaced by single-literal clauses with literal to first occurrences
 fn deduplicate_clauses<T>(clauses: &mut Vec<DedupClause<T>>) -> bool
 where
-    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Clone + Copy + Ord + PartialEq + Eq + Hash,
     T: Default + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
     usize: TryFrom<T>,
@@ -416,9 +416,9 @@ where
     );
 
     let mut changed = false;
-    let mut trans_table = HashMap::<usize, usize>::new();
+    let mut trans_table = HashMap::<T, T>::new();
     {
-        let mut prev: Option<(usize, usize, &mut Clause<T>)> = None;
+        let mut prev: Option<(T, &mut Clause<T>)> = None;
         for (
             i,
             DedupClause {
@@ -428,23 +428,22 @@ where
             },
         ) in clauses.iter_mut().enumerate()
         {
-            if let Some((prev_i, prev_orig_i, ref prev_clause)) = prev {
+            if let Some((prev_orig_i, ref prev_clause)) = prev {
                 if **prev_clause == *clause {
                     trans_table.insert(*orig_i, prev_orig_i);
-                    clause.literals = vec![(T::try_from(prev_orig_i).unwrap(), false)];
+                    clause.literals = vec![(prev_orig_i, false)];
                     changed = true;
                     continue;
                 }
             }
-            prev = Some((i, *orig_i, clause));
+            prev = Some((*orig_i, clause));
         }
     }
     // translate literals and sort and deduplicate literals
     for DedupClause { clause, .. } in clauses {
         for (l, _) in &mut clause.literals {
-            let l_u = usize::try_from(*l).unwrap();
-            if let Some(trans_l) = trans_table.get(&l_u) {
-                *l = T::try_from(*trans_l).unwrap();
+            if let Some(trans_l) = trans_table.get(&l) {
+                *l = *trans_l;
             }
         }
         clause.literals.sort();
@@ -685,8 +684,8 @@ fn deduplicate_literal_clauses_0<T>(
                 clause.literals.push((extra_lit, false));
             }
             clauses.push(DedupClause {
-                orig_index: input_len + *occurs.first().unwrap() - 1,
-                extra_index: Some(extra_clause_start + j),
+                orig_index: T::try_from(input_len + *occurs.first().unwrap() - 1).unwrap(),
+                extra_index: Some(T::try_from(extra_clause_start + j).unwrap()),
                 clause: Clause {
                     kind,
                     literals: same_lits.clone(),
@@ -867,7 +866,7 @@ where
              ..
          }| { (*orig_idx, *extra_idx) },
     );
-    let mut trans_table = vec![0; input_len + total_clause_num];
+    let mut trans_table = vec![T::default(); input_len + total_clause_num];
     for (
         i,
         DedupClause {
@@ -877,17 +876,18 @@ where
         },
     ) in out_clauses.iter().enumerate()
     {
+        let final_lit = T::try_from(i + input_len).unwrap();
         if let Some(ej) = extra_j {
-            trans_table[*ej] = i + input_len;
+            trans_table[usize::try_from(*ej).unwrap()] = final_lit;
         } else {
-            trans_table[*j] = i + input_len;
+            trans_table[usize::try_from(*j).unwrap()] = final_lit;
         }
     }
     for DedupClause { clause, .. } in &mut out_clauses {
         for (l, _) in &mut clause.literals {
             let l_u = usize::try_from(*l).unwrap();
             if l_u >= input_len {
-                *l = T::try_from(trans_table[l_u]).unwrap();
+                *l = trans_table[l_u];
             }
         }
     }
@@ -900,7 +900,7 @@ where
         outputs.iter().map(|(l, n)| {
             let l_u = usize::try_from(*l).unwrap();
             if l_u >= input_len {
-                (T::try_from(trans_table[l_u]).unwrap(), *n)
+                (trans_table[l_u], *n)
             } else {
                 (*l, *n)
             }
@@ -972,7 +972,7 @@ where
         .filter_map(|(i, c)| {
             if c.kind == ClauseKind::And {
                 Some(DedupClause {
-                    orig_index: input_len + i,
+                    orig_index: T::try_from(input_len + i).unwrap(),
                     extra_index: None,
                     clause: c.clone(),
                 })
@@ -996,7 +996,7 @@ where
         .filter_map(|(i, c)| {
             if c.kind == ClauseKind::Xor {
                 Some(DedupClause {
-                    orig_index: input_len + i,
+                    orig_index: T::try_from(input_len + i).unwrap(),
                     extra_index: None,
                     clause: c.clone(),
                 })
@@ -1221,11 +1221,7 @@ mod tests {
         }
     }
 
-    fn dedup_clause<T>(
-        orig_index: usize,
-        extra_index: Option<usize>,
-        clause: Clause<T>,
-    ) -> DedupClause<T> {
+    fn dedup_clause<T>(orig_index: T, extra_index: Option<T>, clause: Clause<T>) -> DedupClause<T> {
         DedupClause {
             orig_index,
             extra_index,
