@@ -2567,9 +2567,10 @@ mod tests {
                 15,
                 None,
                 Clause::new_and([
-                    (7, false),  // 1 (c0, c3, c4)
-                    (11, false), // 1 (c0, c3, c4)
-                    (12, false), // 1 (c0, c3, c4)
+                    (7, false),
+                    (8, false),  // 4 (c15, c16)
+                    (11, false), // 4 (c15, c16)
+                    (12, false), // 4 (c15, c16)
                 ]),
             ),
             dedup_clause(
@@ -2578,9 +2579,10 @@ mod tests {
                 Clause::new_and([
                     (3, false),  // 2 (c1, c2, c3)
                     (6, false),  // 2 (c1, c2, c3)
+                    (8, false),  // 4 (c15, c16)
                     (10, false), // 2 (c1, c2, c3)
-                    (11, false), // 1 (c0, c3, c4)
-                    (12, false), // 1 (c0, c3, c4)
+                    (11, false), // 4 (c15, c16)
+                    (12, false), // 4 (c15, c16)
                 ]),
             ),
         ];
@@ -2659,7 +2661,7 @@ mod tests {
                     extra_index: Some(33),
                     clause: Clause {
                         kind: ClauseKind::And,
-                        literals: vec![(11, false), (31, false)]
+                        literals: vec![(8, false), (11, false), (31, false)]
                     }
                 }
             ],
