@@ -398,8 +398,7 @@ struct DedupClause<T> {
     clause: Clause<T>,
 }
 
-// TODO: add translation table for reordered clauses
-// (removed and added while adding extra clauses)
+// duplicates will be replaced by single-literal clauses with literal to first occurrences
 fn deduplicate_clauses<T>(clauses: &mut Vec<DedupClause<T>>) -> bool
 where
     T: Clone + Copy + Ord + PartialEq + Eq,
@@ -408,7 +407,6 @@ where
     usize: TryFrom<T>,
     <usize as TryFrom<T>>::Error: Debug,
 {
-    let old_clause_len = clauses.len();
     clauses.sort_by_key(
         |DedupClause {
              orig_index: i,
@@ -416,9 +414,11 @@ where
              ..
          }| (c.kind, c.literals.clone(), *i),
     );
+
+    let mut changed = false;
     let mut trans_table = HashMap::<usize, usize>::new();
     {
-        let mut prev: Option<(usize, usize)> = None;
+        let mut prev: Option<(usize, usize, &mut Clause<T>)> = None;
         for (
             i,
             DedupClause {
@@ -426,19 +426,19 @@ where
                 clause,
                 ..
             },
-        ) in clauses.iter().enumerate()
+        ) in clauses.iter_mut().enumerate()
         {
-            if let Some((prev_i, prev_orig_i)) = prev {
-                if clauses[prev_i].clause == *clause {
+            if let Some((prev_i, prev_orig_i, ref prev_clause)) = prev {
+                if **prev_clause == *clause {
                     trans_table.insert(*orig_i, prev_orig_i);
+                    clause.literals = vec![(T::try_from(prev_orig_i).unwrap(), false)];
+                    changed = true;
                     continue;
                 }
             }
-            prev = Some((i, *orig_i));
+            prev = Some((i, *orig_i, clause));
         }
     }
-    clauses.dedup_by_key(|DedupClause { clause: c, .. }| (c.kind, c.literals.clone()));
-    let new_clause_len = clauses.len();
     // translate literals and sort and deduplicate literals
     for DedupClause { clause, .. } in clauses {
         for (l, _) in &mut clause.literals {
@@ -452,7 +452,7 @@ where
             clause.literals.dedup();
         }
     }
-    old_clause_len != new_clause_len
+    changed
 }
 
 // remove b from a
@@ -1255,6 +1255,7 @@ mod tests {
             vec![
                 dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
                 dedup_clause(5, None, Clause::new_and([(0, false), (2, true)])),
+                dedup_clause(6, None, Clause::new_and([(5, false)])),
                 dedup_clause(
                     7,
                     None,
@@ -1295,6 +1296,8 @@ mod tests {
             vec![
                 dedup_clause(5, None, Clause::new_and([(0, false), (1, true)])),
                 dedup_clause(4, None, Clause::new_and([(0, false), (2, true)])),
+                dedup_clause(6, None, Clause::new_and([(4, false)])),
+                dedup_clause(9, None, Clause::new_and([(4, false)])),
                 dedup_clause(
                     10,
                     None,
@@ -1370,6 +1373,7 @@ mod tests {
             vec![
                 dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
                 dedup_clause(5, None, Clause::new_and([(0, false), (2, true)])),
+                dedup_clause(6, None, Clause::new_and([(5, false)])),
                 dedup_clause(
                     7,
                     None,
@@ -1401,6 +1405,7 @@ mod tests {
             vec![
                 dedup_clause(4, None, Clause::new_xor([(0, false), (1, true)])),
                 dedup_clause(5, None, Clause::new_xor([(0, false), (2, true)])),
+                dedup_clause(6, None, Clause::new_xor([(5, false)])),
                 dedup_clause(
                     7,
                     None,
@@ -1433,6 +1438,7 @@ mod tests {
             vec![
                 dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
                 dedup_clause(5, None, Clause::new_and([(0, false), (2, true)])),
+                dedup_clause(6, None, Clause::new_and([(5, false)])),
                 dedup_clause(
                     7,
                     None,
