@@ -399,7 +399,7 @@ struct DedupClause<T> {
 }
 
 // duplicates will be replaced by single-literal clauses with literal to first occurrences
-fn deduplicate_clauses<T>(clauses: &mut Vec<DedupClause<T>>) -> bool
+fn deduplicate_clauses<T>(clauses: &mut Vec<DedupClause<T>>) -> HashMap<T, T>
 where
     T: Clone + Copy + Ord + PartialEq + Eq + Hash,
     T: Default + TryFrom<usize>,
@@ -415,7 +415,6 @@ where
          }| (c.kind, c.literals.clone(), *i),
     );
 
-    let mut changed = false;
     let mut trans_table = HashMap::<T, T>::new();
     {
         let mut prev: Option<(T, &mut Clause<T>)> = None;
@@ -431,14 +430,13 @@ where
             if let Some((prev_orig_i, ref prev_clause)) = prev {
                 if **prev_clause == *clause {
                     trans_table.insert(*orig_i, prev_orig_i);
-                    clause.literals = vec![(prev_orig_i, false)];
-                    changed = true;
                     continue;
                 }
             }
             prev = Some((*orig_i, clause));
         }
     }
+    clauses.dedup_by_key(|DedupClause { clause: c, .. }| (c.kind, c.literals.clone()));
     // translate literals and sort and deduplicate literals
     for DedupClause { clause, .. } in clauses {
         for (l, _) in &mut clause.literals {
@@ -451,7 +449,7 @@ where
             clause.literals.dedup();
         }
     }
-    changed
+    trans_table
 }
 
 // remove b from a
@@ -981,7 +979,8 @@ where
             }
         })
         .collect::<Vec<_>>();
-    let and_clauses_need_optim = if deduplicate_clauses(&mut and_clauses) {
+    let and_trans_tbl = deduplicate_clauses(&mut and_clauses);
+    let and_clauses_need_optim = if !and_trans_tbl.is_empty() {
         // check whether clauses need optimizations
         check_if_clauses_need_optimization_and_fix(&mut and_clauses)
     } else {
@@ -1005,7 +1004,8 @@ where
             }
         })
         .collect::<Vec<_>>();
-    let xor_clauses_need_optim = if deduplicate_clauses(&mut xor_clauses) {
+    let xor_trans_tbl = deduplicate_clauses(&mut xor_clauses);
+    let xor_clauses_need_optim = if !xor_trans_tbl.is_empty() {
         check_if_clauses_need_optimization_and_fix(&mut xor_clauses)
     } else {
         false
@@ -1246,12 +1246,14 @@ mod tests {
             ),
             dedup_clause(6, None, Clause::new_and([(0, false), (2, true)])),
         ];
-        assert!(deduplicate_clauses(&mut clauses));
+        assert_eq!(
+            HashMap::from_iter([(6, 5)]),
+            deduplicate_clauses(&mut clauses)
+        );
         assert_eq!(
             vec![
                 dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
                 dedup_clause(5, None, Clause::new_and([(0, false), (2, true)])),
-                dedup_clause(6, None, Clause::new_and([(5, false)])),
                 dedup_clause(
                     7,
                     None,
@@ -1287,13 +1289,14 @@ mod tests {
                 Clause::new_and([(1, true), (2, false), (9, false)]),
             ),
         ];
-        assert!(deduplicate_clauses(&mut clauses));
+        assert_eq!(
+            HashMap::from_iter([(6, 4), (9, 4)]),
+            deduplicate_clauses(&mut clauses)
+        );
         assert_eq!(
             vec![
                 dedup_clause(5, None, Clause::new_and([(0, false), (1, true)])),
                 dedup_clause(4, None, Clause::new_and([(0, false), (2, true)])),
-                dedup_clause(6, None, Clause::new_and([(4, false)])),
-                dedup_clause(9, None, Clause::new_and([(4, false)])),
                 dedup_clause(
                     10,
                     None,
@@ -1328,7 +1331,7 @@ mod tests {
             ),
             dedup_clause(6, None, Clause::new_xor([(0, false), (2, true)])),
         ];
-        assert!(!deduplicate_clauses(&mut clauses));
+        assert!(deduplicate_clauses(&mut clauses).is_empty());
         assert_eq!(
             vec![
                 dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
@@ -1364,12 +1367,14 @@ mod tests {
             ),
             dedup_clause(6, None, Clause::new_and([(0, false), (2, true)])),
         ];
-        assert!(deduplicate_clauses(&mut clauses));
+        assert_eq!(
+            HashMap::from_iter([(6, 5)]),
+            deduplicate_clauses(&mut clauses)
+        );
         assert_eq!(
             vec![
                 dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
                 dedup_clause(5, None, Clause::new_and([(0, false), (2, true)])),
-                dedup_clause(6, None, Clause::new_and([(5, false)])),
                 dedup_clause(
                     7,
                     None,
@@ -1396,12 +1401,14 @@ mod tests {
             ),
             dedup_clause(6, None, Clause::new_xor([(0, false), (2, true)])),
         ];
-        assert!(deduplicate_clauses(&mut clauses));
+        assert_eq!(
+            HashMap::from_iter([(6, 5)]),
+            deduplicate_clauses(&mut clauses)
+        );
         assert_eq!(
             vec![
                 dedup_clause(4, None, Clause::new_xor([(0, false), (1, true)])),
                 dedup_clause(5, None, Clause::new_xor([(0, false), (2, true)])),
-                dedup_clause(6, None, Clause::new_xor([(5, false)])),
                 dedup_clause(
                     7,
                     None,
@@ -1429,12 +1436,14 @@ mod tests {
             dedup_clause(8, None, Clause::new_and([(3, true), (5, false), (6, true)])),
             dedup_clause(6, None, Clause::new_and([(0, false), (2, true)])),
         ];
-        assert!(deduplicate_clauses(&mut clauses));
+        assert_eq!(
+            HashMap::from_iter([(6, 5)]),
+            deduplicate_clauses(&mut clauses)
+        );
         assert_eq!(
             vec![
                 dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
                 dedup_clause(5, None, Clause::new_and([(0, false), (2, true)])),
-                dedup_clause(6, None, Clause::new_and([(5, false)])),
                 dedup_clause(
                     7,
                     None,
