@@ -1918,9 +1918,15 @@ mod tests {
                     (12, false), // 4 (c15, c16)
                 ]),
             ),
+            dedup_clause(
+                17,
+                None,
+                Clause::new_and([(7, false), (9, false), (16, false)]),
+            ),
+            dedup_clause(18, None, Clause::new_and([(9, false), (16, false)])),
         ];
         assert_eq!(
-            HashMap::from_iter([(14, 30), (12, 31)]),
+            HashMap::from_iter([(14, 30), (12, 31), (18, 34)]),
             deduplicate_literal_clauses_0(10, 20, 30, &mut clauses)
         );
         assert_eq!(
@@ -1966,6 +1972,14 @@ mod tests {
                     }
                 },
                 DedupClause {
+                    orig_index: 17,
+                    extra_index: None,
+                    clause: Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(7, false), (34, false)]
+                    }
+                },
+                DedupClause {
                     orig_index: 9,
                     extra_index: Some(30),
                     clause: Clause {
@@ -1996,7 +2010,15 @@ mod tests {
                         kind: ClauseKind::And,
                         literals: vec![(8, false), (11, false), (31, false)]
                     }
-                }
+                },
+                DedupClause {
+                    orig_index: 16,
+                    extra_index: Some(34),
+                    clause: Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(9, false), (16, false)]
+                    }
+                },
             ],
             clauses,
         );
