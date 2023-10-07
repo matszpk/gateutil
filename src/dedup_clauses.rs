@@ -207,6 +207,9 @@ impl<'a, T> Iterator for TreeStackIterator<'a, T> {
     }
 }
 
+// ALGORITHM to deduplicate literals
+// IDEA: deduplicate first 2-literal clauses, next 2-literal clauses and 2-literal-clauses
+
 // return extra clauses with range of placement.
 // argument is clause slice: element: (clause_index, Option<extra_clause_index>, clause)
 // extra_clause_index >= input_len + total_clause_num
