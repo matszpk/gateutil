@@ -4,7 +4,6 @@ use std::cmp::Ord;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::iter;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub(crate) struct DedupClause<T> {
@@ -472,11 +471,13 @@ pub(crate) fn join_deduplicates_to_clause_circuit<T>(
     input_len: usize,
     total_clause_num: usize,
     and_clauses: Vec<DedupClause<T>>,
+    and_trans_map: HashMap<T, T>,
     xor_clauses: Vec<DedupClause<T>>,
+    xor_trans_map: HashMap<T, T>,
     outputs: &[(T, bool)],
 ) -> ClauseCircuit<T>
 where
-    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Clone + Copy + Ord + PartialEq + Eq + Hash,
     T: Default + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
     usize: TryFrom<T>,
@@ -523,6 +524,9 @@ where
             .map(|DedupClause { clause, .. }| clause)
             .filter(|c| c.len() != 0),
         outputs.iter().map(|(l, n)| {
+            let l = and_trans_map
+                .get(l)
+                .unwrap_or_else(|| xor_trans_map.get(l).unwrap_or(l));
             let l_u = usize::try_from(*l).unwrap();
             if l_u >= input_len {
                 (trans_table[l_u], *n)
@@ -852,6 +856,7 @@ mod tests {
                         Clause::new_and([(1, true), (2, true), (4, false), (8, false)])
                     ),
                 ],
+                HashMap::new(),
                 vec![
                     dedup_clause(6, None, Clause::new_xor([(0, false), (3, true)])),
                     dedup_clause(6, Some(9), Clause::new_xor([(0, false), (2, true)])),
@@ -861,6 +866,7 @@ mod tests {
                         Clause::new_xor([(1, true), (3, true), (6, false), (9, false)])
                     ),
                 ],
+                HashMap::new(),
                 &[(5, false), (7, false)]
             )
         );
@@ -891,6 +897,7 @@ mod tests {
                         Clause::new_and([(1, true), (2, true), (4, false), (8, false)])
                     ),
                 ],
+                HashMap::new(),
                 vec![
                     dedup_clause(5, None, Clause::new_xor([(0, false), (3, true)])),
                     dedup_clause(5, Some(9), Clause::new_xor([(0, false), (2, true)])),
@@ -900,6 +907,7 @@ mod tests {
                         Clause::new_xor([(1, true), (3, true), (5, false), (9, false)])
                     ),
                 ],
+                HashMap::new(),
                 &[(6, false), (7, false)]
             )
         );
@@ -934,6 +942,7 @@ mod tests {
                         Clause::new_and([(1, true), (2, true), (4, false), (8, false)])
                     ),
                 ],
+                HashMap::new(),
                 vec![
                     dedup_clause(5, None, Clause::new_xor([(0, false), (3, true)])),
                     dedup_clause(
@@ -947,6 +956,7 @@ mod tests {
                         Clause::new_xor([(1, true), (3, true), (5, false), (9, false)])
                     ),
                 ],
+                HashMap::new(),
                 &[(6, false), (7, false)]
             )
         );
@@ -983,6 +993,7 @@ mod tests {
                         Clause::new_and([(1, true), (2, true), (4, false), (10, false)])
                     ),
                 ],
+                HashMap::new(),
                 vec![
                     dedup_clause(5, None, Clause::new_xor([(0, false), (3, true)])),
                     dedup_clause(
@@ -997,6 +1008,7 @@ mod tests {
                         Clause::new_xor([(1, true), (3, true), (5, false), (11, false)])
                     ),
                 ],
+                HashMap::new(),
                 &[(6, false), (7, false)]
             )
         );
@@ -1033,6 +1045,7 @@ mod tests {
                         Clause::new_and([(1, true), (2, true), (6, false), (10, false)])
                     ),
                 ],
+                HashMap::new(),
                 vec![
                     dedup_clause(5, None, Clause::new_xor([(0, false), (3, true)])),
                     dedup_clause(7, None, Clause::new_xor([(1, false), (3, true)])),
@@ -1047,7 +1060,60 @@ mod tests {
                         Clause::new_xor([(1, true), (3, true), (7, false), (11, false)])
                     ),
                 ],
+                HashMap::new(),
                 &[(8, false), (9, false)]
+            )
+        );
+        assert_eq!(
+            ClauseCircuit::new(
+                4,
+                [
+                    Clause::new_and([(0, false), (1, true)]),
+                    Clause::new_xor([(0, false), (3, true)]),
+                    Clause::new_and([(0, false), (2, true)]),
+                    Clause::new_and([(0, false), (3, true), (4, false)]),
+                    Clause::new_xor([(1, false), (3, true)]),
+                    Clause::new_xor([(0, false), (2, true), (5, true)]),
+                    Clause::new_and([(1, true), (2, true), (6, false), (7, false)]),
+                    Clause::new_xor([(1, true), (3, true), (8, false), (9, false)])
+                ],
+                [(10, false), (11, false), (6, false), (5, false)]
+            )
+            .unwrap(),
+            join_deduplicates_to_clause_circuit(
+                4,
+                8,
+                vec![
+                    dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
+                    dedup_clause(6, None, Clause::new_and([(0, false), (2, true)])),
+                    dedup_clause(
+                        6,
+                        Some(10),
+                        Clause::new_and([(0, false), (3, true), (4, false)])
+                    ),
+                    dedup_clause(
+                        8,
+                        None,
+                        Clause::new_and([(1, true), (2, true), (6, false), (10, false)])
+                    ),
+                ],
+                HashMap::from_iter([(12, 6)]),
+                vec![
+                    dedup_clause(5, None, Clause::new_xor([(0, false), (3, true)])),
+                    dedup_clause(7, None, Clause::new_xor([(1, false), (3, true)])),
+                    dedup_clause(
+                        7,
+                        Some(11),
+                        Clause::new_xor([(0, false), (2, true), (5, true)])
+                    ),
+                    dedup_clause(
+                        9,
+                        None,
+                        Clause::new_xor([(1, true), (3, true), (7, false), (11, false)])
+                    ),
+                ],
+                HashMap::from_iter([(13, 5)]),
+                &[(8, false), (9, false), (12, false), (13, false)]
             )
         );
     }

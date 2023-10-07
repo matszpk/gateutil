@@ -539,7 +539,9 @@ where
                 + (and_clauses.len() - old_and_clauses_len)
                 + (xor_clauses.len() - old_xor_clauses_len),
             and_clauses,
+            and_trans_tbl,
             xor_clauses,
+            xor_trans_tbl,
             circuit.outputs(),
         ),
         and_clauses_need_optim | xor_clauses_need_optim,
