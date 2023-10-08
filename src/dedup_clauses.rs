@@ -377,15 +377,11 @@ where
     usize: TryFrom<T>,
     <usize as TryFrom<T>>::Error: Debug,
 {
-    let mut out_clauses = merge_sorted_by_key(
-        and_clauses,
-        xor_clauses,
-        |DedupClause {
-             orig_index: orig_idx,
-             extra_index: extra_idx,
-             ..
-         }| { (*orig_idx, *extra_idx) },
-    );
+    let mut out_clauses = merge_sorted_by_key(and_clauses, xor_clauses, |x| DedupClause {
+        orig_index: x.orig_index,
+        extra_index: x.extra_index,
+        clause: Clause::new_and([]),
+    });
     let mut trans_table = vec![T::default(); input_len + total_clause_num];
     for (
         i,
