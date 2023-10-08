@@ -485,9 +485,9 @@ where
             }
         })
         .collect::<Vec<_>>();
-    let and_trans_tbl = deduplicate_clauses(&mut and_clauses);
+    let mut and_trans_tbl = deduplicate_clauses(&mut and_clauses);
     and_clauses.sort();
-    let and_clauses_need_optim = if !and_trans_tbl.is_empty() {
+    let mut and_clauses_need_optim = if !and_trans_tbl.is_empty() {
         // check whether clauses need optimizations
         check_if_clauses_need_optimization_and_fix(&mut and_clauses)
     } else {
@@ -511,9 +511,9 @@ where
             }
         })
         .collect::<Vec<_>>();
-    let xor_trans_tbl = deduplicate_clauses(&mut xor_clauses);
+    let mut xor_trans_tbl = deduplicate_clauses(&mut xor_clauses);
     xor_clauses.sort();
-    let xor_clauses_need_optim = if !xor_trans_tbl.is_empty() {
+    let mut xor_clauses_need_optim = if !xor_trans_tbl.is_empty() {
         check_if_clauses_need_optimization_and_fix(&mut xor_clauses)
     } else {
         false
@@ -521,19 +521,69 @@ where
 
     let old_and_clauses_len = and_clauses.len();
     if !and_clauses_need_optim {
-        deduplicate_literal_clauses(input_len, circuit.len(), circuit.len(), &mut and_clauses);
+        let and_trans_tbl1 = deduplicate_literal_clauses_0(
+            input_len,
+            circuit.len(),
+            circuit.len(),
+            &mut and_clauses,
+        );
         and_clauses.sort();
+        for (k, v) in and_trans_tbl1 {
+            if and_trans_tbl.contains_key(&k) {
+                and_trans_tbl.insert(k, v);
+            }
+        }
+        and_clauses_need_optim = if !and_trans_tbl.is_empty() {
+            // check whether clauses need optimizations
+            check_if_clauses_need_optimization_and_fix(&mut and_clauses)
+        } else {
+            false
+        };
     }
 
     let old_xor_clauses_len = xor_clauses.len();
     if !xor_clauses_need_optim {
-        deduplicate_literal_clauses(
+        let xor_trans_tbl1 = deduplicate_literal_clauses_0(
             input_len,
             circuit.len(),
             circuit.len() + and_clauses.len() - old_and_clauses_len,
             &mut xor_clauses,
         );
         xor_clauses.sort();
+        for (k, v) in xor_trans_tbl1 {
+            if and_trans_tbl.contains_key(&k) {
+                xor_trans_tbl.insert(k, v);
+            }
+        }
+        xor_clauses_need_optim = if !xor_trans_tbl.is_empty() {
+            // check whether clauses need optimizations
+            check_if_clauses_need_optimization_and_fix(&mut xor_clauses)
+        } else {
+            false
+        };
+    }
+
+    // translate literals and sort and deduplicate literals
+    for DedupClause { clause, .. } in &mut and_clauses {
+        for (l, _) in &mut clause.literals {
+            if let Some(trans_l) = xor_trans_tbl.get(&l) {
+                *l = *trans_l;
+            }
+        }
+        clause.literals.sort();
+        if clause.kind == ClauseKind::And {
+            clause.literals.dedup();
+        }
+    }
+
+    // translate literals and sort and deduplicate literals
+    for DedupClause { clause, .. } in &mut xor_clauses {
+        for (l, _) in &mut clause.literals {
+            if let Some(trans_l) = and_trans_tbl.get(&l) {
+                *l = *trans_l;
+            }
+        }
+        clause.literals.sort();
     }
 
     (
