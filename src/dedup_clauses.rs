@@ -12,6 +12,9 @@ pub(crate) struct DedupClause<T> {
     pub(crate) clause: Clause<T>,
 }
 
+// ordering clauses - (orig_index, extra_index.map(|x| Rev(x))) - Rev to avoid self
+// dependencies: extra clause depends of older extra clause.
+
 impl<T: Ord> PartialOrd for DedupClause<T> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         if self.orig_index == other.orig_index {
@@ -130,9 +133,6 @@ where
 //    clause_index - original index of removed clause
 //    extra_clause_index - index of clause that replace removed clause.
 // extra_clause_start - start index for new extra clauses
-
-// ordering clauses - (orig_index, extra_index.map(|x| Rev(x))) - Rev to avoid self
-// dependencies: TODO: fix ordering
 
 pub(crate) fn deduplicate_literal_clauses_0<T>(
     input_len: usize,
