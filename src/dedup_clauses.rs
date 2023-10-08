@@ -1986,4 +1986,19 @@ mod tests {
             clauses,
         );
     }
+
+    #[test]
+    fn test_dedup_clause_ordering() {
+        assert!(
+            dedup_clause(4, None, Clause::new_and([])) < dedup_clause(5, None, Clause::new_and([]))
+        );
+        assert!(
+            dedup_clause(4, None, Clause::new_and([]))
+                < dedup_clause(4, Some(10), Clause::new_and([]))
+        );
+        assert!(
+            dedup_clause(4, Some(11), Clause::new_and([]))
+                < dedup_clause(4, Some(10), Clause::new_and([]))
+        );
+    }
 }
