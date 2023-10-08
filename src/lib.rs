@@ -486,6 +486,7 @@ where
         })
         .collect::<Vec<_>>();
     let and_trans_tbl = deduplicate_clauses(&mut and_clauses);
+    and_clauses.sort();
     let and_clauses_need_optim = if !and_trans_tbl.is_empty() {
         // check whether clauses need optimizations
         check_if_clauses_need_optimization_and_fix(&mut and_clauses)
@@ -511,6 +512,7 @@ where
         })
         .collect::<Vec<_>>();
     let xor_trans_tbl = deduplicate_clauses(&mut xor_clauses);
+    xor_clauses.sort();
     let xor_clauses_need_optim = if !xor_trans_tbl.is_empty() {
         check_if_clauses_need_optimization_and_fix(&mut xor_clauses)
     } else {
@@ -520,6 +522,7 @@ where
     let old_and_clauses_len = and_clauses.len();
     if !and_clauses_need_optim {
         deduplicate_literal_clauses(input_len, circuit.len(), circuit.len(), &mut and_clauses);
+        and_clauses.sort();
     }
 
     let old_xor_clauses_len = xor_clauses.len();
@@ -530,6 +533,7 @@ where
             circuit.len() + and_clauses.len() - old_and_clauses_len,
             &mut xor_clauses,
         );
+        xor_clauses.sort();
     }
 
     (

@@ -1,6 +1,6 @@
 use gatesim::*;
 
-use std::cmp::Ord;
+use std::cmp::{Ord, Ordering, PartialOrd};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -10,6 +10,27 @@ pub(crate) struct DedupClause<T> {
     pub(crate) orig_index: T,
     pub(crate) extra_index: Option<T>,
     pub(crate) clause: Clause<T>,
+}
+
+impl<T: Ord> PartialOrd for DedupClause<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        if self.orig_index == other.orig_index {
+            Some(
+                self.extra_index
+                    .as_ref()
+                    .map(|x| std::cmp::Reverse(x))
+                    .cmp(&other.extra_index.as_ref().map(|x| std::cmp::Reverse(x))),
+            )
+        } else {
+            Some(self.orig_index.cmp(&other.orig_index))
+        }
+    }
+}
+
+impl<T: Ord> Ord for DedupClause<T> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap()
+    }
 }
 
 // duplicates will be replaced by single-literal clauses with literal to first occurrences
