@@ -1,7 +1,7 @@
 use gatesim::*;
 
 use std::cmp::Ord;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
 
@@ -92,119 +92,6 @@ where
         j += 1;
     }
     a.resize(j, T::default());
-}
-
-pub fn sorted_is_set_contains_set<T: Copy + std::cmp::Ord>(a: &[T], b: &[T]) -> bool {
-    let (mut ai, mut bi) = (0, 0);
-    while ai < a.len() {
-        let (ac, bc) = (a[ai], b[bi]);
-        if ac < bc {
-            break;
-        } else if ac > bc {
-            bi += 1;
-            if bi >= b.len() {
-                break;
-            }
-        } else {
-            ai += 1;
-        }
-    }
-    ai == a.len()
-}
-
-// TreeNode for traversing between tree structure for clause-chain (clause-tree).
-
-struct TreeNode<T> {
-    value: T,
-    children: Vec<TreeNode<T>>,
-}
-
-impl<T> TreeNode<T> {
-    fn new(value: T) -> Self {
-        Self {
-            value,
-            children: vec![],
-        }
-    }
-
-    fn stack_node_iter<'a>(&'a self) -> TreeStackIterator<'a, T> {
-        TreeStackIterator::new(self)
-    }
-
-    fn stack_iter<'a>(&'a self) -> impl Iterator<Item = (TreeStackOp, &'a T)> {
-        TreeStackIterator::new(self).map(|(op, x)| (op, &x.value))
-    }
-
-    fn iter<'a>(&'a self) -> impl Iterator<Item = &'a T> {
-        TreeStackIterator::new(self).filter_map(|(op, x)| {
-            if op == TreeStackOp::Push {
-                Some(&x.value)
-            } else {
-                None
-            }
-        })
-    }
-}
-
-struct TreeStackElem<'a, T> {
-    node: &'a TreeNode<T>,
-    child_index: Option<usize>,
-}
-
-struct TreeStackIterator<'a, T>(Vec<TreeStackElem<'a, T>>);
-
-impl<'a, T> TreeStackIterator<'a, T> {
-    fn new(root: &'a TreeNode<T>) -> Self {
-        Self(vec![TreeStackElem {
-            node: root,
-            child_index: None,
-        }])
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum TreeStackOp {
-    Push,
-    Pop,
-}
-
-impl<'a, T> TreeStackIterator<'a, T> {
-    #[inline]
-    fn pop(&mut self) -> bool {
-        self.0.pop().is_some()
-    }
-}
-
-impl<'a, T> Iterator for TreeStackIterator<'a, T> {
-    type Item = (TreeStackOp, &'a TreeNode<T>);
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(top) = self.0.last_mut() {
-            if let Some(child_index) = top.child_index {
-                if child_index < top.node.children.len() {
-                    top.child_index = Some(child_index + 1);
-                    let child = &top.node.children[child_index];
-                    self.0.push(TreeStackElem {
-                        node: child,
-                        child_index: Some(0),
-                    });
-                    Some((TreeStackOp::Push, child))
-                } else {
-                    let node = self.0.pop().unwrap().node;
-                    Some((TreeStackOp::Pop, node))
-                }
-            } else {
-                if top.node.children.is_empty() {
-                    let node = self.0.pop().unwrap().node;
-                    Some((TreeStackOp::Pop, node))
-                } else {
-                    top.child_index = Some(0);
-                    Some((TreeStackOp::Push, &top.node))
-                }
-            }
-        } else {
-            None
-        }
-    }
 }
 
 // ALGORITHM to deduplicate literals
@@ -336,7 +223,8 @@ pub(crate) fn deduplicate_literal_clauses<T>(
     total_clause_num: usize,
     extra_clause_start: usize,
     clauses: &mut Vec<DedupClause<T>>,
-) where
+) -> HashMap<T, T>
+where
     T: Clone + Copy + Ord + PartialEq + Eq + Hash,
     T: Default + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
@@ -344,12 +232,12 @@ pub(crate) fn deduplicate_literal_clauses<T>(
     <usize as TryFrom<T>>::Error: Debug,
 {
     if clauses.is_empty() {
-        return;
+        return HashMap::new();
     }
     let kind = clauses.first().unwrap().clause.kind;
+    let mut trans_table = HashMap::<T, T>::new();
 
-    // algorithm: first find smallest subclauses with greatest occurrences.
-
+    let mut extra_index = 0;
     loop {
         // get pair_count_map sorted by count descending
         let mut pairlit_clause_map = {
@@ -369,53 +257,22 @@ pub(crate) fn deduplicate_literal_clauses<T>(
             pairlit_clause_map.sort_by_key(|(k, list)| (std::cmp::Reverse(list.len()), *k));
             pairlit_clause_map
         };
-
-        let mut chain_found = false;
-        let threshold = std::cmp::max((pairlit_clause_map.len() + 9) / 10, 9);
-        for ((ls1, ls2), list) in &mut pairlit_clause_map[0..threshold] {
-            list.sort_by_key(|ci| {
-                (
-                    clauses[*ci].clause.len(),
-                    clauses[*ci].clause.literals.clone(),
-                )
-            });
-            // find clause chain
-            let mut tree = TreeNode {
-                value: (list[0], *ls1),
-                children: vec![TreeNode {
-                    value: (list[0], *ls2),
-                    children: vec![],
-                }],
-            };
-            let (mut best_ci, mut best_match_depth, mut best_node) = (0, 0, &tree);
-            let mut depth_count = 0;
-            for ci in list {
-                let mut tree_iter = tree.stack_node_iter();
-                let clause = &clauses[*ci].clause;
-                while let Some((op, t)) = tree_iter.next() {
-                    if op == TreeStackOp::Push {
-                        if clause.literals.binary_search(&t.value.1).is_ok() {
-                            if depth_count > best_match_depth {
-                                // collect all matches or find first that ...
-                                // or just find first
-                                (best_ci, best_match_depth, best_node) = (*ci, depth_count, t);
-                            }
-                        } else {
-                            tree_iter.pop();
-                            depth_count -= 1;
-                        }
-                    } else {
-                        depth_count -= 1;
-                    }
-                }
+        
+        let mut used_lits = HashSet::new();
+        for ((ls1, ls2), occurs) in pairlit_clause_map {
+            if used_lits.contains(&ls1) || used_lits.contains(&ls2) {
+                continue;
             }
-            // find free literal in clause and push to children
-            // best_node.push();
+            // replace 2-literals by clause
+            extra_index += 1;
+            // end
+            used_lits.insert(ls1);
+            used_lits.insert(ls2);
         }
-
-        if !chain_found {
-            break;
-        }
+        
+        // if !chain_found {
+        //     break;
+        // }
     }
 
     // final clauses
@@ -426,6 +283,7 @@ pub(crate) fn deduplicate_literal_clauses<T>(
              ..
          }| (*orig_idx, *extra_idx),
     );
+    trans_table
 }
 
 pub fn merge_sorted_by_key<T, I1, I2, F, B>(a: I1, b: I2, mut f: F) -> Vec<T>
@@ -1241,119 +1099,6 @@ mod tests {
         let mut avec = vec![1, 3, 4, 5, 7, 8];
         remove_sorted_ref(&mut avec, &[0]);
         assert_eq!(vec![1, 3, 4, 5, 7, 8], avec);
-    }
-
-    #[test]
-    fn test_tree() {
-        use TreeStackOp::*;
-        let root = TreeNode {
-            value: 1,
-            children: vec![
-                TreeNode {
-                    value: 2,
-                    children: vec![],
-                },
-                TreeNode {
-                    value: 4,
-                    children: vec![
-                        TreeNode {
-                            value: 5,
-                            children: vec![],
-                        },
-                        TreeNode {
-                            value: 6,
-                            children: vec![],
-                        },
-                        TreeNode {
-                            value: 7,
-                            children: vec![
-                                TreeNode {
-                                    value: 11,
-                                    children: vec![],
-                                },
-                                TreeNode {
-                                    value: 13,
-                                    children: vec![],
-                                },
-                            ],
-                        },
-                    ],
-                },
-                TreeNode {
-                    value: 3,
-                    children: vec![
-                        TreeNode {
-                            value: 8,
-                            children: vec![],
-                        },
-                        TreeNode {
-                            value: 9,
-                            children: vec![
-                                TreeNode {
-                                    value: 12,
-                                    children: vec![],
-                                },
-                                TreeNode {
-                                    value: 14,
-                                    children: vec![],
-                                },
-                            ],
-                        },
-                        TreeNode {
-                            value: 10,
-                            children: vec![],
-                        },
-                    ],
-                },
-            ],
-        };
-        assert_eq!(
-            vec![
-                (Push, 1),
-                (Push, 2),
-                (Pop, 2),
-                (Push, 4),
-                (Push, 5),
-                (Pop, 5),
-                (Push, 6),
-                (Pop, 6),
-                (Push, 7),
-                (Push, 11),
-                (Pop, 11),
-                (Push, 13),
-                (Pop, 13),
-                (Pop, 7),
-                (Pop, 4),
-                (Push, 3),
-                (Push, 8),
-                (Pop, 8),
-                (Push, 9),
-                (Push, 12),
-                (Pop, 12),
-                (Push, 14),
-                (Pop, 14),
-                (Pop, 9),
-                (Push, 10),
-                (Pop, 10),
-                (Pop, 3),
-                (Pop, 1)
-            ],
-            Vec::from_iter(root.stack_iter().map(|(op, x)| (op, *x)))
-        );
-
-        assert_eq!(
-            vec![1, 2, 4, 5, 6, 7, 11, 13, 3, 8, 9, 12, 14, 10],
-            Vec::from_iter(root.iter().copied())
-        );
-
-        let mut node_iter = root.stack_node_iter();
-        assert_eq!(1, node_iter.next().unwrap().1.value);
-        assert_eq!(2, node_iter.next().unwrap().1.value);
-        assert_eq!(2, node_iter.next().unwrap().1.value);
-        assert_eq!(4, node_iter.next().unwrap().1.value);
-        node_iter.pop();
-        assert_eq!(3, node_iter.next().unwrap().1.value);
-        assert_eq!(8, node_iter.next().unwrap().1.value);
     }
 
     #[test]
