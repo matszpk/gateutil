@@ -297,6 +297,7 @@ where
             // with same one literal to join. (01, 012, 0123) -> A=01 -> (A2, A23)
             // replace 2-literals by clause
             // or just find shared literals between clauses between 2-literal occurrences.
+            // or mark used in tour clauses and ignore them in next 2-literals.
             extra_index += 1;
             // end
             used_lits.insert(ls1);
