@@ -468,6 +468,7 @@ where
         true
     }));
     let input_len = usize::try_from(circuit.input_len()).unwrap();
+    let mut extra_clause_index = input_len + circuit.len();
     // return (clause_index, Option<extra_clause_index>, clause) vector
     let mut and_clauses = circuit
         .clauses()
@@ -521,12 +522,8 @@ where
 
     let old_and_clauses_len = and_clauses.len();
     if !and_clauses_need_optim {
-        let and_trans_tbl1 = deduplicate_literal_clauses_0(
-            input_len,
-            circuit.len(),
-            circuit.len(),
-            &mut and_clauses,
-        );
+        let and_trans_tbl1 =
+            deduplicate_literal_clauses_0(&mut extra_clause_index, &mut and_clauses);
         and_clauses.sort();
         for (k, v) in and_trans_tbl1 {
             if and_trans_tbl.contains_key(&k) {
@@ -543,12 +540,8 @@ where
 
     let old_xor_clauses_len = xor_clauses.len();
     if !xor_clauses_need_optim {
-        let xor_trans_tbl1 = deduplicate_literal_clauses_0(
-            input_len,
-            circuit.len(),
-            circuit.len() + and_clauses.len() - old_and_clauses_len,
-            &mut xor_clauses,
-        );
+        let xor_trans_tbl1 =
+            deduplicate_literal_clauses_0(&mut extra_clause_index, &mut xor_clauses);
         xor_clauses.sort();
         for (k, v) in xor_trans_tbl1 {
             if and_trans_tbl.contains_key(&k) {

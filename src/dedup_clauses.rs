@@ -137,9 +137,7 @@ where
 // extra_clause_start - start index for new extra clauses
 
 pub(crate) fn deduplicate_literal_clauses_0<T>(
-    input_len: usize,
-    total_clause_num: usize,
-    extra_clause_start: usize,
+    extra_clause_start: &mut usize,
     clauses: &mut Vec<DedupClause<T>>,
 ) -> HashMap<T, T>
 where
@@ -156,9 +154,8 @@ where
     let kind = clauses.first().unwrap().clause.kind;
 
     let clause_num = clauses.len();
-    let total_output_num = input_len + total_clause_num;
     let same_occur_lits = {
-        let mut lit_clause_tbl = vec![(0, vec![]); total_output_num << 1];
+        let mut lit_clause_tbl = vec![(0, vec![]); *extra_clause_start << 1];
         for (i, (l, _)) in lit_clause_tbl.iter_mut().enumerate() {
             *l = i;
         }
@@ -201,11 +198,10 @@ where
     };
 
     let mut trans_table = HashMap::<T, T>::new();
-    let mut j = 0;
     // apply same occurrence literals list (clauses) into clauses
     for (same_lits, occurs) in same_occur_lits.into_iter() {
         if same_lits.len() > 1 {
-            let extra_lit = T::try_from(extra_clause_start + j).unwrap();
+            let extra_lit = T::try_from(*extra_clause_start).unwrap();
             for occur in &occurs {
                 let DedupClause {
                     orig_index, clause, ..
@@ -230,7 +226,7 @@ where
                     literals: same_lits.clone(),
                 },
             });
-            j += 1;
+            *extra_clause_start += 1;
         }
     }
     clauses.retain(|x| x.clause.literals.len() != 1);
@@ -1189,10 +1185,12 @@ mod tests {
                 ]),
             ),
         ];
+        let mut extra_clause_index = 30;
         assert_eq!(
             HashMap::from_iter([(14, 30), (12, 31)]),
-            deduplicate_literal_clauses_0(10, 20, 30, &mut clauses)
+            deduplicate_literal_clauses_0(&mut extra_clause_index, &mut clauses)
         );
+        assert_eq!(extra_clause_index, 33);
         assert_eq!(
             vec![
                 DedupClause {
@@ -1304,10 +1302,12 @@ mod tests {
                     ]),
                 ),
             ];
+            let mut extra_clause_index = 30;
             assert_eq!(
                 HashMap::from_iter([(25, 30), (17, 31)]),
-                deduplicate_literal_clauses_0(10, 28, 30, &mut clauses),
+                deduplicate_literal_clauses_0(&mut extra_clause_index, &mut clauses),
             );
+            assert_eq!(33, extra_clause_index);
             assert_eq!(
                 vec![
                     DedupClause {
@@ -1417,10 +1417,12 @@ mod tests {
                 ]),
             ),
         ];
+        let mut extra_clause_index = 30;
         assert_eq!(
             HashMap::from_iter([(14, 30), (12, 31)]),
-            deduplicate_literal_clauses_0(10, 20, 30, &mut clauses)
+            deduplicate_literal_clauses_0(&mut extra_clause_index, &mut clauses)
         );
+        assert_eq!(33, extra_clause_index);
         assert_eq!(
             vec![
                 DedupClause {
@@ -1530,10 +1532,12 @@ mod tests {
                 ]),
             ),
         ];
+        let mut extra_clause_index = 30;
         assert_eq!(
             HashMap::new(),
-            deduplicate_literal_clauses_0(10, 20, 30, &mut clauses)
+            deduplicate_literal_clauses_0(&mut extra_clause_index, &mut clauses)
         );
+        assert_eq!(33, extra_clause_index);
         assert_eq!(
             vec![
                 DedupClause {
@@ -1660,10 +1664,12 @@ mod tests {
                 ]),
             ),
         ];
+        let mut extra_clause_index = 30;
         assert_eq!(
             HashMap::new(),
-            deduplicate_literal_clauses_0(10, 20, 30, &mut clauses)
+            deduplicate_literal_clauses_0(&mut extra_clause_index, &mut clauses)
         );
+        assert_eq!(32, extra_clause_index);
         assert_eq!(
             vec![
                 DedupClause {
@@ -1766,10 +1772,12 @@ mod tests {
                 ]),
             ),
         ];
+        let mut extra_clause_index = 30;
         assert_eq!(
             HashMap::from_iter([(12, 31), (10, 30)]),
-            deduplicate_literal_clauses_0(10, 20, 30, &mut clauses)
+            deduplicate_literal_clauses_0(&mut extra_clause_index, &mut clauses)
         );
+        assert_eq!(32, extra_clause_index);
         assert_eq!(
             vec![
                 DedupClause {
@@ -1890,10 +1898,12 @@ mod tests {
             ),
             dedup_clause(18, None, Clause::new_and([(9, false), (16, false)])),
         ];
+        let mut extra_clause_index = 30;
         assert_eq!(
             HashMap::from_iter([(14, 30), (12, 31), (18, 34)]),
-            deduplicate_literal_clauses_0(10, 20, 30, &mut clauses)
+            deduplicate_literal_clauses_0(&mut extra_clause_index, &mut clauses)
         );
+        assert_eq!(35, extra_clause_index);
         assert_eq!(
             vec![
                 DedupClause {
