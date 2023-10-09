@@ -169,7 +169,6 @@ pub(crate) fn deduplicate_literal_clauses_0<T>(
 
     let kind = clauses.first().unwrap().clause.kind;
 
-    let clause_num = clauses.len();
     let same_occur_lits = {
         let mut lit_clause_tbl = vec![(0, vec![]); *extra_clause_start << 1];
         for (i, (l, _)) in lit_clause_tbl.iter_mut().enumerate() {
@@ -252,12 +251,10 @@ pub(crate) fn deduplicate_literal_clauses_0<T>(
 }
 
 pub(crate) fn deduplicate_literal_clauses<T>(
-    input_len: usize,
-    total_clause_num: usize,
-    extra_clause_start: usize,
+    extra_clause_start: &mut usize,
     clauses: &mut Vec<DedupClause<T>>,
-) -> HashMap<T, T>
-where
+    trans_table: &mut HashMap<T, T>,
+) where
     T: Clone + Copy + Ord + PartialEq + Eq + Hash,
     T: Default + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
@@ -265,10 +262,9 @@ where
     <usize as TryFrom<T>>::Error: Debug,
 {
     if clauses.is_empty() {
-        return HashMap::new();
+        return;
     }
     let kind = clauses.first().unwrap().clause.kind;
-    let mut trans_table = HashMap::<T, T>::new();
 
     let mut extra_index = 0;
     loop {
@@ -277,7 +273,7 @@ where
             let mut pairlit_clause_map = HashMap::<((T, bool), (T, bool)), Vec<usize>>::new();
             for (ci, DedupClause { clause, .. }) in clauses.iter().enumerate() {
                 for (i, ls1) in clause.literals.iter().enumerate() {
-                    for ls2 in &clause.literals[i + 1..] {
+                    for ls2 in clause.literals[i + 1..].iter().filter(|x| *x != ls1) {
                         if let Some(list) = pairlit_clause_map.get_mut(&(*ls1, *ls2)) {
                             list.push(ci);
                         } else {
@@ -315,7 +311,6 @@ where
     translate_clauses(clauses, &trans_table);
     // final clauses
     clauses.sort();
-    trans_table
 }
 
 pub fn merge_sorted_by_key<T, I1, I2, F, B>(a: I1, b: I2, mut f: F) -> Vec<T>
