@@ -522,7 +522,7 @@ where
 
     let old_and_clauses_len = and_clauses.len();
     if !and_clauses_need_optim {
-        let and_trans_tbl1 = deduplicate_literal_clauses_0(
+        deduplicate_literal_clauses_0(
             &mut extra_clause_index,
             &mut and_clauses,
             &mut and_trans_tbl,
@@ -538,7 +538,7 @@ where
 
     let old_xor_clauses_len = xor_clauses.len();
     if !xor_clauses_need_optim {
-        let xor_trans_tbl1 = deduplicate_literal_clauses_0(
+        deduplicate_literal_clauses_0(
             &mut extra_clause_index,
             &mut xor_clauses,
             &mut xor_trans_tbl,
