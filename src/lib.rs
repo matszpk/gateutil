@@ -578,9 +578,7 @@ where
     (
         join_deduplicates_to_clause_circuit(
             input_len,
-            circuit.len()
-                + (and_clauses.len() - old_and_clauses_len)
-                + (xor_clauses.len() - old_xor_clauses_len),
+            extra_clause_index,
             and_clauses,
             and_trans_tbl,
             xor_clauses,

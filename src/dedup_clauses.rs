@@ -363,7 +363,7 @@ where
 
 pub(crate) fn join_deduplicates_to_clause_circuit<T>(
     input_len: usize,
-    total_clause_num: usize,
+    extra_clause_index: usize,
     and_clauses: Vec<DedupClause<T>>,
     and_trans_map: HashMap<T, T>,
     xor_clauses: Vec<DedupClause<T>>,
@@ -382,7 +382,7 @@ where
         extra_index: x.extra_index,
         clause: Clause::new_and([]),
     });
-    let mut trans_table = vec![T::default(); input_len + total_clause_num];
+    let mut trans_table = vec![T::default(); extra_clause_index];
     for (
         i,
         DedupClause {
@@ -736,7 +736,7 @@ mod tests {
             .unwrap(),
             join_deduplicates_to_clause_circuit(
                 4,
-                6,
+                10,
                 vec![
                     dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
                     dedup_clause(4, Some(8), Clause::new_and([(0, false), (3, true)])),
@@ -777,7 +777,7 @@ mod tests {
             .unwrap(),
             join_deduplicates_to_clause_circuit(
                 4,
-                6,
+                10,
                 vec![
                     dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
                     dedup_clause(4, Some(8), Clause::new_and([(0, false), (3, true)])),
@@ -818,7 +818,7 @@ mod tests {
             .unwrap(),
             join_deduplicates_to_clause_circuit(
                 4,
-                6,
+                10,
                 vec![
                     dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
                     dedup_clause(
@@ -868,7 +868,7 @@ mod tests {
             .unwrap(),
             join_deduplicates_to_clause_circuit(
                 4,
-                8,
+                12,
                 vec![
                     dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
                     dedup_clause(
@@ -920,7 +920,7 @@ mod tests {
             .unwrap(),
             join_deduplicates_to_clause_circuit(
                 4,
-                8,
+                12,
                 vec![
                     dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
                     dedup_clause(6, None, Clause::new_and([(0, false), (2, true)])),
@@ -972,7 +972,7 @@ mod tests {
             .unwrap(),
             join_deduplicates_to_clause_circuit(
                 4,
-                8,
+                12,
                 vec![
                     dedup_clause(4, None, Clause::new_and([(0, false), (1, true)])),
                     dedup_clause(6, None, Clause::new_and([(0, false), (2, true)])),
