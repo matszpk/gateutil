@@ -281,6 +281,9 @@ pub(crate) fn deduplicate_literal_clauses<T>(
                 pi += 1;
                 continue;
             }
+            if used_clauses.len() == clauses.len() {
+                break;
+            }
             // TODO: if some 2-literal are aggregated then use it in 2-literal
             // with same one literal to join. (01, 012, 0123) -> A=01 -> (A2, A23)
             // replace 2-literals by clause
@@ -388,6 +391,9 @@ pub(crate) fn deduplicate_literal_clauses<T>(
                     // add real occurs to used_clauses
                     used_clauses.extend(real_occurs);
                     have_changes = true;
+                } else {
+                    pi += 10;
+                    continue;
                 }
             }
             pi += 1;
