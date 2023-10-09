@@ -13,6 +13,7 @@ pub(crate) struct DedupClause<T> {
 }
 
 // ordering clauses - (orig_index, extra_index).
+// TODO: test ordering for deduplicate_literal_clauses!!
 impl<T: Ord> PartialOrd for DedupClause<T> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         if self.orig_index == other.orig_index {
