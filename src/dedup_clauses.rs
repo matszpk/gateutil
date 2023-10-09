@@ -36,16 +36,6 @@ impl<T: Ord> Ord for DedupClause<T> {
     }
 }
 
-// pub(crate) fn resolve_trans_map<T>(trans_map: &mut HashMap<T, T>)
-// where
-//     T: Clone + Copy + Ord + PartialEq + Eq + Hash
-// {
-//     #[derive(Debug, Clone, Copy)]
-//     struct StackEntry {
-//         point: T
-//     }
-// }
-
 pub(crate) fn translate_clauses<T>(clauses: &mut [DedupClause<T>], trans_table: &HashMap<T, T>)
 where
     T: Clone + Copy + Ord + PartialEq + Eq + Hash,
@@ -53,7 +43,7 @@ where
     // translate literals and sort and deduplicate literals
     for DedupClause { clause, .. } in clauses.iter_mut() {
         for (l, _) in &mut clause.literals {
-            if let Some(trans_l) = trans_table.get(&l) {
+            while let Some(trans_l) = trans_table.get(l) {
                 *l = *trans_l;
             }
         }
@@ -465,6 +455,41 @@ mod tests {
             extra_index,
             clause,
         }
+    }
+
+    #[test]
+    fn test_translate_clauses() {
+        let mut clauses = vec![
+            dedup_clause(
+                7,
+                None,
+                Clause::new_and([(1, true), (3, false), (5, false), (9, true)]),
+            ),
+            dedup_clause(
+                9,
+                None,
+                Clause::new_and([(0, false), (7, true), (8, false)]),
+            ),
+        ];
+        translate_clauses(
+            &mut clauses,
+            &HashMap::from_iter([(7, 30), (8, 31), (9, 32), (31, 33)]),
+        );
+        assert_eq!(
+            vec![
+                dedup_clause(
+                    7,
+                    None,
+                    Clause::new_and([(1, true), (3, false), (5, false), (32, true)]),
+                ),
+                dedup_clause(
+                    9,
+                    None,
+                    Clause::new_and([(0, false), (30, true), (33, false)])
+                ),
+            ],
+            clauses
+        );
     }
 
     #[test]

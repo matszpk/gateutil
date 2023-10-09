@@ -547,7 +547,7 @@ where
             false
         };
     }
-    
+
     if !and_clauses_need_optim {
         deduplicate_literal_clauses(
             &mut extra_clause_index,
