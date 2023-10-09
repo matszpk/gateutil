@@ -293,6 +293,8 @@ pub(crate) fn deduplicate_literal_clauses<T>(
             // or just find shared literals between clauses between 2-literal occurrences.
             // or mark used in tour clauses and ignore them in next 2-literals.
             // find best real pairlit (greatest real occurrences)
+            
+            // additional (occurs.count, ri) - ri to force choice of first pair in order
             let (best_pi, occur_count) = pairlit_clause_map
                 [pi..std::cmp::min(pairlit_clause_map_len, pi + 10)]
                 .iter()
@@ -331,7 +333,7 @@ pub(crate) fn deduplicate_literal_clauses<T>(
                 .copied()
                 .collect::<Vec<_>>();
 
-            println!("pairlit: {} {} {:?}", pi, best_pi, (ls1, ls2));
+            //println!("pairlit: {} {} {:?}", pi, best_pi, (ls1, ls2));
             if real_occurs.len() >= 2 {
                 // process occurrences
                 let extra_lit = T::try_from(*extra_clause_start).unwrap();
