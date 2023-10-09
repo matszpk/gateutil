@@ -289,7 +289,7 @@ pub(crate) fn deduplicate_literal_clauses<T>(
             }
             // NOTODO: fix between ordering between extra clauses from
             // deduplicate_literal_clauses_0 and this deduplicate_literal_clauses.
-            // ^^ unnecessary: because literals in extra clauses from dlc_0 occurred onlu once!
+            // ^^ unnecessary: because literals in extra clauses from dlc_0 occurred only once!
             // TODO: if some 2-literal are aggregated then use it in 2-literal
             // with same one literal to join. (01, 012, 0123) -> A=01 -> (A2, A23)
             // replace 2-literals by clause
