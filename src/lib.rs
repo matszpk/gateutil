@@ -448,7 +448,7 @@ where
 // if some possible literal duplicates then returns true, otherwise return false
 pub fn deduplicate_clause_circuit<T>(circuit: ClauseCircuit<T>) -> (ClauseCircuit<T>, bool)
 where
-    T: Clone + Copy + Ord + PartialEq + Eq + Hash,
+    T: Clone + Copy + Ord + PartialEq + Eq + Hash + Debug,
     T: Default + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
     usize: TryFrom<T>,
