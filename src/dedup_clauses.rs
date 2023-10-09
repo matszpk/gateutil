@@ -256,7 +256,11 @@ pub(crate) fn deduplicate_literal_clauses<T>(
     }
     let kind = clauses.first().unwrap().clause.kind;
 
-    loop {
+    let total_lit_count = clauses
+        .iter()
+        .map(|dc| dc.clause.literals.len())
+        .sum::<usize>();
+    for _ in 0..std::cmp::max(total_lit_count / 20, 100) {
         // get pair_count_map sorted by count descending
         let pairlit_clause_map = {
             let mut pairlit_clause_map = HashMap::<((T, bool), (T, bool)), Vec<usize>>::new();
