@@ -36,8 +36,6 @@ impl<T: Ord> Ord for DedupClause<T> {
     }
 }
 
-// TODO: simplify extra clauses count and update.
-
 // duplicates will be replaced by single-literal clauses with literal to first occurrences
 pub(crate) fn deduplicate_clauses<T>(clauses: &mut Vec<DedupClause<T>>) -> HashMap<T, T>
 where
