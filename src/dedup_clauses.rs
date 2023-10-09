@@ -211,11 +211,8 @@ pub(crate) fn deduplicate_literal_clauses_0<T>(
                 }
             }
             let dedup_clause = &clauses[*occurs.first().unwrap()];
-            let new_orig_index = if dedup_clause.extra_index.is_some() {
-                dedup_clause.orig_index
-            } else {
-                T::try_from(usize::try_from(dedup_clause.orig_index).unwrap() - 1).unwrap()
-            };
+            let new_orig_index =
+                T::try_from(usize::try_from(dedup_clause.orig_index).unwrap() - 1).unwrap();
             clauses.push(DedupClause {
                 orig_index: new_orig_index,
                 extra_index: Some(extra_lit),
