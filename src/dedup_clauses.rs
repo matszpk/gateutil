@@ -317,6 +317,7 @@ pub(crate) fn deduplicate_literal_clauses<T>(
                 let extra_lit = T::try_from(*extra_clause_start).unwrap();
                 let same_lits = [*ls1, *ls2];
                 let mut found = false;
+                // TODO: correct ordering between two new extra 2-literal clauses.
                 for occur in &real_occurs {
                     let DedupClause {
                         orig_index, clause, ..
