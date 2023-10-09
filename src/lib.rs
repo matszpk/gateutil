@@ -520,14 +520,12 @@ where
         false
     };
 
-    let old_and_clauses_len = and_clauses.len();
     if !and_clauses_need_optim {
         deduplicate_literal_clauses_0(
             &mut extra_clause_index,
             &mut and_clauses,
             &mut and_trans_tbl,
         );
-        and_clauses.sort();
         and_clauses_need_optim = if !and_trans_tbl.is_empty() {
             // check whether clauses need optimizations
             check_if_clauses_need_optimization_and_fix(&mut and_clauses)
@@ -536,14 +534,12 @@ where
         };
     }
 
-    let old_xor_clauses_len = xor_clauses.len();
     if !xor_clauses_need_optim {
         deduplicate_literal_clauses_0(
             &mut extra_clause_index,
             &mut xor_clauses,
             &mut xor_trans_tbl,
         );
-        xor_clauses.sort();
         xor_clauses_need_optim = if !xor_trans_tbl.is_empty() {
             // check whether clauses need optimizations
             check_if_clauses_need_optimization_and_fix(&mut xor_clauses)
