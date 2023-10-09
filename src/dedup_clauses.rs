@@ -264,6 +264,7 @@ pub(crate) fn deduplicate_literal_clauses<T>(
             for (ci, DedupClause { clause, .. }) in clauses.iter().enumerate() {
                 for (i, ls1) in clause.literals.iter().enumerate() {
                     for ls2 in clause.literals[i + 1..].iter().filter(|x| *x != ls1) {
+                        let (ls1, ls2) = if ls1 < ls2 { (ls1, ls2) } else { (ls2, ls1) };
                         if let Some(list) = pairlit_clause_map.get_mut(&(*ls1, *ls2)) {
                             list.push(ci);
                         } else {
@@ -277,30 +278,70 @@ pub(crate) fn deduplicate_literal_clauses<T>(
             pairlit_clause_map
         };
 
-        let mut used_lits = HashSet::new();
-        for ((ls1, ls2), occurs) in pairlit_clause_map {
-            if used_lits.contains(&ls1) || used_lits.contains(&ls2) {
-                continue;
-            }
+        let mut used_clauses = HashSet::<usize>::new();
+        let pairlit_clause_map_len = pairlit_clause_map.len();
+        let mut pi = 0;
+        while pi < pairlit_clause_map_len {
             // TODO: if some 2-literal are aggregated then use it in 2-literal
             // with same one literal to join. (01, 012, 0123) -> A=01 -> (A2, A23)
             // replace 2-literals by clause
             // or just find shared literals between clauses between 2-literal occurrences.
             // or mark used in tour clauses and ignore them in next 2-literals.
-            extra_index += 1;
-            // end
-            used_lits.insert(ls1);
-            used_lits.insert(ls2);
+            // find best real pairlit (greatest real occurrences)
+            let best_pi = pairlit_clause_map[pi..std::cmp::min(pairlit_clause_map_len, pi + 1)]
+                .iter()
+                .enumerate()
+                .max_by_key(|(i, (p, occurs))| {
+                    occurs.iter().filter(|x| !used_clauses.contains(x)).count()
+                })
+                .map(|(i, (_, _))| i)
+                .unwrap();
+            let ((ls1, ls2), occurs) = &pairlit_clause_map[best_pi];
+            let mut real_occurs = occurs
+                .into_iter()
+                .filter(|x| !used_clauses.contains(x))
+                .copied()
+                .collect::<Vec<_>>();
+
+            // process occurrences
+            let extra_lit = T::try_from(*extra_clause_start).unwrap();
+            let same_lits = [*ls1, *ls2];
+            for occur in &real_occurs {
+                let DedupClause {
+                    orig_index, clause, ..
+                } = &mut clauses[*occur];
+                remove_sorted_ref(&mut clause.literals, &same_lits);
+                clause.literals.push((extra_lit, false));
+                if clause.literals.len() == 1 {
+                    trans_table.insert(*orig_index, clause.literals.first().unwrap().0);
+                }
+            }
+
+            let dedup_clause = &clauses[*occurs.first().unwrap()];
+            let new_orig_index = if dedup_clause.extra_index.is_some() {
+                dedup_clause.orig_index
+            } else {
+                T::try_from(usize::try_from(dedup_clause.orig_index).unwrap() - 1).unwrap()
+            };
+            clauses.push(DedupClause {
+                orig_index: new_orig_index,
+                extra_index: Some(extra_lit),
+                clause: Clause {
+                    kind,
+                    literals: same_lits.to_vec(),
+                },
+            });
+            *extra_clause_start += 1;
+            // add real occurs to used_clauses
+            used_clauses.extend(real_occurs);
+            pi += 1;
         }
 
-        // if !chain_found {
-        //     break;
-        // }
+        clauses.retain(|x| x.clause.literals.len() != 1);
+        // translate literals and sort and deduplicate literals
+        translate_clauses(clauses, &trans_table);
+        clauses.sort()
     }
-
-    translate_clauses(clauses, &trans_table);
-    // final clauses
-    clauses.sort();
 }
 
 pub fn merge_sorted_by_key<T, I1, I2, F, B>(a: I1, b: I2, mut f: F) -> Vec<T>
