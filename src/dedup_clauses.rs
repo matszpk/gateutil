@@ -2100,4 +2100,92 @@ mod tests {
                 < dedup_clause(4, Some(10), Clause::new_and([]))
         );
     }
+
+    #[test]
+    fn test_deduplicate_literal_clauses() {
+        let mut clauses = vec![
+            dedup_clause(
+                10,
+                None,
+                Clause::new_and([
+                    (1, false),
+                    (2, false),
+                    (3, false),
+                    (5, false),
+                    (7, false),
+                    (8, false),
+                ]),
+            ),
+            dedup_clause(
+                11,
+                None,
+                Clause::new_and([(1, false), (3, false), (5, false), (7, false), (8, false)]),
+            ),
+            dedup_clause(
+                12,
+                None,
+                Clause::new_and([(1, false), (3, false), (7, false), (8, false)]),
+            ),
+            dedup_clause(
+                13,
+                None,
+                Clause::new_and([(1, false), (3, false), (7, false)]),
+            ),
+            dedup_clause(14, None, Clause::new_and([(1, false), (7, false)])),
+        ];
+        let mut extra_clause_index = 30;
+        let mut trans_map = HashMap::new();
+        deduplicate_literal_clauses(&mut extra_clause_index, &mut clauses, &mut trans_map);
+        assert_eq!(
+            HashMap::from_iter([(14, 30), (12, 32), (11, 33), (13, 31)]),
+            trans_map
+        );
+        assert_eq!(extra_clause_index, 34);
+        // FAILURE of Ordering
+        assert_eq!(
+            vec![
+                DedupClause {
+                    orig_index: 9,
+                    extra_index: Some(30),
+                    clause: Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(1, false), (7, false)]
+                    }
+                },
+                DedupClause {
+                    orig_index: 9,
+                    extra_index: Some(31),
+                    clause: Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(3, false), (30, false)]
+                    }
+                },
+                DedupClause {
+                    orig_index: 9,
+                    extra_index: Some(32),
+                    clause: Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(8, false), (31, false)]
+                    }
+                },
+                DedupClause {
+                    orig_index: 9,
+                    extra_index: Some(33),
+                    clause: Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(5, false), (32, false)]
+                    }
+                },
+                DedupClause {
+                    orig_index: 10,
+                    extra_index: None,
+                    clause: Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(2, false), (33, false)]
+                    }
+                }
+            ],
+            clauses,
+        );
+    }
 }
