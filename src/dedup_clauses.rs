@@ -282,6 +282,10 @@ pub(crate) fn deduplicate_literal_clauses<T>(
         let mut pi = 0;
         let mut have_changes = false;
         while pi < pairlit_clause_map_len {
+            if pairlit_clause_map[pi].1.len() < 2 {
+                pi += 1;
+                continue;
+            }
             // TODO: if some 2-literal are aggregated then use it in 2-literal
             // with same one literal to join. (01, 012, 0123) -> A=01 -> (A2, A23)
             // replace 2-literals by clause
