@@ -303,7 +303,7 @@ pub(crate) fn deduplicate_literal_clauses<T>(
                 .copied()
                 .collect::<Vec<_>>();
 
-            if !real_occurs.is_empty() {
+            if real_occurs.len() >= 2 {
                 // process occurrences
                 let extra_lit = T::try_from(*extra_clause_start).unwrap();
                 let same_lits = [*ls1, *ls2];
