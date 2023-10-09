@@ -548,28 +548,8 @@ where
         };
     }
 
-    // translate literals and sort and deduplicate literals
-    for DedupClause { clause, .. } in &mut and_clauses {
-        for (l, _) in &mut clause.literals {
-            if let Some(trans_l) = xor_trans_tbl.get(&l) {
-                *l = *trans_l;
-            }
-        }
-        clause.literals.sort();
-        if clause.kind == ClauseKind::And {
-            clause.literals.dedup();
-        }
-    }
-
-    // translate literals and sort and deduplicate literals
-    for DedupClause { clause, .. } in &mut xor_clauses {
-        for (l, _) in &mut clause.literals {
-            if let Some(trans_l) = and_trans_tbl.get(&l) {
-                *l = *trans_l;
-            }
-        }
-        clause.literals.sort();
-    }
+    translate_clauses(&mut and_clauses, &xor_trans_tbl);
+    translate_clauses(&mut xor_clauses, &and_trans_tbl);
 
     (
         join_deduplicates_to_clause_circuit(

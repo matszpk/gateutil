@@ -46,6 +46,24 @@ impl<T: Ord> Ord for DedupClause<T> {
 //     }
 // }
 
+pub(crate) fn translate_clauses<T>(clauses: &mut [DedupClause<T>], trans_table: &HashMap<T, T>)
+where
+    T: Clone + Copy + Ord + PartialEq + Eq + Hash,
+{
+    // translate literals and sort and deduplicate literals
+    for DedupClause { clause, .. } in clauses.iter_mut() {
+        for (l, _) in &mut clause.literals {
+            if let Some(trans_l) = trans_table.get(&l) {
+                *l = *trans_l;
+            }
+        }
+        clause.literals.sort();
+        if clause.kind == ClauseKind::And {
+            clause.literals.dedup();
+        }
+    }
+}
+
 // duplicates will be replaced by single-literal clauses with literal to first occurrences
 pub(crate) fn deduplicate_clauses<T>(clauses: &mut Vec<DedupClause<T>>) -> HashMap<T, T>
 where
@@ -82,18 +100,7 @@ where
         }
     }
     clauses.dedup_by_key(|DedupClause { clause: c, .. }| (c.kind, c.literals.clone()));
-    // translate literals and sort and deduplicate literals
-    for DedupClause { clause, .. } in clauses.iter_mut() {
-        for (l, _) in &mut clause.literals {
-            if let Some(trans_l) = trans_table.get(&l) {
-                *l = *trans_l;
-            }
-        }
-        clause.literals.sort();
-        if clause.kind == ClauseKind::And {
-            clause.literals.dedup();
-        }
-    }
+    translate_clauses(clauses, &mut trans_table);
     clauses.sort();
     trans_table
 }
@@ -240,17 +247,7 @@ pub(crate) fn deduplicate_literal_clauses_0<T>(
     clauses.retain(|x| x.clause.literals.len() != 1);
 
     // translate literals and sort and deduplicate literals
-    for DedupClause { clause, .. } in clauses.iter_mut() {
-        for (l, _) in &mut clause.literals {
-            if let Some(trans_l) = trans_table.get(&l) {
-                *l = *trans_l;
-            }
-        }
-        clause.literals.sort();
-        if clause.kind == ClauseKind::And {
-            clause.literals.dedup();
-        }
-    }
+    translate_clauses(clauses, &trans_table);
     clauses.sort()
 }
 
@@ -315,14 +312,9 @@ where
         // }
     }
 
+    translate_clauses(clauses, &trans_table);
     // final clauses
-    clauses.sort_by_key(
-        |DedupClause {
-             orig_index: orig_idx,
-             extra_index: extra_idx,
-             ..
-         }| (*orig_idx, *extra_idx),
-    );
+    clauses.sort();
     trans_table
 }
 
