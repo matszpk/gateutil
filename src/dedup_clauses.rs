@@ -346,9 +346,7 @@ pub(crate) fn deduplicate_literal_clauses<T>(
                 // process occurrences
                 let mut lit1_extra_clause_index = None;
                 for occur in &real_occurs {
-                    let DedupClause {
-                        clause, ..
-                    } = &mut clauses[*occur];
+                    let DedupClause { clause, .. } = &mut clauses[*occur];
                     if clause.literals.len() == 2 {
                         //println!("  old_extra_clauses found: {:?}", clause);
                         lit1_extra_clause_index = clauses[*occur].extra_index;
