@@ -338,8 +338,37 @@ pub(crate) fn deduplicate_literal_clauses<T>(
             //println!("pairlit: {} {} {:?}", pi, best_pi, (ls1, ls2));
             if real_occurs.len() >= 2 {
                 // process occurrences
+                let mut lit1_orig_index = None;
+                let mut lit1_extra_clause_index = None;
+                for occur in &real_occurs {
+                    let DedupClause {
+                        orig_index, clause, ..
+                    } = &mut clauses[*occur];
+                    if clause.literals.len() == 2 {
+                        lit1_orig_index = Some(*orig_index);
+                        lit1_extra_clause_index = clauses[*occur].extra_index;
+                    }
+                }
+
                 let extra_lit = T::try_from(*extra_clause_start).unwrap();
                 let same_lits = [*ls1, *ls2];
+                let dedup_clause = &clauses[*real_occurs.first().unwrap()];
+                let new_orig_index = if dedup_clause.extra_index.is_some() {
+                    dedup_clause.orig_index
+                } else {
+                    T::try_from(usize::try_from(dedup_clause.orig_index).unwrap() - 1).unwrap()
+                };
+                let old_extra_is_lower = if let Some(l1i) = lit1_orig_index {
+                    new_orig_index >= l1i && lit1_extra_clause_index.is_some()
+                } else {
+                    false
+                };
+
+                let extra_lit = if !old_extra_is_lower {
+                    extra_lit
+                } else {
+                    lit1_extra_clause_index.unwrap()
+                };
 
                 for occur in &real_occurs {
                     let DedupClause {
@@ -353,22 +382,17 @@ pub(crate) fn deduplicate_literal_clauses<T>(
                     }
                 }
 
-                let dedup_clause = &clauses[*real_occurs.first().unwrap()];
-                let new_orig_index = if dedup_clause.extra_index.is_some() {
-                    dedup_clause.orig_index
-                } else {
-                    T::try_from(usize::try_from(dedup_clause.orig_index).unwrap() - 1).unwrap()
-                };
-
-                clauses.push(DedupClause {
-                    orig_index: new_orig_index,
-                    extra_index: Some(extra_lit),
-                    clause: Clause {
-                        kind,
-                        literals: same_lits.to_vec(),
-                    },
-                });
-                *extra_clause_start += 1;
+                if !old_extra_is_lower {
+                    clauses.push(DedupClause {
+                        orig_index: new_orig_index,
+                        extra_index: Some(extra_lit),
+                        clause: Clause {
+                            kind,
+                            literals: same_lits.to_vec(),
+                        },
+                    });
+                    *extra_clause_start += 1;
+                }
                 // add real occurs to used_clauses
                 used_clauses.extend(real_occurs);
                 have_changes = true;
