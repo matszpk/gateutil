@@ -296,7 +296,7 @@ pub(crate) fn deduplicate_literal_clauses<T>(
             // or just find shared literals between clauses between 2-literal occurrences.
             // or mark used in tour clauses and ignore them in next 2-literals.
             // find best real pairlit (greatest real occurrences)
-            
+
             // additional (occurs.count, ri) - ri to force choice of first pair in order
             let (best_pi, occur_count) = pairlit_clause_map
                 [pi..std::cmp::min(pairlit_clause_map_len, pi + 10)]
@@ -2469,6 +2469,90 @@ mod tests {
                     clause: Clause {
                         kind: ClauseKind::And,
                         literals: vec![(9, false), (33, false)]
+                    }
+                }
+            ],
+            clauses,
+        );
+
+        let mut clauses = vec![
+            dedup_clause(
+                10,
+                None,
+                Clause::new_and([(1, false), (3, false), (7, false), (8, false)]),
+            ),
+            dedup_clause(
+                11,
+                None,
+                Clause::new_and([(1, false), (3, false), (5, false), (7, false), (8, false)]),
+            ),
+            dedup_clause(12, None, Clause::new_and([(1, false), (7, false)])),
+            dedup_clause(
+                13,
+                None,
+                Clause::new_and([
+                    (1, false),
+                    (2, false),
+                    (3, false),
+                    (5, false),
+                    (7, false),
+                    (8, false),
+                ]),
+            ),
+            dedup_clause(
+                14,
+                None,
+                Clause::new_and([(1, false), (3, false), (7, false)]),
+            ),
+        ];
+        let mut extra_clause_index = 30;
+        let mut trans_map = HashMap::new();
+        deduplicate_literal_clauses(&mut extra_clause_index, &mut clauses, &mut trans_map);
+        assert_eq!(
+            HashMap::from_iter([(12, 30), (14, 31), (10, 32), (11, 33)]),
+            trans_map
+        );
+        assert_eq!(extra_clause_index, 34);
+        assert_eq!(
+            vec![
+                DedupClause {
+                    orig_index: 9,
+                    extra_index: Some(30),
+                    clause: Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(1, false), (7, false)]
+                    }
+                },
+                DedupClause {
+                    orig_index: 9,
+                    extra_index: Some(31),
+                    clause: Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(3, false), (30, false)]
+                    }
+                },
+                DedupClause {
+                    orig_index: 9,
+                    extra_index: Some(32),
+                    clause: Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(8, false), (31, false)]
+                    }
+                },
+                DedupClause {
+                    orig_index: 10,
+                    extra_index: Some(33),
+                    clause: Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(5, false), (32, false)]
+                    }
+                },
+                DedupClause {
+                    orig_index: 13,
+                    extra_index: None,
+                    clause: Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(2, false), (33, false)]
                     }
                 }
             ],
