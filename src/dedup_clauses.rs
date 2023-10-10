@@ -275,6 +275,7 @@ pub(crate) fn deduplicate_literal_clauses<T>(
 
         //println!("pairlitmap: {:?}", pairlit_clause_map);
 
+        const ITEM_NUM_TO_CHOICE: usize = 10;
         let mut used_clauses = HashSet::<usize>::new();
         let pairlit_clause_map_len = pairlit_clause_map.len();
         let mut pi = 0;
@@ -298,7 +299,8 @@ pub(crate) fn deduplicate_literal_clauses<T>(
             // find best real pairlit (greatest real occurrences)
 
             // additional (occurs.count, ri) - ri to force choice of first pair in order
-            let best_pi = pairlit_clause_map[pi..std::cmp::min(pairlit_clause_map_len, pi + 10)]
+            let best_pi = pairlit_clause_map
+                [pi..std::cmp::min(pairlit_clause_map_len, pi + ITEM_NUM_TO_CHOICE)]
                 .iter()
                 .enumerate()
                 .map(|(i, (_, occurs))| {
@@ -316,7 +318,8 @@ pub(crate) fn deduplicate_literal_clauses<T>(
                 .unwrap();
             // println!(
             //     "pairlit_window: {:?}",
-            //     pairlit_clause_map[pi..std::cmp::min(pairlit_clause_map_len, pi + 10)]
+            //     pairlit_clause_map[pi..std::cmp::min(pairlit_clause_map_len, pi +
+            //          ITEM_NUM_TO_CHOICE)]
             //         .iter()
             //         .enumerate()
             //         .map(|(i, (_, occurs))| {
@@ -396,7 +399,7 @@ pub(crate) fn deduplicate_literal_clauses<T>(
                 used_clauses.extend(real_occurs);
                 have_changes = true;
             } else {
-                pi += 10;
+                pi += ITEM_NUM_TO_CHOICE;
                 continue;
             }
             pi += 1;
