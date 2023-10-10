@@ -488,7 +488,7 @@ where
         .collect::<Vec<_>>();
     let mut and_trans_tbl = deduplicate_clauses(&mut and_clauses);
     and_clauses.sort();
-    let mut and_clauses_need_optim = if !and_trans_tbl.is_empty() {
+    let and_clauses_need_optim = if !and_trans_tbl.is_empty() {
         // check whether clauses need optimizations
         check_if_clauses_need_optimization_and_fix(&mut and_clauses)
     } else {
@@ -514,66 +514,42 @@ where
         .collect::<Vec<_>>();
     let mut xor_trans_tbl = deduplicate_clauses(&mut xor_clauses);
     xor_clauses.sort();
-    let mut xor_clauses_need_optim = if !xor_trans_tbl.is_empty() {
+    let xor_clauses_need_optim = if !xor_trans_tbl.is_empty() {
         check_if_clauses_need_optimization_and_fix(&mut xor_clauses)
     } else {
         false
     };
 
     if !and_clauses_need_optim {
+        // because deduplicate_literal_clauses and deduplicate_literal_clauses_0
+        // move some literals from old clauses into new clauses then
+        // checking 1-literal clauses is not needed.
         deduplicate_literal_clauses_0(
             &mut extra_clause_index,
             &mut and_clauses,
             &mut and_trans_tbl,
         );
-        and_clauses_need_optim = if !and_trans_tbl.is_empty() {
-            // check whether clauses need optimizations
-            check_if_clauses_need_optimization_and_fix(&mut and_clauses)
-        } else {
-            false
-        };
-    }
-
-    if !xor_clauses_need_optim {
-        deduplicate_literal_clauses_0(
-            &mut extra_clause_index,
-            &mut xor_clauses,
-            &mut xor_trans_tbl,
-        );
-        xor_clauses_need_optim = if !xor_trans_tbl.is_empty() {
-            // check whether clauses need optimizations
-            check_if_clauses_need_optimization_and_fix(&mut xor_clauses)
-        } else {
-            false
-        };
-    }
-
-    if !and_clauses_need_optim {
         deduplicate_literal_clauses(
             &mut extra_clause_index,
             &mut and_clauses,
             &mut and_trans_tbl,
         );
-        and_clauses_need_optim = if !and_trans_tbl.is_empty() {
-            // check whether clauses need optimizations
-            check_if_clauses_need_optimization_and_fix(&mut and_clauses)
-        } else {
-            false
-        };
     }
 
     if !xor_clauses_need_optim {
+        // because deduplicate_literal_clauses and deduplicate_literal_clauses_0
+        // move some literals from old clauses into new clauses then
+        // checking 1-literal clauses is not needed.
+        deduplicate_literal_clauses_0(
+            &mut extra_clause_index,
+            &mut xor_clauses,
+            &mut xor_trans_tbl,
+        );
         deduplicate_literal_clauses(
             &mut extra_clause_index,
             &mut xor_clauses,
             &mut xor_trans_tbl,
         );
-        xor_clauses_need_optim = if !xor_trans_tbl.is_empty() {
-            // check whether clauses need optimizations
-            check_if_clauses_need_optimization_and_fix(&mut xor_clauses)
-        } else {
-            false
-        };
     }
 
     translate_clauses(&mut and_clauses, &xor_trans_tbl);
