@@ -523,7 +523,7 @@ where
     if !and_clauses_need_optim {
         // because deduplicate_literal_clauses and deduplicate_literal_clauses_0
         // move some literals from old clauses into new clauses then
-        // checking 1-literal clauses is not needed.
+        // checking 1-literal clauses and duplicated literals is not needed.
         deduplicate_literal_clauses_0(
             &mut extra_clause_index,
             &mut and_clauses,
@@ -539,7 +539,7 @@ where
     if !xor_clauses_need_optim {
         // because deduplicate_literal_clauses and deduplicate_literal_clauses_0
         // move some literals from old clauses into new clauses then
-        // checking 1-literal clauses is not needed.
+        // checking 1-literal clauses and duplicated literals is not needed.
         deduplicate_literal_clauses_0(
             &mut extra_clause_index,
             &mut xor_clauses,
