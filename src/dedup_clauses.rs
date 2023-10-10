@@ -298,8 +298,7 @@ pub(crate) fn deduplicate_literal_clauses<T>(
             // find best real pairlit (greatest real occurrences)
 
             // additional (occurs.count, ri) - ri to force choice of first pair in order
-            let (best_pi, occur_count) = pairlit_clause_map
-                [pi..std::cmp::min(pairlit_clause_map_len, pi + 10)]
+            let best_pi = pairlit_clause_map[pi..std::cmp::min(pairlit_clause_map_len, pi + 10)]
                 .iter()
                 .enumerate()
                 .map(|(i, (_, occurs))| {
@@ -307,12 +306,13 @@ pub(crate) fn deduplicate_literal_clauses<T>(
                         i,
                         (
                             occurs.iter().filter(|x| !used_clauses.contains(x)).count(),
+                            // reverse i - to choose first item with max occurrences
                             std::cmp::Reverse(i),
                         ),
                     )
                 })
                 .max_by_key(|(_, (occur_count, ri))| (*occur_count, *ri))
-                .map(|(i, (occur_count, _))| (pi + i, occur_count))
+                .map(|(i, (_, _))| pi + i)
                 .unwrap();
             // println!(
             //     "pairlit_window: {:?}",
@@ -328,7 +328,6 @@ pub(crate) fn deduplicate_literal_clauses<T>(
             //         .collect::<Vec<_>>()
             // );
             // choose best_pi if occurrence count is greater than 1
-            let best_pi = if occur_count >= 2 { best_pi } else { pi };
             let ((ls1, ls2), occurs) = &pairlit_clause_map[best_pi];
             let real_occurs = occurs
                 .into_iter()
@@ -341,85 +340,41 @@ pub(crate) fn deduplicate_literal_clauses<T>(
                 // process occurrences
                 let extra_lit = T::try_from(*extra_clause_start).unwrap();
                 let same_lits = [*ls1, *ls2];
-                let mut found = false;
-                let mut lit1_orig_index = None;
-                let mut lit1_extra_clause_index = None;
+
                 for occur in &real_occurs {
                     let DedupClause {
                         orig_index, clause, ..
                     } = &mut clauses[*occur];
-                    if clause.literals.binary_search(ls1).is_ok()
-                        && clause.literals.binary_search(ls2).is_ok()
-                    {
-                        if clause.literals.len() == 2 {
-                            lit1_orig_index = Some(*orig_index);
-                            lit1_extra_clause_index = clauses[*occur].extra_index;
-                        }
-                        found = true;
+                    remove_sorted_ref(&mut clause.literals, &same_lits);
+                    clause.literals.push((extra_lit, false));
+                    // only one 2-literal clause with ls1,ls2)
+                    if clause.literals.len() == 1 {
+                        trans_table.insert(*orig_index, clause.literals.first().unwrap().0);
                     }
                 }
 
-                if found {
-                    let dedup_clause = &clauses[*real_occurs
-                        .iter()
-                        .filter(|ci| {
-                            let dc = &clauses[**ci];
-                            dc.clause.literals.binary_search(ls1).is_ok()
-                                && dc.clause.literals.binary_search(ls2).is_ok()
-                        })
-                        .next()
-                        .unwrap()];
-                    let new_orig_index = if dedup_clause.extra_index.is_some() {
-                        dedup_clause.orig_index
-                    } else {
-                        T::try_from(usize::try_from(dedup_clause.orig_index).unwrap() - 1).unwrap()
-                    };
-                    let old_extra_is_lower = if let Some(l1i) = lit1_orig_index {
-                        new_orig_index >= l1i && lit1_extra_clause_index.is_some()
-                    } else {
-                        false
-                    };
-
-                    let extra_lit = if !old_extra_is_lower {
-                        extra_lit
-                    } else {
-                        lit1_extra_clause_index.unwrap()
-                    };
-
-                    for occur in &real_occurs {
-                        let DedupClause {
-                            orig_index, clause, ..
-                        } = &mut clauses[*occur];
-                        if clause.literals.binary_search(ls1).is_ok()
-                            && clause.literals.binary_search(ls2).is_ok()
-                        {
-                            remove_sorted_ref(&mut clause.literals, &same_lits);
-                            clause.literals.push((extra_lit, false));
-                            // only one 2-literal clause with ls1,ls2)
-                            if clause.literals.len() == 1 {
-                                trans_table.insert(*orig_index, clause.literals.first().unwrap().0);
-                            }
-                        }
-                    }
-
-                    if !old_extra_is_lower {
-                        clauses.push(DedupClause {
-                            orig_index: new_orig_index,
-                            extra_index: Some(extra_lit),
-                            clause: Clause {
-                                kind,
-                                literals: same_lits.to_vec(),
-                            },
-                        });
-                        *extra_clause_start += 1;
-                    }
-                    // add real occurs to used_clauses
-                    used_clauses.extend(real_occurs);
-                    have_changes = true;
+                let dedup_clause = &clauses[*real_occurs.first().unwrap()];
+                let new_orig_index = if dedup_clause.extra_index.is_some() {
+                    dedup_clause.orig_index
                 } else {
-                    pi += 10;
-                    continue;
-                }
+                    T::try_from(usize::try_from(dedup_clause.orig_index).unwrap() - 1).unwrap()
+                };
+
+                clauses.push(DedupClause {
+                    orig_index: new_orig_index,
+                    extra_index: Some(extra_lit),
+                    clause: Clause {
+                        kind,
+                        literals: same_lits.to_vec(),
+                    },
+                });
+                *extra_clause_start += 1;
+                // add real occurs to used_clauses
+                used_clauses.extend(real_occurs);
+                have_changes = true;
+            } else {
+                pi += 10;
+                continue;
             }
             pi += 1;
         }
