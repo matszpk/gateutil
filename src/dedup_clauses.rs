@@ -2882,6 +2882,7 @@ mod tests {
             clauses,
         );
 
+        // important testcase: old extra clause reordering avoiding.
         let mut clauses = vec![
             dedup_clause(
                 20,
