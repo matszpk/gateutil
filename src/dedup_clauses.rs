@@ -344,15 +344,13 @@ pub(crate) fn deduplicate_literal_clauses<T>(
             // );
             if real_occurs.len() >= 2 {
                 // process occurrences
-                let mut lit1_orig_index = None;
                 let mut lit1_extra_clause_index = None;
                 for occur in &real_occurs {
                     let DedupClause {
-                        orig_index, clause, ..
+                        clause, ..
                     } = &mut clauses[*occur];
                     if clause.literals.len() == 2 {
                         //println!("  old_extra_clauses found: {:?}", clause);
-                        lit1_orig_index = Some(*orig_index);
                         lit1_extra_clause_index = clauses[*occur].extra_index;
                     }
                 }
@@ -365,30 +363,8 @@ pub(crate) fn deduplicate_literal_clauses<T>(
                 } else {
                     T::try_from(usize::try_from(dedup_clause.orig_index).unwrap() - 1).unwrap()
                 };
-                let is_old_extra = if lit1_orig_index.is_some() {
-                    // println!(
-                    //     "  is_old_extra for {:?}: {:?} >= {:?} and {:?}",
-                    //     (ls1, ls2),
-                    //     new_orig_index,
-                    //     l1i,
-                    //     lit1_extra_clause_index.is_some()
-                    // );
-                    //new_orig_index >= l1i && lit1_extra_clause_index.is_some()
-                    lit1_extra_clause_index.is_some()
-                } else {
-                    false
-                };
-
-                let extra_lit = if !is_old_extra {
-                    extra_lit
-                } else {
-                    // println!(
-                    //     "  is_old_extra for {:?}: {:?}",
-                    //     (ls1, ls2),
-                    //     lit1_extra_clause_index
-                    // );
-                    lit1_extra_clause_index.unwrap()
-                };
+                let is_old_extra = lit1_extra_clause_index.is_some();
+                let extra_lit = lit1_extra_clause_index.unwrap_or(extra_lit);
 
                 for occur in &real_occurs {
                     let DedupClause {
