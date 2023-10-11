@@ -3179,82 +3179,82 @@ mod tests {
             dedup_clause(
                 10,
                 None,
-                Clause::new_and([(0, false), (1, false), (2, false), (3, false)]),
+                Clause::new_xor([(0, false), (1, false), (2, false), (3, false)]),
             ),
             dedup_clause(
                 11,
                 None,
-                Clause::new_and([(0, true), (1, false), (2, false), (3, false)]),
+                Clause::new_xor([(0, true), (1, false), (2, false), (3, false)]),
             ),
             dedup_clause(
                 12,
                 None,
-                Clause::new_and([(0, false), (1, true), (2, false), (3, false)]),
+                Clause::new_xor([(0, false), (1, true), (2, false), (3, false)]),
             ),
             dedup_clause(
                 13,
                 None,
-                Clause::new_and([(0, true), (1, true), (2, false), (3, false)]),
+                Clause::new_xor([(0, true), (1, true), (2, false), (3, false)]),
             ),
             dedup_clause(
                 15,
                 None,
-                Clause::new_and([(0, false), (1, false), (2, true), (3, false)]),
+                Clause::new_xor([(0, false), (1, false), (2, true), (3, false)]),
             ),
             dedup_clause(
                 16,
                 None,
-                Clause::new_and([(0, true), (1, false), (2, true), (3, false)]),
+                Clause::new_xor([(0, true), (1, false), (2, true), (3, false)]),
             ),
             dedup_clause(
                 17,
                 None,
-                Clause::new_and([(0, false), (1, true), (2, true), (3, false)]),
+                Clause::new_xor([(0, false), (1, true), (2, true), (3, false)]),
             ),
             dedup_clause(
                 18,
                 None,
-                Clause::new_and([(0, true), (1, true), (2, true), (3, false)]),
+                Clause::new_xor([(0, true), (1, true), (2, true), (3, false)]),
             ),
             dedup_clause(
                 20,
                 None,
-                Clause::new_and([(0, false), (1, false), (2, false), (3, true)]),
+                Clause::new_xor([(0, false), (1, false), (2, false), (3, true)]),
             ),
             dedup_clause(
                 21,
                 None,
-                Clause::new_and([(0, true), (1, false), (2, false), (3, true)]),
+                Clause::new_xor([(0, true), (1, false), (2, false), (3, true)]),
             ),
             dedup_clause(
                 22,
                 None,
-                Clause::new_and([(0, false), (1, true), (2, false), (3, true)]),
+                Clause::new_xor([(0, false), (1, true), (2, false), (3, true)]),
             ),
             dedup_clause(
                 23,
                 None,
-                Clause::new_and([(0, true), (1, true), (2, false), (3, true)]),
+                Clause::new_xor([(0, true), (1, true), (2, false), (3, true)]),
             ),
             dedup_clause(
                 25,
                 None,
-                Clause::new_and([(0, false), (1, false), (2, true), (3, true)]),
+                Clause::new_xor([(0, false), (1, false), (2, true), (3, true)]),
             ),
             dedup_clause(
                 26,
                 None,
-                Clause::new_and([(0, true), (1, false), (2, true), (3, true)]),
+                Clause::new_xor([(0, true), (1, false), (2, true), (3, true)]),
             ),
             dedup_clause(
                 27,
                 None,
-                Clause::new_and([(0, false), (1, true), (2, true), (3, true)]),
+                Clause::new_xor([(0, false), (1, true), (2, true), (3, true)]),
             ),
             dedup_clause(
                 28,
                 None,
-                Clause::new_and([(0, true), (1, true), (2, true), (3, true)]),
+                Clause::new_xor([(0, true), (1, true), (2, true), (3, true)]),
             ),
         ];
         let mut extra_clause_index = 30;
@@ -3268,7 +3268,7 @@ mod tests {
                     orig_index: 9,
                     extra_index: Some(30),
                     clause: Clause {
-                        kind: ClauseKind::And,
+                        kind: ClauseKind::Xor,
                         literals: vec![(0, false), (1, false)]
                     }
                 },
@@ -3276,7 +3276,7 @@ mod tests {
                     orig_index: 9,
                     extra_index: Some(34),
                     clause: Clause {
-                        kind: ClauseKind::And,
+                        kind: ClauseKind::Xor,
                         literals: vec![(2, false), (3, false)]
                     }
                 },
@@ -3284,7 +3284,7 @@ mod tests {
                     orig_index: 10,
                     extra_index: None,
                     clause: Clause {
-                        kind: ClauseKind::And,
+                        kind: ClauseKind::Xor,
                         literals: vec![(30, false), (34, false)]
                     }
                 },
@@ -3292,7 +3292,7 @@ mod tests {
                     orig_index: 10,
                     extra_index: Some(32),
                     clause: Clause {
-                        kind: ClauseKind::And,
+                        kind: ClauseKind::Xor,
                         literals: vec![(0, true), (1, false)]
                     }
                 },
@@ -3300,7 +3300,7 @@ mod tests {
                     orig_index: 11,
                     extra_index: None,
                     clause: Clause {
-                        kind: ClauseKind::And,
+                        kind: ClauseKind::Xor,
                         literals: vec![(32, false), (34, false)]
                     }
                 },
@@ -3308,7 +3308,7 @@ mod tests {
                     orig_index: 11,
                     extra_index: Some(31),
                     clause: Clause {
-                        kind: ClauseKind::And,
+                        kind: ClauseKind::Xor,
                         literals: vec![(0, false), (1, true)]
                     }
                 },
@@ -3316,7 +3316,7 @@ mod tests {
                     orig_index: 12,
                     extra_index: None,
                     clause: Clause {
-                        kind: ClauseKind::And,
+                        kind: ClauseKind::Xor,
                         literals: vec![(31, false), (34, false)]
                     }
                 },
@@ -3324,7 +3324,7 @@ mod tests {
                     orig_index: 12,
                     extra_index: Some(33),
                     clause: Clause {
-                        kind: ClauseKind::And,
+                        kind: ClauseKind::Xor,
                         literals: vec![(0, true), (1, true)]
                     }
                 },
@@ -3332,7 +3332,7 @@ mod tests {
                     orig_index: 13,
                     extra_index: None,
                     clause: Clause {
-                        kind: ClauseKind::And,
+                        kind: ClauseKind::Xor,
                         literals: vec![(33, false), (34, false)]
                     }
                 },
@@ -3340,7 +3340,7 @@ mod tests {
                     orig_index: 14,
                     extra_index: Some(36),
                     clause: Clause {
-                        kind: ClauseKind::And,
+                        kind: ClauseKind::Xor,
                         literals: vec![(2, true), (3, false)]
                     }
                 },
@@ -3348,7 +3348,7 @@ mod tests {
                     orig_index: 15,
                     extra_index: None,
                     clause: Clause {
-                        kind: ClauseKind::And,
+                        kind: ClauseKind::Xor,
                         literals: vec![(30, false), (36, false)]
                     }
                 },
@@ -3356,7 +3356,7 @@ mod tests {
                     orig_index: 16,
                     extra_index: None,
                     clause: Clause {
-                        kind: ClauseKind::And,
+                        kind: ClauseKind::Xor,
                         literals: vec![(32, false), (36, false)]
                     }
                 },
@@ -3364,7 +3364,7 @@ mod tests {
                     orig_index: 17,
                     extra_index: None,
                     clause: Clause {
-                        kind: ClauseKind::And,
+                        kind: ClauseKind::Xor,
                         literals: vec![(31, false), (36, false)]
                     }
                 },
@@ -3372,7 +3372,7 @@ mod tests {
                     orig_index: 18,
                     extra_index: None,
                     clause: Clause {
-                        kind: ClauseKind::And,
+                        kind: ClauseKind::Xor,
                         literals: vec![(33, false), (36, false)]
                     }
                 },
@@ -3380,7 +3380,7 @@ mod tests {
                     orig_index: 19,
                     extra_index: Some(35),
                     clause: Clause {
-                        kind: ClauseKind::And,
+                        kind: ClauseKind::Xor,
                         literals: vec![(2, false), (3, true)]
                     }
                 },
@@ -3388,7 +3388,7 @@ mod tests {
                     orig_index: 20,
                     extra_index: None,
                     clause: Clause {
-                        kind: ClauseKind::And,
+                        kind: ClauseKind::Xor,
                         literals: vec![(30, false), (35, false)]
                     }
                 },
@@ -3396,7 +3396,7 @@ mod tests {
                     orig_index: 21,
                     extra_index: None,
                     clause: Clause {
-                        kind: ClauseKind::And,
+                        kind: ClauseKind::Xor,
                         literals: vec![(32, false), (35, false)]
                     }
                 },
@@ -3404,7 +3404,7 @@ mod tests {
                     orig_index: 22,
                     extra_index: None,
                     clause: Clause {
-                        kind: ClauseKind::And,
+                        kind: ClauseKind::Xor,
                         literals: vec![(31, false), (35, false)]
                     }
                 },
@@ -3412,7 +3412,7 @@ mod tests {
                     orig_index: 23,
                     extra_index: None,
                     clause: Clause {
-                        kind: ClauseKind::And,
+                        kind: ClauseKind::Xor,
                         literals: vec![(33, false), (35, false)]
                     }
                 },
@@ -3420,7 +3420,7 @@ mod tests {
                     orig_index: 24,
                     extra_index: Some(37),
                     clause: Clause {
-                        kind: ClauseKind::And,
+                        kind: ClauseKind::Xor,
                         literals: vec![(2, true), (3, true)]
                     }
                 },
@@ -3428,7 +3428,7 @@ mod tests {
                     orig_index: 25,
                     extra_index: None,
                     clause: Clause {
-                        kind: ClauseKind::And,
+                        kind: ClauseKind::Xor,
                         literals: vec![(30, false), (37, false)]
                     }
                 },
@@ -3436,7 +3436,7 @@ mod tests {
                     orig_index: 26,
                     extra_index: None,
                     clause: Clause {
-                        kind: ClauseKind::And,
+                        kind: ClauseKind::Xor,
                         literals: vec![(32, false), (37, false)]
                     }
                 },
@@ -3444,7 +3444,7 @@ mod tests {
                     orig_index: 27,
                     extra_index: None,
                     clause: Clause {
-                        kind: ClauseKind::And,
+                        kind: ClauseKind::Xor,
                         literals: vec![(31, false), (37, false)]
                     }
                 },
@@ -3452,7 +3452,7 @@ mod tests {
                     orig_index: 28,
                     extra_index: None,
                     clause: Clause {
-                        kind: ClauseKind::And,
+                        kind: ClauseKind::Xor,
                         literals: vec![(33, false), (37, false)]
                     }
                 }
