@@ -352,6 +352,9 @@ pub(crate) fn deduplicate_literal_clauses<T>(
                     } = &mut clauses[*occur];
                     //println!("  clause: {:?}", clause);
                     if is_old_extra && clause.literals.len() == 2 {
+                        // TODO: check ordering: between old_extra_clause and new extra_clause
+                        // if extra clause have literals to some other extra clauses.
+                        // it can be WRONG!!
                         *orig_index = std::cmp::min(*orig_index, new_orig_index);
                         continue;
                     }
