@@ -2288,7 +2288,7 @@ mod tests {
                 None,
                 Clause::new_and([(1, false), (2, false), (4, false)]),
             ),
-            dedup_clause(13, None, Clause::new_and([(2, false), (5, false)])),
+            dedup_clause(13, None, Clause::new_and([(2, false), (5, true)])),
         ];
         let mut extra_clause_index = 30;
         let mut trans_map = HashMap::new();
@@ -2326,7 +2326,7 @@ mod tests {
                     extra_index: None,
                     clause: Clause {
                         kind: ClauseKind::And,
-                        literals: vec![(2, false), (5, false)]
+                        literals: vec![(2, false), (5, true)]
                     }
                 }
             ],
