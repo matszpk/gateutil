@@ -362,6 +362,9 @@ pub(crate) fn deduplicate_literal_clauses<T>(
                 } else {
                     T::try_from(usize::try_from(dedup_clause.orig_index).unwrap() - 1).unwrap()
                 };
+                // is_old_extra - if same 2-literal clause as pair literal is exist
+                // then do not remove and replace 2-literal clause and just
+                // replace original index if needed.
                 let is_old_extra = lit1_extra_clause_index.is_some();
                 let extra_lit = lit1_extra_clause_index.unwrap_or(extra_lit);
 
