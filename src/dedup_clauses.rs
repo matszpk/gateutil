@@ -272,7 +272,6 @@ pub(crate) fn deduplicate_literal_clauses<T>(
         };
 
         //println!("pairlitmap: {:?}", pairlit_clause_map);
-
         const ITEM_NUM_TO_CHOICE: usize = 10;
         let mut used_clauses = HashSet::<usize>::new();
         let pairlit_clause_map_len = pairlit_clause_map.len();
@@ -289,13 +288,6 @@ pub(crate) fn deduplicate_literal_clauses<T>(
             // NOTODO: fix between ordering between extra clauses from
             // deduplicate_literal_clauses_0 and this deduplicate_literal_clauses.
             // ^^ unnecessary: because literals in extra clauses from dlc_0 occurred only once!
-            // TODO: if some 2-literal are aggregated then use it in 2-literal
-            // with same one literal to join. (01, 012, 0123) -> A=01 -> (A2, A23)
-            // replace 2-literals by clause
-            // or just find shared literals between clauses between 2-literal occurrences.
-            // or mark used in tour clauses and ignore them in next 2-literals.
-            // find best real pairlit (greatest real occurrences)
-
             // additional (occurs.count, ri) - ri to force choice of first pair in order
             let best_pi = pairlit_clause_map
                 [pi..std::cmp::min(pairlit_clause_map_len, pi + ITEM_NUM_TO_CHOICE)]
@@ -314,20 +306,6 @@ pub(crate) fn deduplicate_literal_clauses<T>(
                 .max_by_key(|(_, (occur_count, ri))| (*occur_count, *ri))
                 .map(|(i, (_, _))| pi + i)
                 .unwrap();
-            // println!(
-            //     "pairlit_window: {:?}",
-            //     pairlit_clause_map[pi..std::cmp::min(pairlit_clause_map_len, pi +
-            //          ITEM_NUM_TO_CHOICE)]
-            //         .iter()
-            //         .enumerate()
-            //         .map(|(i, (_, occurs))| {
-            //             (
-            //                 i,
-            //                 occurs.iter().filter(|x| !used_clauses.contains(x)).count(),
-            //             )
-            //         })
-            //         .collect::<Vec<_>>()
-            // );
             // choose best_pi if occurrence count is greater than 1
             let ((ls1, ls2), occurs) = &pairlit_clause_map[best_pi];
             let real_occurs = occurs
