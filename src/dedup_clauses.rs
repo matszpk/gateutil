@@ -335,7 +335,8 @@ pub(crate) fn deduplicate_literal_clauses<T>(
                 let extra_lit = T::try_from(*extra_clause_start).unwrap();
                 let same_lits = [*ls1, *ls2];
                 // important: find firsrt in original occurrences first orig_index
-                //            not in real_occurs!!
+                //            not in real_occurs!! it must be really first occurrence
+                //            with smallest orig_index and smallest clauses index.
                 let dedup_clause = &clauses[*occurs.first().unwrap()];
                 let new_orig_index = if dedup_clause.extra_index.is_some() {
                     dedup_clause.orig_index
