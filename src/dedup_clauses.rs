@@ -28,8 +28,11 @@ impl<T: Ord> Ord for DedupClause<T> {
     }
 }
 
-pub(crate) fn translate_clauses<T>(clauses: &mut [DedupClause<T>], trans_table: &HashMap<T, T>)
-where
+pub(crate) fn translate_clauses<T>(
+    clauses: &mut [DedupClause<T>],
+    trans_table: &HashMap<T, T>,
+    dedup: bool,
+) where
     T: Clone + Copy + Ord + PartialEq + Eq + Hash,
 {
     // translate literals and sort and deduplicate literals
@@ -40,7 +43,7 @@ where
             }
         }
         clause.literals.sort();
-        if clause.kind == ClauseKind::And {
+        if dedup && clause.kind == ClauseKind::And {
             clause.literals.dedup();
         }
     }
@@ -82,7 +85,7 @@ where
         }
     }
     clauses.dedup_by_key(|DedupClause { clause: c, .. }| (c.kind, c.literals.clone()));
-    translate_clauses(clauses, &mut trans_table);
+    translate_clauses(clauses, &mut trans_table, true);
     clauses.sort();
     trans_table
 }
@@ -225,7 +228,7 @@ pub(crate) fn deduplicate_literal_clauses_0<T>(
     clauses.retain(|x| x.clause.literals.len() != 1);
 
     // translate literals and sort and deduplicate literals
-    translate_clauses(clauses, &trans_table);
+    translate_clauses(clauses, &trans_table, true);
     clauses.sort()
 }
 
@@ -390,7 +393,7 @@ pub(crate) fn deduplicate_literal_clauses<T>(
 
         clauses.retain(|x| x.clause.literals.len() != 1);
         // translate literals and sort and deduplicate literals
-        translate_clauses(clauses, &trans_table);
+        translate_clauses(clauses, &trans_table, true);
         clauses.sort();
         //println!("Clauses: After: {:?}", clauses);
 
@@ -565,12 +568,13 @@ mod tests {
             dedup_clause(
                 9,
                 None,
-                Clause::new_and([(0, false), (7, true), (8, false)]),
+                Clause::new_and([(0, false), (0, false), (7, true), (8, false)]),
             ),
         ];
         translate_clauses(
             &mut clauses,
             &HashMap::from_iter([(7, 30), (8, 31), (9, 32), (31, 33)]),
+            true,
         );
         assert_eq!(
             vec![
@@ -583,6 +587,39 @@ mod tests {
                     9,
                     None,
                     Clause::new_and([(0, false), (30, true), (33, false)])
+                ),
+            ],
+            clauses
+        );
+
+        let mut clauses = vec![
+            dedup_clause(
+                7,
+                None,
+                Clause::new_and([(1, true), (3, false), (5, false), (9, true)]),
+            ),
+            dedup_clause(
+                9,
+                None,
+                Clause::new_and([(0, false), (0, false), (7, true), (8, false)]),
+            ),
+        ];
+        translate_clauses(
+            &mut clauses,
+            &HashMap::from_iter([(7, 30), (8, 31), (9, 32), (31, 33)]),
+            false,
+        );
+        assert_eq!(
+            vec![
+                dedup_clause(
+                    7,
+                    None,
+                    Clause::new_and([(1, true), (3, false), (5, false), (32, true)]),
+                ),
+                dedup_clause(
+                    9,
+                    None,
+                    Clause::new_and([(0, false), (0, false), (30, true), (33, false)])
                 ),
             ],
             clauses

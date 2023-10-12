@@ -552,8 +552,8 @@ where
         );
     }
 
-    translate_clauses(&mut and_clauses, &xor_trans_tbl);
-    translate_clauses(&mut xor_clauses, &and_trans_tbl);
+    translate_clauses(&mut and_clauses, &xor_trans_tbl, false);
+    translate_clauses(&mut xor_clauses, &and_trans_tbl, false);
 
     (
         join_deduplicates_to_clause_circuit(

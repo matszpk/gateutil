@@ -1726,4 +1726,35 @@ fn test_deduplicate_clause_circuit() {
             ),
         );
     }
+
+    assert_eq!(
+        (
+            ClauseCircuit::new(
+                3,
+                [
+                    Clause::new_and([(0, false), (1, false), (2, false)]),
+                    Clause::new_xor([(0, false), (1, false), (2, false)]),
+                    Clause::new_and([(3, true), (4, false)]),
+                    Clause::new_and([(5, false), (5, false)]),
+                ],
+                [(5, false), (6, true)]
+            )
+            .unwrap(),
+            true
+        ),
+        deduplicate_clause_circuit(
+            ClauseCircuit::new(
+                3,
+                [
+                    Clause::new_and([(0, false), (1, false), (2, false)]),
+                    Clause::new_xor([(0, false), (1, false), (2, false)]),
+                    Clause::new_and([(3, true), (4, false)]),
+                    Clause::new_and([(3, true), (4, false)]),
+                    Clause::new_and([(5, false), (6, false)]),
+                ],
+                [(6, false), (7, true)]
+            )
+            .unwrap()
+        ),
+    );
 }
