@@ -505,10 +505,16 @@ where
             .map(|DedupClause { clause, .. }| clause)
             .filter(|c| c.len() != 0),
         outputs.iter().map(|(l, n)| {
-            let l = and_trans_map
-                .get(l)
-                .unwrap_or_else(|| xor_trans_map.get(l).unwrap_or(l));
-            let l_u = usize::try_from(*l).unwrap();
+            let mut out_l = *l;
+            while let Some(trans_l) = and_trans_map.get(&out_l) {
+                out_l = *trans_l;
+            }
+            if out_l == *l {
+                while let Some(trans_l) = xor_trans_map.get(&out_l) {
+                    out_l = *trans_l;
+                }
+            }
+            let l_u = usize::try_from(out_l).unwrap();
             if l_u >= input_len {
                 (trans_table[l_u], *n)
             } else {

@@ -2046,4 +2046,82 @@ fn test_deduplicate_clause_circuit() {
             .unwrap()
         ),
     );
+
+    assert_eq!(
+        (
+            ClauseCircuit::new(
+                4,
+                [
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(0, false), (2, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(1, false), (4, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(3, false), (5, false)]
+                    }
+                ],
+                [(6, false), (5, true), (5, false), (4, false), (4, false)]
+            )
+            .unwrap(),
+            false
+        ),
+        deduplicate_clause_circuit(
+            ClauseCircuit::new(
+                4,
+                [
+                    Clause::new_and([(0, false), (1, false), (2, false), (3, false)]),
+                    Clause::new_and([(0, false), (1, false), (2, false)]),
+                    Clause::new_and([(0, false), (1, false), (2, false)]),
+                    Clause::new_and([(0, false), (2, false)]),
+                    Clause::new_and([(0, false), (2, false)]),
+                ],
+                [(4, false), (5, true), (6, false), (7, false), (8, false)]
+            )
+            .unwrap()
+        ),
+    );
+
+    assert_eq!(
+        (
+            ClauseCircuit::new(
+                4,
+                [
+                    Clause {
+                        kind: ClauseKind::Xor,
+                        literals: vec![(0, false), (2, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::Xor,
+                        literals: vec![(1, false), (4, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::Xor,
+                        literals: vec![(3, false), (5, false)]
+                    }
+                ],
+                [(6, false), (5, true), (5, false), (4, false), (4, false)]
+            )
+            .unwrap(),
+            false
+        ),
+        deduplicate_clause_circuit(
+            ClauseCircuit::new(
+                4,
+                [
+                    Clause::new_xor([(0, false), (1, false), (2, false), (3, false)]),
+                    Clause::new_xor([(0, false), (1, false), (2, false)]),
+                    Clause::new_xor([(0, false), (1, false), (2, false)]),
+                    Clause::new_xor([(0, false), (2, false)]),
+                    Clause::new_xor([(0, false), (2, false)]),
+                ],
+                [(4, false), (5, true), (6, false), (7, false), (8, false)]
+            )
+            .unwrap()
+        ),
+    );
 }

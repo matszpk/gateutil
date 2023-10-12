@@ -552,8 +552,8 @@ where
         );
     }
 
-    //println!("AndTransTbl: {:?}", and_trans_tbl);
-    //println!("XorTransTbl: {:?}", xor_trans_tbl);
+    // println!("AndTransTbl: {:?}", and_trans_tbl);
+    // println!("XorTransTbl: {:?}", xor_trans_tbl);
     translate_clauses(&mut and_clauses, &xor_trans_tbl, false);
     translate_clauses(&mut xor_clauses, &and_trans_tbl, false);
 
