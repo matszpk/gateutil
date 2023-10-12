@@ -1757,4 +1757,161 @@ fn test_deduplicate_clause_circuit() {
             .unwrap()
         ),
     );
+
+    assert_eq!(
+        (
+            ClauseCircuit::new(
+                3,
+                [
+                    Clause::new_xor([(0, false), (1, false), (2, false)]),
+                    Clause::new_and([(0, false), (1, false), (2, false)]),
+                    Clause::new_xor([(3, true), (4, false)]),
+                    Clause::new_xor([(5, false), (5, false)]),
+                ],
+                [(5, false), (6, true)]
+            )
+            .unwrap(),
+            true
+        ),
+        deduplicate_clause_circuit(
+            ClauseCircuit::new(
+                3,
+                [
+                    Clause::new_xor([(0, false), (1, false), (2, false)]),
+                    Clause::new_and([(0, false), (1, false), (2, false)]),
+                    Clause::new_xor([(3, true), (4, false)]),
+                    Clause::new_xor([(3, true), (4, false)]),
+                    Clause::new_xor([(5, false), (6, false)]),
+                ],
+                [(6, false), (7, true)]
+            )
+            .unwrap()
+        ),
+    );
+
+    let circuit = ClauseCircuit::new(
+        4,
+        [
+            Clause::new_xor([(0, false), (1, false)]),
+            Clause::new_xor([(2, false), (3, false)]),
+            Clause::new_xor([(4, false), (5, true)]),
+            Clause::new_and([(4, false), (5, true)]),
+            Clause::new_and([(6, false), (7, true)]),
+        ],
+        [(8, false)],
+    )
+    .unwrap();
+    assert_eq!(
+        (circuit.clone(), false),
+        deduplicate_clause_circuit(circuit),
+    );
+
+    assert_eq!(
+        (
+            ClauseCircuit::new(
+                9,
+                [
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(1, false), (2, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(3, false), (9, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(5, false), (6, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(4, false), (9, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(11, false), (12, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(3, false), (13, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(7, false), (13, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(0, false), (8, false), (11, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(8, false), (9, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(0, false), (1, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(5, false), (7, false)]
+                    }
+                ],
+                [
+                    (10, false),
+                    (14, true),
+                    (13, false),
+                    (15, true),
+                    (11, true),
+                    (16, false),
+                    (17, true),
+                    (18, false),
+                    (19, false)
+                ]
+            )
+            .unwrap(),
+            false
+        ),
+        deduplicate_clause_circuit(
+            ClauseCircuit::new(
+                9,
+                [
+                    Clause::new_and([(1, false), (2, false), (3, false)]),
+                    Clause::new_and([
+                        (1, false),
+                        (2, false),
+                        (3, false),
+                        (4, false),
+                        (5, false),
+                        (6, false),
+                    ]),
+                    Clause::new_and([(1, false), (2, false), (4, false), (5, false), (6, false)]),
+                    Clause::new_and([
+                        (1, false),
+                        (2, false),
+                        (4, false),
+                        (5, false),
+                        (6, false),
+                        (7, false),
+                    ]),
+                    Clause::new_and([(5, false), (6, false)]),
+                    Clause::new_and([(0, false), (5, false), (6, false), (8, false)]),
+                    Clause::new_and([(1, false), (2, false), (8, false)]),
+                    Clause::new_and([(0, false), (1, false)]),
+                    Clause::new_and([(5, false), (7, false)]),
+                ],
+                [
+                    (9, false),
+                    (10, true),
+                    (11, false),
+                    (12, true),
+                    (13, true),
+                    (14, false),
+                    (15, true),
+                    (16, false),
+                    (17, false)
+                ]
+            )
+            .unwrap()
+        ),
+    );
 }
