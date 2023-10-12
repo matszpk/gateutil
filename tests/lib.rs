@@ -1691,6 +1691,73 @@ fn test_deduplicate_clause_circuit() {
             .unwrap()
         ),
     );
+    
+    assert_eq!(
+        (
+            ClauseCircuit::new(
+                4,
+                [
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(0, false), (2, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(1, false), (4, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(3, false), (5, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::Xor,
+                        literals: vec![(6, false), (5, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::Xor,
+                        literals: vec![(2, false), (7, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::Xor,
+                        literals: vec![(4, false), (8, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(1, false), (7, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(6, false), (10, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(11, false), (8, false)]
+                    }
+                ],
+                [(7, false), (8, true), (9, false), (12, true), (11, false), (10, false)]
+            )
+            .unwrap(),
+            false
+        ),
+        deduplicate_clause_circuit(
+            ClauseCircuit::new(
+                4,
+                [
+                    Clause::new_and([(0, false), (1, false), (2, false), (3, false)]),
+                    Clause::new_and([(0, false), (1, false), (2, false)]),
+                    Clause::new_xor([(4, false), (5, false)]),
+                    Clause::new_and([(0, false), (2, false)]),
+                    Clause::new_xor([(2, false), (4, false), (5, false)]),
+                    Clause::new_xor([(2, false), (4, false), (5, false), (7, false)]),
+                    Clause::new_and([(1, false), (4, false), (6, false), (8, false)]),
+                    Clause::new_and([(1, false), (4, false), (6, false)]),
+                    Clause::new_and([(1, false), (6, false)]),
+                ],
+                [(6, false), (8, true), (9, false), (10, true), (11, false), (12, false)]
+            )
+            .unwrap()
+        ),
+    );
 
     for i in 0..2 {
         assert_eq!(
