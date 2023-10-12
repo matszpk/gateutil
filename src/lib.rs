@@ -427,12 +427,26 @@ where
             OutputEntry::Value(v) => OutputEntry::Value(v),
         };
     }
-    let mut out_output_map = vec![OutputEntry::Value(false); output_map.len()];
-    for (i, e) in output_map.into_iter().enumerate() {
-        out_output_map[i] = match e {
+    let out_output_map = join_in_out_map(&output_map, &opt_output_map);
+    (opt_circuit, out_input_map, out_output_map)
+}
+
+// joins input/output maps from previous and next operation and returns joined in/out map.
+pub fn join_in_out_map<T>(
+    map: &[OutputEntry<T>],
+    next_map: &[OutputEntry<T>],
+) -> Vec<OutputEntry<T>>
+where
+    T: Clone + Copy,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    let mut out_map = vec![OutputEntry::Value(false); map.len()];
+    for (i, &e) in map.iter().enumerate() {
+        out_map[i] = match e {
             OutputEntry::NewIndex(x) => {
                 let x = usize::try_from(x).unwrap();
-                match opt_output_map[x] {
+                match next_map[x] {
                     OutputEntry::NewIndex(x) => OutputEntry::NewIndex(x),
                     OutputEntry::Value(v) => OutputEntry::Value(v),
                 }
@@ -440,7 +454,7 @@ where
             OutputEntry::Value(v) => OutputEntry::Value(v),
         };
     }
-    (opt_circuit, out_input_map, out_output_map)
+    out_map
 }
 
 // deduplicate clauses and clause literals
