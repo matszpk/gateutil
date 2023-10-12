@@ -1806,6 +1806,7 @@ fn test_deduplicate_clause_circuit() {
         deduplicate_clause_circuit(circuit),
     );
 
+    // important testcase: old extra clause reordering avoiding.
     assert_eq!(
         (
             ClauseCircuit::new(
