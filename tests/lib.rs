@@ -2084,6 +2084,56 @@ fn test_deduplicate_clause_circuit() {
                 8,
                 [
                     Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(2, false), (5, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(1, false), (3, false), (4, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(8, false), (9, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(0, false), (6, false), (7, false), (10, false)]
+                    }
+                ],
+                [(11, false), (10, true), (9, false)]
+            )
+            .unwrap(),
+            false
+        ),
+        deduplicate_clause_circuit(
+            ClauseCircuit::new(
+                8,
+                [
+                    Clause::new_and([
+                        (0, false),
+                        (1, false),
+                        (2, false),
+                        (3, false),
+                        (4, false),
+                        (5, false),
+                        (6, false),
+                        (7, false)
+                    ]),
+                    Clause::new_and([(1, false), (2, false), (3, false), (4, false), (5, false)]),
+                    Clause::new_and([(1, false), (3, false), (4, false)]),
+                ],
+                [(8, false), (9, true), (10, false)]
+            )
+            .unwrap()
+        ),
+    );
+
+    assert_eq!(
+        (
+            ClauseCircuit::new(
+                8,
+                [
+                    Clause {
                         kind: ClauseKind::Xor,
                         literals: vec![(2, false), (5, false)]
                     },
