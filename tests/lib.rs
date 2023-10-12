@@ -1637,3 +1637,58 @@ fn test_assign_to_circuit_and_optimize() {
         )
     );
 }
+
+#[test]
+fn test_deduplicate_clause_circuit() {
+    assert_eq!(
+        (
+            ClauseCircuit::new(
+                4,
+                [
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(0, false), (2, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(1, false), (4, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(3, false), (5, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::Xor,
+                        literals: vec![(6, false), (5, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::Xor,
+                        literals: vec![(2, false), (7, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::Xor,
+                        literals: vec![(4, false), (8, false)]
+                    }
+                ],
+                [(7, false), (8, true), (9, false)]
+            )
+            .unwrap(),
+            false
+        ),
+        deduplicate_clause_circuit(
+            ClauseCircuit::new(
+                4,
+                [
+                    Clause::new_and([(0, false), (1, false), (2, false), (3, false)]),
+                    Clause::new_and([(0, false), (1, false), (2, false)]),
+                    Clause::new_xor([(4, false), (5, false)]),
+                    Clause::new_and([(0, false), (2, false)]),
+                    Clause::new_xor([(2, false), (4, false), (5, false)]),
+                    Clause::new_xor([(2, false), (4, false), (5, false), (7, false)]),
+                ],
+                [(6, false), (8, true), (9, false)]
+            )
+            .unwrap()
+        ),
+    );
+}
