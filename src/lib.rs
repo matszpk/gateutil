@@ -441,10 +441,7 @@ where
     let mut out_map = vec![None; map.len()];
     for (i, e) in map.iter().enumerate() {
         out_map[i] = match e {
-            Some(x) => {
-                let x = usize::try_from(*x).unwrap();
-                next_map[x]
-            }
+            Some(x) => next_map[usize::try_from(*x).unwrap()],
             None => None,
         };
     }
@@ -462,16 +459,10 @@ where
     <usize as TryFrom<T>>::Error: Debug,
 {
     let mut out_map = vec![OutputEntry::Value(false); map.len()];
-    for (i, &e) in map.iter().enumerate() {
+    for (i, e) in map.iter().enumerate() {
         out_map[i] = match e {
-            OutputEntry::NewIndex(x) => {
-                let x = usize::try_from(x).unwrap();
-                match next_map[x] {
-                    OutputEntry::NewIndex(x) => OutputEntry::NewIndex(x),
-                    OutputEntry::Value(v) => OutputEntry::Value(v),
-                }
-            }
-            OutputEntry::Value(v) => OutputEntry::Value(v),
+            OutputEntry::NewIndex(x) => next_map[usize::try_from(*x).unwrap()],
+            OutputEntry::Value(v) => OutputEntry::Value(*v),
         };
     }
     out_map
