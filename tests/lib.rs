@@ -2576,3 +2576,57 @@ fn test_optimize_and_dedup_clause_circuit() {
         ),
     );
 }
+
+#[test]
+fn test_assign_to_circuit_optimize_and_dedup() {
+    assert_eq!(
+        (
+            Circuit::new(
+                3,
+                [Gate::new_nimpl(0, 2), Gate::new_and(0, 1),],
+                [(2, false), (3, false), (4, true)],
+            )
+            .unwrap(),
+            vec![
+                OutputEntry::NewIndex(0),
+                OutputEntry::Value(true),
+                OutputEntry::NewIndex(1),
+                OutputEntry::Value(false),
+                OutputEntry::Value(false),
+                OutputEntry::NewIndex(2)
+            ],
+            vec![
+                OutputEntry::NewIndex(0),
+                OutputEntry::Value(true),
+                OutputEntry::NewIndex(1),
+                OutputEntry::Value(false),
+                OutputEntry::NewIndex(2)
+            ],
+        ),
+        assign_to_circuit_optimize_and_dedup(
+            &Circuit::new(
+                6,
+                [
+                    Gate::new_and(0, 4),   // false
+                    Gate::new_and(1, 5),   // 1
+                    Gate::new_nimpl(7, 6), // out0=5
+                    Gate::new_xor(2, 3),
+                    Gate::new_xor(1, 5),
+                    Gate::new_nor(9, 10),
+                    Gate::new_and(4, 11), // (out1=false,true)=true
+                    Gate::new_nimpl(0, 5),
+                    Gate::new_and(1, 4),   // false
+                    Gate::new_xor(13, 14), // out2=nimpl(0,5)
+                    Gate::new_and(1, 4),
+                    Gate::new_and(2, 4),
+                    Gate::new_and(0, 2),
+                    Gate::new_xor(17, 18), // out3=and(0,2)
+                ],
+                [(8, false), (12, true), (15, false), (16, false), (19, true)],
+            )
+            .unwrap(),
+            [(1, true), (4, false)],
+            false
+        )
+    );
+}
