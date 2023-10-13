@@ -660,6 +660,9 @@ where
     (opt_circuit, out_input_map, out_output_map)
 }
 
+// TODO: write deduplication for clause circuit based on evaluation of all combinations of input.
+// include AND-clauses literal combinationas and XOR-clause literal combinations.
+
 #[cfg(test)]
 mod tests {
     use super::*;
