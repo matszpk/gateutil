@@ -2500,4 +2500,79 @@ fn test_optimize_and_dedup_clause_circuit() {
             .unwrap()
         ),
     );
+
+    for t in [false, true] {
+        assert_eq!(
+            (
+                ClauseCircuit::new(2, [Clause::new_xor([(0, false), (1, false)])], [(2, false)])
+                    .unwrap(),
+                vec![Some(0), None, None, Some(1), None],
+                vec![
+                    OutputEntry::Value(false),
+                    OutputEntry::NewIndex(0),
+                    OutputEntry::Value(false),
+                    OutputEntry::Value(t),
+                ],
+            ),
+            optimize_and_dedup_clause_circuit(
+                ClauseCircuit::new(
+                    5,
+                    [
+                        Clause::new_and([(0, false), (1, false), (1, true)]), // 5
+                        Clause::new_and([(0, false), (5, false)]),            // 6: false
+                        Clause::new_xor([(2, false), (4, true)]),             // 7
+                        Clause::new_and([(7, true), (3, true)]),              // 8
+                        Clause::new_xor([(2, false), (4, true)]),             // 9
+                        Clause::new_and([(4, true), (9, false), (8, false)]), // 10: false
+                        Clause::new_xor([(0, false), (3, false)]),            // 11
+                        Clause::new_and([(0, false), (4, false)]),            // 12
+                        Clause::new_and([(0, false), (4, false)]),            // 13
+                        Clause::new_xor([(12, false), (13, t)]),              // 14: false|true
+                    ],
+                    [(6, false), (11, false), (10, false), (14, false)]
+                )
+                .unwrap()
+            ),
+        );
+    }
+
+    assert_eq!(
+        (
+            ClauseCircuit::new(
+                3,
+                [
+                    Clause::new_xor([(0, false), (1, false)]),
+                    Clause::new_and([(0, false), (2, false)])
+                ],
+                [(3, false), (4, true)]
+            )
+            .unwrap(),
+            vec![Some(0), None, None, Some(1), Some(2)],
+            vec![
+                OutputEntry::Value(false),
+                OutputEntry::NewIndex(0),
+                OutputEntry::Value(false),
+                OutputEntry::NewIndex(1),
+            ],
+        ),
+        optimize_and_dedup_clause_circuit(
+            ClauseCircuit::new(
+                5,
+                [
+                    Clause::new_and([(0, false), (1, false), (1, true)]), // 5
+                    Clause::new_and([(0, false), (5, false)]),            // 6: false
+                    Clause::new_xor([(2, false), (4, true)]),             // 7
+                    Clause::new_and([(7, true), (3, true)]),              // 8
+                    Clause::new_xor([(2, false), (4, true)]),             // 9
+                    Clause::new_and([(4, true), (9, false), (8, false)]), // 10: false
+                    Clause::new_xor([(0, false), (3, false)]),            // 11
+                    Clause::new_and([(0, false), (4, false)]),            // 12
+                    Clause::new_and([(0, false), (4, false)]),            // 13
+                    Clause::new_and([(12, true), (13, true)]),            // 14: 12
+                ],
+                [(6, false), (11, false), (10, false), (14, false)]
+            )
+            .unwrap()
+        ),
+    );
 }
