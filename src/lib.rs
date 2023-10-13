@@ -427,12 +427,32 @@ where
             OutputEntry::Value(v) => OutputEntry::Value(v),
         };
     }
-    let out_output_map = join_in_out_map(&output_map, &opt_output_map);
+    let out_output_map = join_output_entry_map(&output_map, &opt_output_map);
     (opt_circuit, out_input_map, out_output_map)
 }
 
 // joins input/output maps from previous and next operation and returns joined in/out map.
-pub fn join_in_out_map<T>(
+pub fn join_input_map<T>(map: &[Option<T>], next_map: &[Option<T>]) -> Vec<Option<T>>
+where
+    T: Clone + Copy,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    let mut out_map = vec![None; map.len()];
+    for (i, e) in map.iter().enumerate() {
+        out_map[i] = match e {
+            Some(x) => {
+                let x = usize::try_from(*x).unwrap();
+                next_map[x]
+            }
+            None => None,
+        };
+    }
+    out_map
+}
+
+// joins input/output maps from previous and next operation and returns joined in/out map.
+pub fn join_output_entry_map<T>(
     map: &[OutputEntry<T>],
     next_map: &[OutputEntry<T>],
 ) -> Vec<OutputEntry<T>>
@@ -583,6 +603,29 @@ where
         ),
         and_clauses_need_optim | xor_clauses_need_optim,
     )
+}
+
+// return optimized circuit, mapping to new inputs, mapping to new outputs
+pub fn optimize_and_dedup_clause_circuit<T>(
+    circuit: ClauseCircuit<T>,
+) -> (ClauseCircuit<T>, Vec<Option<T>>, Vec<OutputEntry<T>>)
+where
+    T: Clone + Copy + Ord + PartialEq + Eq + Debug + Hash,
+    T: Default + TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    let (mut new_circuit, mut input_map, mut output_map) = optimize_clause_circuit(circuit);
+    let mut continue_dedup = true;
+    while continue_dedup {
+        (new_circuit, continue_dedup) = deduplicate_clause_circuit(new_circuit);
+        let (next_circuit, next_input_map, next_output_map) = optimize_clause_circuit(new_circuit);
+        input_map = join_input_map(&input_map, &next_input_map);
+        output_map = join_output_entry_map(&output_map, &next_output_map);
+        new_circuit = next_circuit;
+    }
+    (new_circuit, input_map, output_map)
 }
 
 #[cfg(test)]
