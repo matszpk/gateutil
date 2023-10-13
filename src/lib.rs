@@ -663,6 +663,7 @@ where
 // TODO: write deduplication for clause circuit based on evaluation of all combinations of input.
 // include AND-clauses literal combinationas and XOR-clause literal combinations.
 // include all-true -> true and all-false -> false.
+// finding N-inter-input subcircuit by traversing from output to input.
 
 #[cfg(test)]
 mod tests {
