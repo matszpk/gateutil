@@ -2364,4 +2364,111 @@ fn test_optimize_and_dedup_clause_circuit() {
             .unwrap()
         ),
     );
+
+    // unordered version of previous testcase
+    assert_eq!(
+        (
+            ClauseCircuit::new(
+                9,
+                [
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(1, false), (2, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(3, false), (9, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(5, false), (6, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(4, false), (9, false), (11, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(3, false), (12, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(7, false), (12, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(0, false), (8, false), (11, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(8, false), (9, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(0, false), (1, false)]
+                    },
+                    Clause {
+                        kind: ClauseKind::And,
+                        literals: vec![(5, false), (7, false)]
+                    }
+                ],
+                [
+                    (10, false),
+                    (13, true),
+                    (12, false),
+                    (14, true),
+                    (11, true),
+                    (15, false),
+                    (16, true),
+                    (17, false),
+                    (18, false)
+                ]
+            )
+            .unwrap(),
+            (0..9).map(|x| Some(x)).collect::<Vec<_>>(),
+            (0..9).map(|x| OutputEntry::NewIndex(x)).collect::<Vec<_>>(),
+        ),
+        optimize_and_dedup_clause_circuit(
+            ClauseCircuit::new(
+                9,
+                [
+                    Clause::new_and([(1, false), (3, false), (2, false)]),
+                    Clause::new_and([
+                        (3, false),
+                        (1, false),
+                        (6, false),
+                        (5, false),
+                        (4, false),
+                        (2, false),
+                    ]),
+                    Clause::new_and([(5, false), (1, false), (6, false), (2, false), (4, false)]),
+                    Clause::new_and([
+                        (2, false),
+                        (1, false),
+                        (7, false),
+                        (5, false),
+                        (6, false),
+                        (4, false),
+                    ]),
+                    Clause::new_and([(6, false), (5, false)]),
+                    Clause::new_and([(6, false), (0, false), (8, false), (5, false)]),
+                    Clause::new_and([(2, false), (8, false), (1, false)]),
+                    Clause::new_and([(0, false), (1, false)]),
+                    Clause::new_and([(7, false), (5, false)]),
+                ],
+                [
+                    (9, false),
+                    (10, true),
+                    (11, false),
+                    (12, true),
+                    (13, true),
+                    (14, false),
+                    (15, true),
+                    (16, false),
+                    (17, false)
+                ]
+            )
+            .unwrap()
+        ),
+    );
 }
