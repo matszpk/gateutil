@@ -414,21 +414,35 @@ where
     } else {
         Circuit::from(opt_circuit)
     };
+    let out_input_map = join_input_entry_and_input_map(&input_map, &opt_input_map);
+    let out_output_map = join_output_entry_map(&output_map, &opt_output_map);
+    (opt_circuit, out_input_map, out_output_map)
+}
+
+// joins input/output maps from previous and next operation and returns joined in/out map.
+pub fn join_input_entry_and_input_map<T>(
+    input_map: &[OutputEntry<T>],
+    opt_input_map: &[Option<T>],
+) -> Vec<OutputEntry<T>>
+where
+    T: Clone + Copy,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
     let mut out_input_map = vec![OutputEntry::Value(false); input_map.len()];
     for (i, e) in input_map.into_iter().enumerate() {
         out_input_map[i] = match e {
             OutputEntry::NewIndex(x) => {
-                let x = usize::try_from(x).unwrap();
+                let x = usize::try_from(*x).unwrap();
                 match opt_input_map[x] {
                     Some(x) => OutputEntry::NewIndex(x),
                     None => OutputEntry::Value(false),
                 }
             }
-            OutputEntry::Value(v) => OutputEntry::Value(v),
+            OutputEntry::Value(v) => OutputEntry::Value(*v),
         };
     }
-    let out_output_map = join_output_entry_map(&output_map, &opt_output_map);
-    (opt_circuit, out_input_map, out_output_map)
+    out_input_map
 }
 
 // joins input/output maps from previous and next operation and returns joined in/out map.
@@ -617,6 +631,33 @@ where
         new_circuit = next_circuit;
     }
     (new_circuit, input_map, output_map)
+}
+
+pub fn assign_to_circuit_optimize_and_dedup<T>(
+    circuit: &Circuit<T>,
+    inputs: impl IntoIterator<Item = (T, bool)>,
+    seq: bool,
+) -> (Circuit<T>, Vec<OutputEntry<T>>, Vec<OutputEntry<T>>)
+where
+    T: Default + Clone + Copy + PartialEq + Eq + PartialOrd + Ord + Hash,
+    T: TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    let (circuit, input_map, output_map) = assign_to_circuit(circuit, inputs);
+    let clause_circuit = ClauseCircuit::from(circuit);
+    //println!("ClauseCircuit: {:?}", clause_circuit);
+    let (opt_circuit, opt_input_map, opt_output_map) =
+        optimize_and_dedup_clause_circuit(clause_circuit);
+    let opt_circuit = if seq {
+        Circuit::from_seq(opt_circuit)
+    } else {
+        Circuit::from(opt_circuit)
+    };
+    let out_input_map = join_input_entry_and_input_map(&input_map, &opt_input_map);
+    let out_output_map = join_output_entry_map(&output_map, &opt_output_map);
+    (opt_circuit, out_input_map, out_output_map)
 }
 
 #[cfg(test)]
