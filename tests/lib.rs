@@ -2471,4 +2471,33 @@ fn test_optimize_and_dedup_clause_circuit() {
             .unwrap()
         ),
     );
+
+    assert_eq!(
+        (
+            ClauseCircuit::new(2, [Clause::new_xor([(0, false), (1, false)])], [(2, false)])
+                .unwrap(),
+            vec![Some(0), None, None, Some(1), None],
+            vec![
+                OutputEntry::Value(false),
+                OutputEntry::NewIndex(0),
+                OutputEntry::Value(false)
+            ],
+        ),
+        optimize_and_dedup_clause_circuit(
+            ClauseCircuit::new(
+                5,
+                [
+                    Clause::new_and([(0, false), (1, false), (1, true)]), // 5
+                    Clause::new_and([(0, false), (5, false)]),            // 6: false
+                    Clause::new_xor([(2, false), (4, true)]),             // 7
+                    Clause::new_and([(7, true), (3, true)]),              // 8
+                    Clause::new_xor([(2, false), (4, true)]),             // 9
+                    Clause::new_and([(4, true), (9, false), (8, false)]), // 10: false
+                    Clause::new_xor([(0, false), (3, false)]),            // 11
+                ],
+                [(6, false), (11, false), (10, false)]
+            )
+            .unwrap()
+        ),
+    );
 }
