@@ -237,7 +237,7 @@ pub(crate) fn deduplicate_literal_clauses<T>(
     clauses: &mut Vec<DedupClause<T>>,
     trans_table: &mut HashMap<T, T>,
 ) where
-    T: Clone + Copy + Ord + PartialEq + Eq + Hash + Debug,
+    T: Clone + Copy + Ord + PartialEq + Eq + Hash,
     T: Default + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
     usize: TryFrom<T>,

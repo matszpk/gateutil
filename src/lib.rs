@@ -399,7 +399,7 @@ pub fn assign_to_circuit_and_optimize<T>(
     seq: bool,
 ) -> (Circuit<T>, Vec<OutputEntry<T>>, Vec<OutputEntry<T>>)
 where
-    T: Default + Clone + Copy + PartialEq + Eq + PartialOrd + Ord + Debug,
+    T: Default + Clone + Copy + PartialEq + Eq + PartialOrd + Ord,
     T: TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
     usize: TryFrom<T>,
@@ -473,7 +473,7 @@ where
 // if some possible literal duplicates then returns true, otherwise return false
 pub fn deduplicate_clause_circuit<T>(circuit: ClauseCircuit<T>) -> (ClauseCircuit<T>, bool)
 where
-    T: Clone + Copy + Ord + PartialEq + Eq + Hash + Debug,
+    T: Clone + Copy + Ord + PartialEq + Eq + Hash,
     T: Default + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
     usize: TryFrom<T>,
@@ -601,7 +601,7 @@ pub fn optimize_and_dedup_clause_circuit<T>(
     circuit: ClauseCircuit<T>,
 ) -> (ClauseCircuit<T>, Vec<Option<T>>, Vec<OutputEntry<T>>)
 where
-    T: Clone + Copy + Ord + PartialEq + Eq + Debug + Hash,
+    T: Clone + Copy + Ord + PartialEq + Eq + Hash,
     T: Default + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
     usize: TryFrom<T>,
