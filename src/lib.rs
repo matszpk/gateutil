@@ -664,6 +664,9 @@ where
 // include AND-clauses literal combinationas and XOR-clause literal combinations.
 // include all-true -> true and all-false -> false.
 // finding N-inter-input subcircuit by traversing from output to input.
+// NEW IDEA: use smart bitmasks with compression. if some bitmask need too much memory
+// then set it as unknown. Start from inputs. Continue from higher gates if some previous
+// bitmasks are unknown.
 
 #[cfg(test)]
 mod tests {
