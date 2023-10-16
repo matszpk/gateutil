@@ -10,6 +10,8 @@ mod join_clauses;
 use join_clauses::*;
 mod dedup_clauses;
 use dedup_clauses::*;
+mod dedup2_clauses;
+use dedup2_clauses::*;
 
 pub fn deduplicate<T: Clone + Copy + Ord + PartialEq + Eq>(circuit: Circuit<T>) -> Circuit<T>
 where
