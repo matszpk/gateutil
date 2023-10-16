@@ -359,6 +359,22 @@ mod tests {
         bmap.remove_unused_inputs();
         assert_eq!(exp_bmap, bmap);
 
+        let mut bmap = smart_bitmap_from_data(
+            &[3, 4, 6, 9, 11, 12, 14, 15],
+            &[
+                0xbb8811aa006633dd,
+                0x00ccdd0055bb2211,
+                0x7700331144ddffee,
+                0x113300cc55330022,
+            ],
+        );
+        let exp_bmap = smart_bitmap_from_data(
+            &[3, 4, 9, 11, 12, 14, 15],
+            &[0x0cd05b21b81a063d, 0x130c530270314dfe],
+        );
+        bmap.remove_unused_inputs();
+        assert_eq!(exp_bmap, bmap);
+
         let mut bmap = smart_bitmap_from_data(&[3, 4, 6, 9, 11], &[0xaaaa5555]);
         let exp_bmap = smart_bitmap_from_data(&[3, 11], &[0b1001]);
         bmap.remove_unused_inputs();
