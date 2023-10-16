@@ -8,8 +8,6 @@ use std::ops::{BitAnd, BitOr, BitXor, Not};
 
 const BITMAP_BITS: usize = 2048;
 const BITMAP_BITS_BITS: usize = 11;
-const FALSE_INPUT_MAXLEN: usize = 4;
-const TRUE_INPUT_MAXLEN: usize = 4;
 
 const CHECK_UNUSED_BITS_TABLE: [(u64, u32); 6] = [
     (
@@ -113,11 +111,6 @@ enum SmartAllValues<T> {
 struct SmartBitmap<T> {
     // all inputs must be ordered.
     inputs: SmallVec<T, BITMAP_BITS_BITS>,
-    // false_inputs, true_inputs - boolean value indicates where is falses and trues
-    // opposite position is place where is data.
-    // false and true inputs are used if no free inputs.
-    false_inputs: SmallVec<(T, bool), FALSE_INPUT_MAXLEN>,
-    true_inputs: SmallVec<(T, bool), TRUE_INPUT_MAXLEN>,
     bitmap: [u64; BITMAP_BITS >> 6],
 }
 
@@ -128,8 +121,6 @@ where
     fn from_input(input: T) -> Self {
         let mut out = Self {
             inputs: SmallVec::new(),
-            false_inputs: SmallVec::new(),
-            true_inputs: SmallVec::new(),
             bitmap: [0; BITMAP_BITS >> 6],
         };
         out.inputs.insert(input);
@@ -334,8 +325,6 @@ mod tests {
     {
         let mut bmap = SmartBitmap {
             inputs: small_vec_from_slice(inputs),
-            false_inputs: SmallVec::<(T, bool), FALSE_INPUT_MAXLEN>::new(),
-            true_inputs: SmallVec::<(T, bool), TRUE_INPUT_MAXLEN>::new(),
             bitmap: [0; BITMAP_BITS >> 6],
         };
         bmap.bitmap[0..bitmap.len()].copy_from_slice(bitmap);
