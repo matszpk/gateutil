@@ -195,7 +195,7 @@ where
                     let shift = i - 6;
                     let inc_pos = 1 << shift;
                     for j in 0..(u64len >> (shift + 1)) {
-                        for k in j << shift..(j + 1) << shift {
+                        for k in j << (shift + 1)..(2 * j + 1) << shift {
                             if bitmap[k] != bitmap[k + inc_pos] {
                                 ok = false;
                                 break;
@@ -233,8 +233,9 @@ where
                 } else {
                     let shift = found_input - 6;
                     for i in 0..(bitlen >> (shift + 7)) {
+                        let k = i << shift;
                         for j in 0..1 << shift {
-                            bitmap[i + j] = bitmap[(i << 1) + j];
+                            bitmap[k + j] = bitmap[(k << 1) + j];
                         }
                     }
                 }
@@ -247,8 +248,9 @@ where
                     }
                 }
                 self.inputs.remove(self.inputs.data()[found_input as usize]);
+                start = found_input;
             } else {
-                start += 1;
+                start = self.inputs.len() as u32;
             }
         }
     }
@@ -375,12 +377,74 @@ mod tests {
         let exp_bmap = smart_bitmap_from_data(&[3, 4, 6, 9, 11, 15], &[0x1095bca065a3]);
         bmap.remove_unused_inputs();
         assert_eq!(exp_bmap, bmap);
-        
+
         let mut bmap =
-            smart_bitmap_from_data(&[3, 4, 6, 9, 11, 15, 19, 22],
-            &[0x1095bca065a3, 0x1195bca065a3, 0x1095bca065a3, 0x1195bca065a3]);
-        let exp_bmap = smart_bitmap_from_data(&[3, 4, 6, 9, 11, 15, 19],
-                &[0x1095bca065a3, 0x1195bca065a3]);
+            smart_bitmap_from_data(&[3, 4, 6, 9, 11, 15, 19], &[0x1095bca065a3, 0x1095bca165a3]);
+        let exp_bmap = bmap.clone();
+        bmap.remove_unused_inputs();
+        assert_eq!(exp_bmap, bmap);
+
+        let mut bmap = smart_bitmap_from_data(
+            &[3, 4, 6, 9, 11, 15, 19, 22],
+            &[
+                0x1095bca065a3,
+                0x1195bca065a3,
+                0x1095bca065a3,
+                0x1195bca065a3,
+            ],
+        );
+        let exp_bmap =
+            smart_bitmap_from_data(&[3, 4, 6, 9, 11, 15, 19], &[0x1095bca065a3, 0x1195bca065a3]);
+        bmap.remove_unused_inputs();
+        assert_eq!(exp_bmap, bmap);
+
+        let mut bmap = smart_bitmap_from_data(
+            &[3, 4, 6, 9, 11, 15, 19, 22],
+            &[
+                0x1095bca065a3,
+                0x1195bca065a3,
+                0x1095bca065a3,
+                0x1195bca067a3,
+            ],
+        );
+        let exp_bmap = bmap.clone();
+        bmap.remove_unused_inputs();
+        assert_eq!(exp_bmap, bmap);
+
+        let mut bmap = smart_bitmap_from_data(
+            &[3, 4, 6, 9, 11, 15, 19, 22, 23, 25],
+            &[
+                0x1095bca065a3,
+                0x1195bca065a3,
+                0x1095bca065a3,
+                0x1195bca065a3,
+                0x2295bca121a3,
+                0x16989402967211a,
+                0x2295bca121a3,
+                0x16989402967211a,
+                0x1095bca065a7,
+                0x1195bca065a7,
+                0x1095bca065a7,
+                0x1195bca065a7,
+                0x2295bca121a7,
+                0x169894029672117,
+                0x2295bca121a7,
+                0x169894029672117,
+            ],
+        );
+        let exp_bmap = smart_bitmap_from_data(
+            &[3, 4, 6, 9, 11, 15, 19, 23, 25],
+            &[
+                0x1095bca065a3,
+                0x1195bca065a3,
+                0x2295bca121a3,
+                0x16989402967211a,
+                0x1095bca065a7,
+                0x1195bca065a7,
+                0x2295bca121a7,
+                0x169894029672117,
+            ],
+        );
         bmap.remove_unused_inputs();
         assert_eq!(exp_bmap, bmap);
     }
