@@ -118,6 +118,15 @@ impl<T> SmartBitmap<T>
 where
     T: Default + Clone + Copy + Ord + PartialEq + Eq,
 {
+    fn from_bool(value: bool) -> Self {
+        let mut out = Self {
+            inputs: SmallVec::new(),
+            bitmap: [0; BITMAP_BITS >> 6],
+        };
+        out.bitmap[0] = u64::from(value);
+        out
+    }
+
     fn from_input(input: T) -> Self {
         let mut out = Self {
             inputs: SmallVec::new(),
@@ -333,6 +342,16 @@ mod tests {
 
     #[test]
     fn test_smart_bitmap_remove_unused_inputs() {
+        let mut bmap = smart_bitmap_from_data(&[3], &[0b11]);
+        let exp_bmap = smart_bitmap_from_data(&[], &[0b1]);
+        bmap.remove_unused_inputs();
+        assert_eq!(exp_bmap, bmap);
+
+        let mut bmap = smart_bitmap_from_data(&[3], &[0b00]);
+        let exp_bmap = smart_bitmap_from_data(&[], &[0b0]);
+        bmap.remove_unused_inputs();
+        assert_eq!(exp_bmap, bmap);
+
         let mut bmap = smart_bitmap_from_data(&[3, 4, 6, 9, 11], &[0xbcda2135]);
         let exp_bmap = bmap.clone();
         bmap.remove_unused_inputs();
