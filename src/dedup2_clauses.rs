@@ -11,6 +11,40 @@ const BITMAP_BITS_BITS: usize = 11;
 const FALSE_INPUT_MAXLEN: usize = 4;
 const TRUE_INPUT_MAXLEN: usize = 4;
 
+const CHECK_UNUSED_BITS_TABLE: [(u64, u32); 6] = [
+    (
+        0b0101010101010101010101010101010101010101010101010101010101010101,
+        1,
+    ),
+    (
+        0b0011001100110011001100110011001100110011001100110011001100110011,
+        2,
+    ),
+    (
+        0b0000111100001111000011110000111100001111000011110000111100001111,
+        4,
+    ),
+    (
+        0b0000000011111111000000001111111100000000111111110000000011111111,
+        8,
+    ),
+    (
+        0b0000000000000000111111111111111100000000000000001111111111111111,
+        16,
+    ),
+    (
+        0b0000000000000000000000000000000011111111111111111111111111111111,
+        32,
+    ),
+];
+
+#[inline]
+fn check_unused_bit_u64(index_bit: u32, value: u64) -> bool {
+    let index_bit_us = index_bit as usize;
+    let (bitmask, shift) = CHECK_UNUSED_BITS_TABLE[index_bit_us];
+    (value & bitmask) == ((value >> shift) & bitmask)
+}
+
 struct SmallVec<T, const N: usize> {
     data: [T; N],
     len: u8,
@@ -122,9 +156,9 @@ where
         &mut self.bitmap[0..l]
     }
 
-    // fn remove_unused_inputs(&mut self) {
-    //     for i in
-    // }
+    fn remove_unused_inputs(&mut self) {
+        //for i in
+    }
 }
 
 #[cfg(test)]
@@ -148,6 +182,42 @@ mod tests {
             assert_eq!(&sorted, svec.data());
             svec.remove(*d + 1);
             assert_eq!(&sorted, svec.data());
+        }
+    }
+
+    #[test]
+    fn test_check_unused_bit_u64() {
+        for (bit, value, exp) in [
+            (
+                0,
+                0b1100110000000000000000000000000000000000000000110000001100111111,
+                true,
+            ),
+            (
+                0,
+                0b1100110000000000000000000000000000000000000100110000001100111111,
+                false,
+            ),
+            (
+                1,
+                0b0101000010100000111100001010000000001010000001010000010111110101,
+                true,
+            ),
+            (
+                1,
+                0b0101000010100000111100001010000000011010000001010000010111110101,
+                false,
+            ),
+            (2, 0xaabbee0011335588, true),
+            (2, 0xaabbee2011335588, false),
+            (3, 0xabab3a3a7d7de1e1, true),
+            (3, 0xabab3a3a7d7de2e1, false),
+            (4, 0x0bc60bc64baf4baf, true),
+            (4, 0x0bc61bc64baf4baf, false),
+            (5, 0x0123456701234567, true),
+            (5, 0x0123416701234567, false),
+        ] {
+            assert_eq!(exp, check_unused_bit_u64(bit, value));
         }
     }
 }
