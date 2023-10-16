@@ -159,88 +159,97 @@ where
         &mut self.bitmap[0..l]
     }
 
-    fn remove_unused_input(&mut self) {
-        let input_len = self.inputs.len() as u32;
-        let mut found_input = None;
-        let u64len = self.bitmap_u64len();
-        let bitmap = self.bitmap();
-        // try find unused input
-        for i in 0..input_len {
-            if i < 6 {
-                // check in 64-bit word
-                if bitmap.iter().all(|x| check_unused_bit_u64(i, *x)) {
-                    found_input = Some(i);
-                    break;
-                }
-            } else if i == 6 {
-                // check between two 64-bit word (if same)
-                let mut ok = true;
-                for j in 0..(u64len >> 1) {
-                    if bitmap[j << 1] != bitmap[(j << 1) + 1] {
-                        ok = false;
+    fn remove_unused_inputs(&mut self) {
+        let mut start = 0;
+        loop {
+            let input_len = self.inputs.len() as u32;
+            if start >= input_len {
+                break;
+            }
+            let mut found_input = None;
+            let u64len = self.bitmap_u64len();
+            let bitmap = self.bitmap();
+            // try find unused input
+            for i in start..input_len {
+                if i < 6 {
+                    // check in 64-bit word
+                    if bitmap.iter().all(|x| check_unused_bit_u64(i, *x)) {
+                        found_input = Some(i);
+                        break;
                     }
-                }
-                if ok {
-                    found_input = Some(i);
-                    break;
-                }
-            } else {
-                // check between many 64-bit words (if same)
-                let mut ok = true;
-                let shift = i - 6;
-                let inc_pos = 1 << shift;
-                for j in 0..(u64len >> (shift)) {
-                    for k in j << shift..(j + 1) << shift {
-                        if bitmap[k] != bitmap[k + inc_pos] {
+                } else if i == 6 {
+                    // check between two 64-bit word (if same)
+                    let mut ok = true;
+                    for j in 0..(u64len >> 1) {
+                        if bitmap[j << 1] != bitmap[(j << 1) + 1] {
                             ok = false;
+                        }
+                    }
+                    if ok {
+                        found_input = Some(i);
+                        break;
+                    }
+                } else {
+                    // check between many 64-bit words (if same)
+                    let mut ok = true;
+                    let shift = i - 6;
+                    let inc_pos = 1 << shift;
+                    for j in 0..(u64len >> (shift)) {
+                        for k in j << shift..(j + 1) << shift {
+                            if bitmap[k] != bitmap[k + inc_pos] {
+                                ok = false;
+                                break;
+                            }
+                        }
+                        if !ok {
                             break;
                         }
                     }
-                    if !ok {
+                    if ok {
+                        found_input = Some(i);
                         break;
                     }
                 }
-                if ok {
-                    found_input = Some(i);
-                    break;
-                }
             }
-        }
 
-        if let Some(found_input) = found_input {
-            // if some unused input - reorganize
-            let bitlen = self.bitmap_bitlen();
-            let bitmap = self.bitmap_mut();
-            if found_input < 6 {
-                let elem_mask = (1 << (1 << found_input)) - 1;
-                for i in 0..(bitlen >> (found_input + 1)) {
-                    let si = i << (found_input + 1);
-                    let elem = (bitmap[si >> 6] >> (si & 63)) & elem_mask;
-                    let di = i << found_input;
-                    let bdi = di >> 6;
-                    bitmap[bdi] = (bitmap[bdi] & !(elem_mask << (di & 63))) | (elem << (di & 63));
-                }
-            } else if found_input == 6 {
-                for i in 0..(bitlen >> 1) {
-                    bitmap[i] = bitmap[i << 1];
-                }
-            } else {
-                let shift = found_input - 6;
-                for i in 0..(bitlen >> (shift + 1)) {
-                    for j in 0..1 << shift {
-                        bitmap[i + j] = bitmap[(i << 1) + j];
+            if let Some(found_input) = found_input {
+                // if some unused input - reorganize
+                let bitlen = self.bitmap_bitlen();
+                let bitmap = self.bitmap_mut();
+                if found_input < 6 {
+                    let elem_mask = (1 << (1 << found_input)) - 1;
+                    for i in 0..(bitlen >> (found_input + 1)) {
+                        let si = i << (found_input + 1);
+                        let elem = (bitmap[si >> 6] >> (si & 63)) & elem_mask;
+                        let di = i << found_input;
+                        let bdi = di >> 6;
+                        bitmap[bdi] =
+                            (bitmap[bdi] & !(elem_mask << (di & 63))) | (elem << (di & 63));
+                    }
+                } else if found_input == 6 {
+                    for i in 0..(bitlen >> 1) {
+                        bitmap[i] = bitmap[i << 1];
+                    }
+                } else {
+                    let shift = found_input - 6;
+                    for i in 0..(bitlen >> (shift + 1)) {
+                        for j in 0..1 << shift {
+                            bitmap[i + j] = bitmap[(i << 1) + j];
+                        }
                     }
                 }
-            }
-            // zeroing rest of bitmap
-            if bitlen < 128 {
-                bitmap[0] = bitmap[0] & ((1u64 << (bitlen >> 1)) - 1);
-            } else {
-                for i in (bitlen >> 7)..(bitlen << 6) {
-                    bitmap[i] = 0;
+                // zeroing rest of bitmap
+                if bitlen < 128 {
+                    bitmap[0] = bitmap[0] & ((1u64 << (bitlen >> 1)) - 1);
+                } else {
+                    for i in (bitlen >> 7)..(bitlen << 6) {
+                        bitmap[i] = 0;
+                    }
                 }
+                self.inputs.remove(self.inputs.data()[found_input as usize]);
+            } else {
+                start += 1;
             }
-            self.inputs.remove(self.inputs.data()[found_input as usize]);
         }
     }
 }
@@ -337,15 +346,25 @@ mod tests {
     }
 
     #[test]
-    fn test_remove_unused_input() {
+    fn test_remove_unused_inputs() {
         let mut bmap = smart_bitmap_from_data(&[3, 4, 6, 9, 11], &[], &[], &[0xbcda2135]);
         let exp_bmap = bmap.clone();
-        bmap.remove_unused_input();
+        bmap.remove_unused_inputs();
         assert_eq!(exp_bmap, bmap);
 
         let mut bmap = smart_bitmap_from_data(&[3, 4, 6, 9, 11], &[], &[], &[0xa50faf05]);
         let exp_bmap = smart_bitmap_from_data(&[3, 6, 9, 11], &[], &[], &[0x93b1]);
-        bmap.remove_unused_input();
+        bmap.remove_unused_inputs();
+        assert_eq!(exp_bmap, bmap);
+        
+        let mut bmap = smart_bitmap_from_data(&[3, 4, 6, 9, 11], &[], &[], &[0xaaff5500]);
+        let exp_bmap = smart_bitmap_from_data(&[3, 9, 11], &[], &[], &[0b10110100]);
+        bmap.remove_unused_inputs();
+        assert_eq!(exp_bmap, bmap);
+        
+        let mut bmap = smart_bitmap_from_data(&[3, 4, 6, 9, 11], &[], &[], &[0xaaaa5555]);
+        let exp_bmap = smart_bitmap_from_data(&[3, 11], &[], &[], &[0b1001]);
+        bmap.remove_unused_inputs();
         assert_eq!(exp_bmap, bmap);
     }
 }
