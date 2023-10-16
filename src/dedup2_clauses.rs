@@ -45,6 +45,7 @@ fn check_unused_bit_u64(index_bit: u32, value: u64) -> bool {
     (value & bitmask) == ((value >> shift) & bitmask)
 }
 
+#[derive(Clone, PartialEq, Eq, Debug)]
 struct SmallVec<T, const N: usize> {
     data: [T; N],
     len: u8,
@@ -95,6 +96,7 @@ where
             Ok(p) => {
                 let old_len = self.len as usize;
                 self.data_mut().copy_within(p + 1..old_len, p);
+                self.data_mut()[old_len - 1] = T::default();
                 self.len -= 1;
             }
             Err(p) => {}
@@ -102,11 +104,12 @@ where
     }
 }
 
-enum SmalAllValues<T> {
+enum SmartAllValues<T> {
     Unknown,
     Bitmap(SmartBitmap<T>),
 }
 
+#[derive(Clone, PartialEq, Eq, Debug)]
 struct SmartBitmap<T> {
     // all inputs must be ordered.
     inputs: SmallVec<T, BITMAP_BITS_BITS>,
@@ -156,8 +159,89 @@ where
         &mut self.bitmap[0..l]
     }
 
-    fn remove_unused_inputs(&mut self) {
-        //for i in
+    fn remove_unused_input(&mut self) {
+        let input_len = self.inputs.len() as u32;
+        let mut found_input = None;
+        let u64len = self.bitmap_u64len();
+        let bitmap = self.bitmap();
+        // try find unused input
+        for i in 0..input_len {
+            if i < 6 {
+                // check in 64-bit word
+                if bitmap.iter().all(|x| check_unused_bit_u64(i, *x)) {
+                    found_input = Some(i);
+                    break;
+                }
+            } else if i == 6 {
+                // check between two 64-bit word (if same)
+                let mut ok = true;
+                for j in 0..(u64len >> 1) {
+                    if bitmap[j << 1] != bitmap[(j << 1) + 1] {
+                        ok = false;
+                    }
+                }
+                if ok {
+                    found_input = Some(i);
+                    break;
+                }
+            } else {
+                // check between many 64-bit words (if same)
+                let mut ok = true;
+                let shift = i - 6;
+                let inc_pos = 1 << shift;
+                for j in 0..(u64len >> (shift)) {
+                    for k in j << shift..(j + 1) << shift {
+                        if bitmap[k] != bitmap[k + inc_pos] {
+                            ok = false;
+                            break;
+                        }
+                    }
+                    if !ok {
+                        break;
+                    }
+                }
+                if ok {
+                    found_input = Some(i);
+                    break;
+                }
+            }
+        }
+
+        if let Some(found_input) = found_input {
+            // if some unused input - reorganize
+            let bitlen = self.bitmap_bitlen();
+            let bitmap = self.bitmap_mut();
+            if found_input < 6 {
+                let elem_mask = (1 << (1 << found_input)) - 1;
+                for i in 0..(bitlen >> (found_input + 1)) {
+                    let si = i << (found_input + 1);
+                    let elem = (bitmap[si >> 6] >> (si & 63)) & elem_mask;
+                    let di = i << found_input;
+                    let bdi = di >> 6;
+                    bitmap[bdi] = (bitmap[bdi] & !(elem_mask << (di & 63))) | (elem << (di & 63));
+                }
+            } else if found_input == 6 {
+                for i in 0..(bitlen >> 1) {
+                    bitmap[i] = bitmap[i << 1];
+                }
+            } else {
+                let shift = found_input - 6;
+                for i in 0..(bitlen >> (shift + 1)) {
+                    for j in 0..1 << shift {
+                        bitmap[i + j] = bitmap[(i << 1) + j];
+                    }
+                }
+            }
+            // zeroing rest of bitmap
+            if bitlen < 128 {
+                bitmap[0] = bitmap[0] & ((1u64 << (bitlen >> 1)) - 1);
+            } else {
+                for i in (bitlen >> 7)..(bitlen << 6) {
+                    bitmap[i] = 0;
+                }
+            }
+            self.inputs.remove(self.inputs.data()[found_input as usize]);
+        }
     }
 }
 
@@ -219,5 +303,49 @@ mod tests {
         ] {
             assert_eq!(exp, check_unused_bit_u64(bit, value));
         }
+    }
+
+    fn small_vec_from_slice<T, const N: usize>(t: &[T]) -> SmallVec<T, N>
+    where
+        T: Default + Clone + Copy,
+    {
+        let mut out = SmallVec {
+            data: [T::default(); N],
+            len: u8::try_from(t.len()).unwrap(),
+        };
+        out.data[0..t.len()].copy_from_slice(t);
+        out
+    }
+
+    fn smart_bitmap_from_data<T>(
+        inputs: &[T],
+        false_inputs: &[(T, bool)],
+        true_inputs: &[(T, bool)],
+        bitmap: &[u64],
+    ) -> SmartBitmap<T>
+    where
+        T: Default + Clone + Copy,
+    {
+        let mut bmap = SmartBitmap {
+            inputs: small_vec_from_slice(inputs),
+            false_inputs: small_vec_from_slice(false_inputs),
+            true_inputs: small_vec_from_slice(true_inputs),
+            bitmap: [0; BITMAP_BITS >> 6],
+        };
+        bmap.bitmap[0..bitmap.len()].copy_from_slice(bitmap);
+        bmap
+    }
+
+    #[test]
+    fn test_remove_unused_input() {
+        let mut bmap = smart_bitmap_from_data(&[3, 4, 6, 9, 11], &[], &[], &[0xbcda2135]);
+        let exp_bmap = bmap.clone();
+        bmap.remove_unused_input();
+        assert_eq!(exp_bmap, bmap);
+
+        let mut bmap = smart_bitmap_from_data(&[3, 4, 6, 9, 11], &[], &[], &[0xa50faf05]);
+        let exp_bmap = smart_bitmap_from_data(&[3, 6, 9, 11], &[], &[], &[0x93b1]);
+        bmap.remove_unused_input();
+        assert_eq!(exp_bmap, bmap);
     }
 }
