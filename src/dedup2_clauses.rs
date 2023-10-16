@@ -194,7 +194,7 @@ where
                     let mut ok = true;
                     let shift = i - 6;
                     let inc_pos = 1 << shift;
-                    for j in 0..(u64len >> (shift)) {
+                    for j in 0..(u64len >> (shift + 1)) {
                         for k in j << shift..(j + 1) << shift {
                             if bitmap[k] != bitmap[k + inc_pos] {
                                 ok = false;
@@ -227,12 +227,12 @@ where
                             (bitmap[bdi] & !(elem_mask << (di & 63))) | (elem << (di & 63));
                     }
                 } else if found_input == 6 {
-                    for i in 0..(bitlen >> 1) {
+                    for i in 0..(bitlen >> 7) {
                         bitmap[i] = bitmap[i << 1];
                     }
                 } else {
                     let shift = found_input - 6;
-                    for i in 0..(bitlen >> (shift + 1)) {
+                    for i in 0..(bitlen >> (shift + 7)) {
                         for j in 0..1 << shift {
                             bitmap[i + j] = bitmap[(i << 1) + j];
                         }
@@ -242,7 +242,7 @@ where
                 if bitlen < 128 {
                     bitmap[0] = bitmap[0] & ((1u64 << (bitlen >> 1)) - 1);
                 } else {
-                    for i in (bitlen >> 7)..(bitlen << 6) {
+                    for i in (bitlen >> 7)..(bitlen >> 6) {
                         bitmap[i] = 0;
                     }
                 }
@@ -326,19 +326,14 @@ mod tests {
         out
     }
 
-    fn smart_bitmap_from_data<T>(
-        inputs: &[T],
-        false_inputs: &[(T, bool)],
-        true_inputs: &[(T, bool)],
-        bitmap: &[u64],
-    ) -> SmartBitmap<T>
+    fn smart_bitmap_from_data<T>(inputs: &[T], bitmap: &[u64]) -> SmartBitmap<T>
     where
-        T: Default + Clone + Copy,
+        T: Default + Clone + Copy + PartialEq + Eq + Ord,
     {
         let mut bmap = SmartBitmap {
             inputs: small_vec_from_slice(inputs),
-            false_inputs: small_vec_from_slice(false_inputs),
-            true_inputs: small_vec_from_slice(true_inputs),
+            false_inputs: SmallVec::<(T, bool), FALSE_INPUT_MAXLEN>::new(),
+            true_inputs: SmallVec::<(T, bool), TRUE_INPUT_MAXLEN>::new(),
             bitmap: [0; BITMAP_BITS >> 6],
         };
         bmap.bitmap[0..bitmap.len()].copy_from_slice(bitmap);
@@ -347,23 +342,45 @@ mod tests {
 
     #[test]
     fn test_remove_unused_inputs() {
-        let mut bmap = smart_bitmap_from_data(&[3, 4, 6, 9, 11], &[], &[], &[0xbcda2135]);
+        let mut bmap = smart_bitmap_from_data(&[3, 4, 6, 9, 11], &[0xbcda2135]);
         let exp_bmap = bmap.clone();
         bmap.remove_unused_inputs();
         assert_eq!(exp_bmap, bmap);
 
-        let mut bmap = smart_bitmap_from_data(&[3, 4, 6, 9, 11], &[], &[], &[0xa50faf05]);
-        let exp_bmap = smart_bitmap_from_data(&[3, 6, 9, 11], &[], &[], &[0x93b1]);
+        let mut bmap = smart_bitmap_from_data(&[3, 4, 6, 9, 11], &[0xa50faf05]);
+        let exp_bmap = smart_bitmap_from_data(&[3, 6, 9, 11], &[0x93b1]);
+        bmap.remove_unused_inputs();
+        assert_eq!(exp_bmap, bmap);
+
+        let mut bmap = smart_bitmap_from_data(&[3, 4, 6, 9, 11], &[0xaaff5500]);
+        let exp_bmap = smart_bitmap_from_data(&[3, 9, 11], &[0b10110100]);
+        bmap.remove_unused_inputs();
+        assert_eq!(exp_bmap, bmap);
+
+        let mut bmap = smart_bitmap_from_data(&[3, 4, 6, 9, 11], &[0xaaaa5555]);
+        let exp_bmap = smart_bitmap_from_data(&[3, 11], &[0b1001]);
+        bmap.remove_unused_inputs();
+        assert_eq!(exp_bmap, bmap);
+
+        let mut bmap = smart_bitmap_from_data(
+            &[3, 4, 6, 9, 11, 15, 19],
+            &[0x1095bca065a3, 0x5b0a04421cce2],
+        );
+        let exp_bmap = bmap.clone();
+        bmap.remove_unused_inputs();
+        assert_eq!(exp_bmap, bmap);
+
+        let mut bmap =
+            smart_bitmap_from_data(&[3, 4, 6, 9, 11, 15, 19], &[0x1095bca065a3, 0x1095bca065a3]);
+        let exp_bmap = smart_bitmap_from_data(&[3, 4, 6, 9, 11, 15], &[0x1095bca065a3]);
         bmap.remove_unused_inputs();
         assert_eq!(exp_bmap, bmap);
         
-        let mut bmap = smart_bitmap_from_data(&[3, 4, 6, 9, 11], &[], &[], &[0xaaff5500]);
-        let exp_bmap = smart_bitmap_from_data(&[3, 9, 11], &[], &[], &[0b10110100]);
-        bmap.remove_unused_inputs();
-        assert_eq!(exp_bmap, bmap);
-        
-        let mut bmap = smart_bitmap_from_data(&[3, 4, 6, 9, 11], &[], &[], &[0xaaaa5555]);
-        let exp_bmap = smart_bitmap_from_data(&[3, 11], &[], &[], &[0b1001]);
+        let mut bmap =
+            smart_bitmap_from_data(&[3, 4, 6, 9, 11, 15, 19, 22],
+            &[0x1095bca065a3, 0x1195bca065a3, 0x1095bca065a3, 0x1195bca065a3]);
+        let exp_bmap = smart_bitmap_from_data(&[3, 4, 6, 9, 11, 15, 19],
+                &[0x1095bca065a3, 0x1195bca065a3]);
         bmap.remove_unused_inputs();
         assert_eq!(exp_bmap, bmap);
     }
