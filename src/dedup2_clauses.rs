@@ -343,7 +343,7 @@ mod tests {
     }
 
     #[test]
-    fn test_remove_unused_inputs() {
+    fn test_smart_bitmap_remove_unused_inputs() {
         let mut bmap = smart_bitmap_from_data(&[3, 4, 6, 9, 11], &[0xbcda2135]);
         let exp_bmap = bmap.clone();
         bmap.remove_unused_inputs();
