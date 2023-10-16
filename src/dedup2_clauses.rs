@@ -125,7 +125,7 @@ impl<T> SmartBitmap<T>
 where
     T: Default + Clone + Copy + Ord + PartialEq + Eq,
 {
-    fn from_input(input: T, value: bool) -> Self {
+    fn from_input(input: T) -> Self {
         let mut out = Self {
             inputs: SmallVec::new(),
             false_inputs: SmallVec::new(),
@@ -133,7 +133,7 @@ where
             bitmap: [0; BITMAP_BITS >> 6],
         };
         out.inputs.insert(input);
-        out.bitmap[0] = if value { 0b10 } else { 0 };
+        out.bitmap[0] = 0b10;
         out
     }
 
@@ -250,7 +250,7 @@ where
                 self.inputs.remove(self.inputs.data()[found_input as usize]);
                 start = found_input;
             } else {
-                start = self.inputs.len() as u32;
+                break;
             }
         }
     }
@@ -379,6 +379,19 @@ mod tests {
             &[3, 4, 6, 9, 11, 12, 14, 15],
             &[
                 0xbb8811aa006633dd,
+                0x00ccdd0075bb2211,
+                0x7700331144ddffee,
+                0x113300cc55330022,
+            ],
+        );
+        let exp_bmap = bmap.clone();
+        bmap.remove_unused_inputs();
+        assert_eq!(exp_bmap, bmap);
+
+        let mut bmap = smart_bitmap_from_data(
+            &[3, 4, 6, 9, 11, 12, 14, 15],
+            &[
+                0xbb8811aa006633dd,
                 0xbb8811aa006633dd,
                 0x00ccdd0055bb2211,
                 0x00ccdd0055bb2211,
@@ -474,6 +487,31 @@ mod tests {
                 0x169894029672117,
             ],
         );
+        bmap.remove_unused_inputs();
+        assert_eq!(exp_bmap, bmap);
+
+        let mut bmap = smart_bitmap_from_data(
+            &[3, 4, 6, 9, 11, 15, 19, 22, 23, 25],
+            &[
+                0x1095bca065a3,
+                0x1195bca065a3,
+                0x1095bca065a3,
+                0x1195bca065a3,
+                0x2295bca221a3,
+                0x16989402967211a,
+                0x2295bca121a3,
+                0x16989402967211a,
+                0x1095bca065a7,
+                0x1195bca065a7,
+                0x1095bca065a7,
+                0x1195bca065a7,
+                0x2295bca121a7,
+                0x169894029672117,
+                0x2295bca121a7,
+                0x169894029672117,
+            ],
+        );
+        let exp_bmap = bmap.clone();
         bmap.remove_unused_inputs();
         assert_eq!(exp_bmap, bmap);
     }
