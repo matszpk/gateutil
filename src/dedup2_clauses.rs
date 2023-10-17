@@ -280,7 +280,7 @@ where
         }
     }
 
-    fn apply_inputs(&self, self_input_num: usize, b_inputs: &[T]) -> Self {
+    fn apply_new_inputs(&self, self_input_num: usize, b_inputs: &[T]) -> Self {
         assert!(self_input_num + b_inputs.len() <= BITMAP_BITS_BITS);
         let joined_inputs = merge_sorted_by_key(
             self.inputs.data()[0..self_input_num]
@@ -627,5 +627,26 @@ mod tests {
         let exp_bmap = bmap.clone();
         bmap.remove_unused_inputs();
         assert_eq!(exp_bmap, bmap);
+    }
+
+    #[test]
+    fn test_apply_new_inputs() {
+        assert_eq!(
+            smart_bitmap_from_data(
+                &[0, 1, 3, 4, 5, 6, 9, 11, 12],
+                &[
+                    0x00ff00ff0f0f0f0f,
+                    0x00f000f0000f000f,
+                    0xff0fff0ff0f0f0f0,
+                    0xf0fff0ffff00ff00,
+                    0x00ff00ff0f0f0f0f,
+                    0x00f000f0000f000f,
+                    0xff0fff0ff0f0f0f0,
+                    0xf0fff0ffff00ff00
+                ]
+            ),
+            smart_bitmap_from_data(&[3, 4, 6, 9, 11], &[0xbcda2135])
+                .apply_new_inputs(5, &[0, 1, 5, 12])
+        );
     }
 }
