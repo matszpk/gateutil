@@ -338,6 +338,7 @@ where
                     .map(|(i, x)| (i, (*x, false))),
                 |(_, (x, _))| *x,
             );
+            let merged_inputs_lasts = &merged_inputs[BITMAP_BITS_BITS..];
             let merged_inputs = &merged_inputs[0..BITMAP_BITS_BITS];
             // match self.inputs.data().binary_search(&merged_inputs.last().unwrap()) {
             //     Ok(p) = merged_
@@ -353,9 +354,16 @@ where
                 .find(|(_, (_, isself))| !*isself)
                 .map(|(i, (_, _))| *i);
             if self_last_input_index.is_none() || rhs_last_input_index.is_none() {
-                // if inputs are not overlapping
+                // if inputs are not overlapping.
+                // because for values where is at least one false and true (T)
+                // T AND false != T AND true, T OR false != T OR true,
+                // T XOR false != T XOR true then ignore such case.
                 return None;
             }
+            let self_next_input_index = self_last_input_index.unwrap() + 1;
+            let rhs_next_input_index = rhs_last_input_index.unwrap() + 1;
+
+            for i in 0..1 << merged_inputs_lasts.len() {}
             None
         }
     }
