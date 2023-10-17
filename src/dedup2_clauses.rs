@@ -176,6 +176,48 @@ where
         &mut self.bitmap[0..l]
     }
 
+    fn if_unused_input(&self, i: u32) -> bool {
+        let bitlen = self.bitmap_bitlen();
+        let bitmap = self.bitmap();
+        if i < 6 {
+            // check in 64-bit word
+            if bitmap.iter().all(|x| check_unused_bit_u64(i, *x)) {
+                return true;
+            }
+        } else if i == 6 {
+            // check between two 64-bit word (if same)
+            let mut ok = true;
+            for j in 0..(bitlen >> 7) {
+                if bitmap[j << 1] != bitmap[(j << 1) + 1] {
+                    ok = false;
+                }
+            }
+            if ok {
+                return true;
+            }
+        } else {
+            // check between many 64-bit words (if same)
+            let mut ok = true;
+            let shift = i - 6;
+            let inc_pos = 1 << shift;
+            for j in 0..(bitlen >> (shift + 7)) {
+                for k in j << (shift + 1)..(2 * j + 1) << shift {
+                    if bitmap[k] != bitmap[k + inc_pos] {
+                        ok = false;
+                        break;
+                    }
+                }
+                if !ok {
+                    break;
+                }
+            }
+            if ok {
+                return true;
+            }
+        }
+        false
+    }
+
     fn check_unused_input(&self, start: u32) -> Option<u32> {
         let input_len = self.inputs.len() as u32;
         let mut found_input = None;
@@ -183,44 +225,9 @@ where
         let bitmap = self.bitmap();
         // try find unused input
         for i in start..input_len {
-            if i < 6 {
-                // check in 64-bit word
-                if bitmap.iter().all(|x| check_unused_bit_u64(i, *x)) {
-                    found_input = Some(i);
-                    break;
-                }
-            } else if i == 6 {
-                // check between two 64-bit word (if same)
-                let mut ok = true;
-                for j in 0..(bitlen >> 7) {
-                    if bitmap[j << 1] != bitmap[(j << 1) + 1] {
-                        ok = false;
-                    }
-                }
-                if ok {
-                    found_input = Some(i);
-                    break;
-                }
-            } else {
-                // check between many 64-bit words (if same)
-                let mut ok = true;
-                let shift = i - 6;
-                let inc_pos = 1 << shift;
-                for j in 0..(bitlen >> (shift + 7)) {
-                    for k in j << (shift + 1)..(2 * j + 1) << shift {
-                        if bitmap[k] != bitmap[k + inc_pos] {
-                            ok = false;
-                            break;
-                        }
-                    }
-                    if !ok {
-                        break;
-                    }
-                }
-                if ok {
-                    found_input = Some(i);
-                    break;
-                }
+            if self.if_unused_input(i) {
+                found_input = Some(i);
+                break;
             }
         }
         found_input
@@ -261,6 +268,16 @@ where
             }
         }
         self.inputs.remove(self.inputs.data()[found_input as usize]);
+    }
+
+    fn check_all_unused_inputs(&mut self) -> u64 {
+        let mut input_mask = 0u64;
+        for i in 0..self.inputs.len() as u32 {
+            if self.if_unused_input(i) {
+                input_mask |= 1 << i;
+            }
+        }
+        input_mask
     }
 
     fn remove_unused_inputs(&mut self) {
@@ -324,7 +341,7 @@ where
             op(out.bitmap_mut(), ext_self.bitmap(), ext_rhs.bitmap());
             out.remove_unused_inputs();
             Some(out)
-        } else {
+        } else if self.inputs.len() + rhs.inputs.len() <= BITMAP_BITS_BITS + 3 {
             let merged_inputs = merge_sorted_by_key(
                 self.inputs
                     .data()
@@ -363,7 +380,59 @@ where
             let self_next_input_index = self_last_input_index.unwrap() + 1;
             let rhs_next_input_index = rhs_last_input_index.unwrap() + 1;
 
-            for i in 0..1 << merged_inputs_lasts.len() {}
+            // let mut out = SmartBitmap {
+            //     inputs: ext_self.inputs,
+            //     bitmap: [0; BITMAP_BITS >> 6],
+            // };
+            let mut all_parts = vec![];
+            let mut input_mask = u64::MAX;
+            for i in 0..1 << merged_inputs_lasts.len() {
+                // determine start bit index for bitmap
+                let self_bi = merged_inputs_lasts.iter().enumerate().fold(
+                    0,
+                    |si, (sbit, (dbit, (_, selfbmap)))| {
+                        if *selfbmap {
+                            si | (((i >> sbit) & 1) << dbit)
+                        } else {
+                            si
+                        }
+                    },
+                ) << self_next_input_index;
+                let rhs_bi = merged_inputs_lasts.iter().enumerate().fold(
+                    0,
+                    |si, (sbit, (dbit, (_, selfbmap)))| {
+                        if !*selfbmap {
+                            si | (((i >> sbit) & 1) << dbit)
+                        } else {
+                            si
+                        }
+                    },
+                ) << rhs_next_input_index;
+                // generate part of bitmap to operation
+                let ext_self = self.apply_new_inputs(
+                    self_next_input_index,
+                    self_bi,
+                    &rhs.inputs.data()[0..rhs_next_input_index],
+                );
+                let ext_rhs = rhs.apply_new_inputs(
+                    rhs_next_input_index,
+                    rhs_bi,
+                    &self.inputs.data()[0..self_next_input_index],
+                );
+                let mut out = SmartBitmap {
+                    inputs: ext_self.inputs,
+                    bitmap: [0; BITMAP_BITS >> 6],
+                };
+                // make operation
+                op(out.bitmap_mut(), ext_self.bitmap(), ext_rhs.bitmap());
+                input_mask &= out.check_all_unused_inputs();
+                all_parts.push((out, self_bi, rhs_bi));
+            }
+            {
+                // remove higher inputs and check
+            }
+            None
+        } else {
             None
         }
     }
