@@ -378,10 +378,6 @@ where
             let self_next_input_index = self_last_input_index.unwrap() + 1;
             let rhs_next_input_index = rhs_last_input_index.unwrap() + 1;
 
-            // let mut out = SmartBitmap {
-            //     inputs: ext_self.inputs,
-            //     bitmap: [0; BITMAP_BITS >> 6],
-            // };
             let mut all_parts = vec![];
             let mut input_mask = u64::MAX;
             for i in 0..1 << merged_inputs_lasts.len() {
