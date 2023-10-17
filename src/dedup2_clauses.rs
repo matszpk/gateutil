@@ -107,15 +107,15 @@ where
 
     #[inline]
     fn remove(&mut self, e: T) {
-        let p = match self.data().binary_search(&e) {
+        match self.data().binary_search(&e) {
             Ok(p) => {
                 let old_len = self.len as usize;
                 self.data_mut().copy_within(p + 1..old_len, p);
                 self.data_mut()[old_len - 1] = T::default();
                 self.len -= 1;
             }
-            Err(p) => {}
-        };
+            Err(_) => {}
+        }
     }
 }
 
@@ -282,18 +282,19 @@ where
 
     fn apply_new_inputs(&self, self_input_num: usize, b_inputs: &[T]) -> Self {
         assert!(self_input_num + b_inputs.len() <= BITMAP_BITS_BITS);
-        let joined_inputs = merge_sorted_by_key(
+        // create merged list of inputs
+        let merged_inputs = merge_sorted_by_key(
             self.inputs.data()[0..self_input_num]
                 .iter()
                 .enumerate()
                 .map(|(i, x)| (i, (*x, true))),
             b_inputs.iter().enumerate().map(|(i, x)| (i, (*x, false))),
-            |(i, (x, _))| *x,
+            |(_, (x, _))| *x,
         );
         let mut out_bitmap = [0u64; BITMAP_BITS >> 6];
-        for i in 0..1 << joined_inputs.len() {
+        for i in 0..1 << merged_inputs.len() {
             let si =
-                joined_inputs
+                merged_inputs
                     .iter()
                     .enumerate()
                     .fold(0, |si, (sbit, (dbit, (_, selfbmap)))| {
@@ -306,13 +307,25 @@ where
             out_bitmap[i >> 6] |= ((self.bitmap[si >> 6] >> (si & 63)) & 1) << (i & 63);
         }
         Self {
-            inputs: SmallVec::from_iter(joined_inputs.into_iter().map(|(_, (x, _))| x)),
+            inputs: SmallVec::from_iter(merged_inputs.into_iter().map(|(_, (x, _))| x)),
             bitmap: out_bitmap,
         }
     }
 
     fn make_op(self, rhs: Self, op: impl Fn(&mut [u64], &[u64], &[u64])) -> Option<Self> {
-        None
+        if self.inputs.len() + rhs.inputs.len() <= BITMAP_BITS_BITS {
+            let ext_self = self.apply_new_inputs(self.inputs.len() as usize, rhs.inputs.data());
+            let ext_rhs = rhs.apply_new_inputs(rhs.inputs.len() as usize, self.inputs.data());
+            let mut out = SmartBitmap {
+                inputs: ext_self.inputs,
+                bitmap: [0; BITMAP_BITS >> 6],
+            };
+            op(out.bitmap_mut(), ext_self.bitmap(), ext_rhs.bitmap());
+            out.remove_unused_inputs();
+            Some(out)
+        } else {
+            None
+        }
     }
 }
 
