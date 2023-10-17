@@ -454,7 +454,7 @@ mod tests {
                 0x1095bca065a3,
                 0x1195bca065a3,
                 0x1095bca065a3,
-                0x1195bca067a3,
+                0x1195bca067a3, // not match
             ],
         );
         let exp_bmap = bmap.clone();
@@ -505,7 +505,7 @@ mod tests {
                 0x1195bca065a3,
                 0x1095bca065a3,
                 0x1195bca065a3,
-                0x2295bca221a3,
+                0x2295bca221a3, // not match
                 0x16989402967211a,
                 0x2295bca121a3,
                 0x16989402967211a,
