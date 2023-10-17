@@ -167,7 +167,7 @@ where
                 break;
             }
             let mut found_input = None;
-            let u64len = self.bitmap_u64len();
+            let bitlen = self.bitmap_bitlen();
             let bitmap = self.bitmap();
             // try find unused input
             for i in start..input_len {
@@ -180,7 +180,7 @@ where
                 } else if i == 6 {
                     // check between two 64-bit word (if same)
                     let mut ok = true;
-                    for j in 0..(u64len >> 1) {
+                    for j in 0..(bitlen >> 7) {
                         if bitmap[j << 1] != bitmap[(j << 1) + 1] {
                             ok = false;
                         }
@@ -194,7 +194,7 @@ where
                     let mut ok = true;
                     let shift = i - 6;
                     let inc_pos = 1 << shift;
-                    for j in 0..(u64len >> (shift + 1)) {
+                    for j in 0..(bitlen >> (shift + 7)) {
                         for k in j << (shift + 1)..(2 * j + 1) << shift {
                             if bitmap[k] != bitmap[k + inc_pos] {
                                 ok = false;
