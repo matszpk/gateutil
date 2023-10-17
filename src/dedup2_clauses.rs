@@ -6,6 +6,8 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::{BitAnd, BitXor, Not};
 
+use crate::utils::*;
+
 const BITMAP_BITS: usize = 2048;
 const BITMAP_BITS_BITS: usize = 11;
 
@@ -59,6 +61,21 @@ where
             data: [T::default(); N],
             len: 0,
         }
+    }
+
+    fn from_iter(iter: impl IntoIterator<Item = T>) -> Self
+    where
+        T: Default + Clone + Copy,
+    {
+        let mut out = Self {
+            data: [T::default(); N],
+            len: 0,
+        };
+        for (i, t) in iter.into_iter().enumerate() {
+            out.data[i] = t;
+            out.len += 1;
+        }
+        out
     }
 
     #[inline]
@@ -262,10 +279,37 @@ where
             }
         }
     }
-    
-    // fn apply_inputs(&self, self_input_num: usize, b_inputs: &[T]) -> Self {
-    //     assert!(self_input_num + b_inputs.len() <= BITMAP_BITS_BITS);
-    // }
+
+    fn apply_inputs(&self, self_input_num: usize, b_inputs: &[T]) -> Self {
+        assert!(self_input_num + b_inputs.len() <= BITMAP_BITS_BITS);
+        let joined_inputs = merge_sorted_by_key(
+            self.inputs.data()[0..self_input_num]
+                .iter()
+                .enumerate()
+                .map(|(i, x)| (i, (*x, true))),
+            b_inputs.iter().enumerate().map(|(i, x)| (i, (*x, false))),
+            |(i, (x, _))| *x,
+        );
+        let mut out_bitmap = [0u64; BITMAP_BITS >> 6];
+        for i in 0..1 << joined_inputs.len() {
+            let si =
+                joined_inputs
+                    .iter()
+                    .enumerate()
+                    .fold(0, |si, (sbit, (dbit, (_, selfbmap)))| {
+                        if *selfbmap {
+                            si | (((i >> sbit) & 1) << dbit)
+                        } else {
+                            si
+                        }
+                    });
+            out_bitmap[i >> 6] |= ((self.bitmap[si >> 6] >> (si & 63)) & 1) << (i & 63);
+        }
+        Self {
+            inputs: SmallVec::from_iter(joined_inputs.into_iter().map(|(_, (x, _))| x)),
+            bitmap: out_bitmap,
+        }
+    }
 
     fn make_op(self, rhs: Self, op: impl Fn(&mut [u64], &[u64], &[u64])) -> Option<Self> {
         None
