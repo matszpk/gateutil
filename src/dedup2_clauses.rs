@@ -482,6 +482,7 @@ where
             } else {
                 0
             };
+            // join bitmaps together
             for (i, bmap) in all_parts.iter_mut().enumerate() {
                 bmap.remove_unused_inputs();
                 let bi = i << part_bitshift;
