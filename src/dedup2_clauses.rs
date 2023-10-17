@@ -262,6 +262,10 @@ where
             }
         }
     }
+    
+    // fn apply_inputs(&self, self_input_num: usize, b_inputs: &[T]) -> Self {
+    //     assert!(self_input_num + b_inputs.len() <= BITMAP_BITS_BITS);
+    // }
 
     fn make_op(self, rhs: Self, op: impl Fn(&mut [u64], &[u64], &[u64])) -> Option<Self> {
         None

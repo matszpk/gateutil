@@ -12,6 +12,7 @@ mod dedup_clauses;
 use dedup_clauses::*;
 mod dedup2_clauses;
 use dedup2_clauses::*;
+mod utils;
 
 pub fn deduplicate<T: Clone + Copy + Ord + PartialEq + Eq>(circuit: Circuit<T>) -> Circuit<T>
 where
