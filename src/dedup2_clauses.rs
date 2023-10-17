@@ -270,7 +270,7 @@ where
             if start >= input_len {
                 break;
             }
-            let mut found_input = self.check_unused_input(start);
+            let found_input = self.check_unused_input(start);
             if let Some(found_input) = found_input {
                 self.remove_input(found_input);
                 start = found_input;
@@ -645,8 +645,73 @@ mod tests {
                     0xf0fff0ffff00ff00
                 ]
             ),
-            smart_bitmap_from_data(&[3, 4, 6, 9, 11], &[0xbcda2135])
+            smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14], &[0xbcda2135])
                 .apply_new_inputs(5, &[0, 1, 5, 12])
+        );
+
+        assert_eq!(
+            smart_bitmap_from_data(
+                &[3, 4, 6, 7, 8, 9, 14, 15, 16, 17],
+                &[
+                    0x0f0f0f0f55555555,
+                    0x0a0a0a0a05050505,
+                    0x0f0f0f0f55555555,
+                    0x0a0a0a0a05050505,
+                    0x0f0f0f0f55555555,
+                    0x0a0a0a0a05050505,
+                    0x0f0f0f0f55555555,
+                    0x0a0a0a0a05050505,
+                    0xf5f5f5f5aaaaaaaa,
+                    0xafafafaff0f0f0f0,
+                    0xf5f5f5f5aaaaaaaa,
+                    0xafafafaff0f0f0f0,
+                    0xf5f5f5f5aaaaaaaa,
+                    0xafafafaff0f0f0f0,
+                    0xf5f5f5f5aaaaaaaa,
+                    0xafafafaff0f0f0f0
+                ]
+            ),
+            smart_bitmap_from_data(&[3, 6, 9, 14, 17], &[0xbcda2135])
+                .apply_new_inputs(5, &[4, 7, 8, 15, 16])
+        );
+
+        assert_eq!(
+            smart_bitmap_from_data(
+                &[3, 6, 7, 9, 14, 17, 20, 22, 25, 26],
+                &[
+                    0xbbccddaa22113355,
+                    0xbbccddaa22113355,
+                    0xee33aa00cc119955,
+                    0xee33aa00cc119955,
+                    0x8866110044ccaa11,
+                    0x8866110044ccaa11,
+                    0xbb55dd00ccaa0099,
+                    0xbb55dd00ccaa0099,
+                    0xbbccddaa22113355,
+                    0xbbccddaa22113355,
+                    0xee33aa00cc119955,
+                    0xee33aa00cc119955,
+                    0x8866110044ccaa11,
+                    0x8866110044ccaa11,
+                    0xbb55dd00ccaa0099,
+                    0xbb55dd00ccaa0099
+                ]
+            ),
+            smart_bitmap_from_data(
+                &[3, 6, 9, 14, 17, 22, 25, 27],
+                &[
+                    0xe3a0c195bcda2135,
+                    0xb5d0ca0986104ca1,
+                    0xeeeeeabbbbbb3433,
+                    0xa0a0444a03bbcc1
+                ]
+            )
+            .apply_new_inputs(7, &[7, 20, 26])
+        );
+
+        assert_eq!(
+            smart_bitmap_from_data(&[3, 4, 6, 7, 9], &[0b01011010010110101010111110101111]),
+            smart_bitmap_from_data(&[3, 6, 9, 11], &[0x1e6b]).apply_new_inputs(3, &[4, 7])
         );
     }
 }
