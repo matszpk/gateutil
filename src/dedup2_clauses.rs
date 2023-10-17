@@ -221,8 +221,6 @@ where
     fn check_unused_input(&self, start: u32) -> Option<u32> {
         let input_len = self.inputs.len() as u32;
         let mut found_input = None;
-        let bitlen = self.bitmap_bitlen();
-        let bitmap = self.bitmap();
         // try find unused input
         for i in start..input_len {
             if self.if_unused_input(i) {
@@ -420,13 +418,13 @@ where
                     &self.inputs.data()[0..self_next_input_index],
                 );
                 let mut out = SmartBitmap {
-                    inputs: ext_self.inputs,
+                    inputs: SmallVec::from_iter(merged_inputs.iter().map(|(_, (x, _))| *x)),
                     bitmap: [0; BITMAP_BITS >> 6],
                 };
                 // make operation
                 op(out.bitmap_mut(), ext_self.bitmap(), ext_rhs.bitmap());
                 input_mask &= out.check_all_unused_inputs();
-                all_parts.push((out, self_bi, rhs_bi));
+                all_parts.push(out);
             }
             let mut merged_inputs_lasts = merged_inputs_lasts.to_vec();
             {
@@ -461,7 +459,40 @@ where
             if (input_mask.count_ones() as usize) < merged_inputs_lasts.len() {
                 return None;
             }
-            None
+            let mut final_out = SmartBitmap {
+                inputs: SmallVec::from_iter(
+                    merged_inputs
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(i, (_, (x, _)))| {
+                            if (input_mask & (1 << i)) == 0 {
+                                Some(*x)
+                            } else {
+                                None
+                            }
+                        })
+                        .chain(merged_inputs_lasts.iter().map(|(_, (x, _))| *x)),
+                ),
+                bitmap: [0; BITMAP_BITS >> 6],
+            };
+
+            let part_bitshift = 1 << merged_inputs.len() - (input_mask.count_ones() as usize);
+            let bdi_inc = if part_bitshift >= 6 {
+                1 << (part_bitshift - 6)
+            } else {
+                0
+            };
+            for (i, bmap) in all_parts.iter_mut().enumerate() {
+                bmap.remove_unused_inputs();
+                let bi = i << part_bitshift;
+                let bdi = bi >> 6;
+                if part_bitshift >= 6 {
+                    final_out.bitmap[bdi..bdi + bdi_inc].copy_from_slice(bmap.bitmap());
+                } else {
+                    final_out.bitmap[bdi] |= bmap.bitmap[0] << (bi & 63);
+                }
+            }
+            Some(final_out)
         } else {
             None
         }
