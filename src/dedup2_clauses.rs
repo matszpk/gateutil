@@ -280,7 +280,7 @@ where
         }
     }
 
-    fn apply_new_inputs(&self, self_input_num: usize, b_inputs: &[T]) -> Self {
+    fn apply_new_inputs(&self, self_input_num: usize, bit_start: usize, b_inputs: &[T]) -> Self {
         assert!(self_input_num + b_inputs.len() <= BITMAP_BITS_BITS);
         // create merged list of inputs
         let merged_inputs = merge_sorted_by_key(
@@ -303,7 +303,8 @@ where
                         } else {
                             si
                         }
-                    });
+                    })
+                    + bit_start;
             out_bitmap[i >> 6] |= ((self.bitmap[si >> 6] >> (si & 63)) & 1) << (i & 63);
         }
         Self {
@@ -314,8 +315,8 @@ where
 
     fn make_op(self, rhs: Self, op: impl Fn(&mut [u64], &[u64], &[u64])) -> Option<Self> {
         if self.inputs.len() + rhs.inputs.len() <= BITMAP_BITS_BITS {
-            let ext_self = self.apply_new_inputs(self.inputs.len() as usize, rhs.inputs.data());
-            let ext_rhs = rhs.apply_new_inputs(rhs.inputs.len() as usize, self.inputs.data());
+            let ext_self = self.apply_new_inputs(self.inputs.len() as usize, 0, rhs.inputs.data());
+            let ext_rhs = rhs.apply_new_inputs(rhs.inputs.len() as usize, 0, self.inputs.data());
             let mut out = SmartBitmap {
                 inputs: ext_self.inputs,
                 bitmap: [0; BITMAP_BITS >> 6],
@@ -324,6 +325,37 @@ where
             out.remove_unused_inputs();
             Some(out)
         } else {
+            let merged_inputs = merge_sorted_by_key(
+                self.inputs
+                    .data()
+                    .iter()
+                    .enumerate()
+                    .map(|(i, x)| (i, (*x, true))),
+                rhs.inputs
+                    .data()
+                    .iter()
+                    .enumerate()
+                    .map(|(i, x)| (i, (*x, false))),
+                |(_, (x, _))| *x,
+            );
+            let merged_inputs = &merged_inputs[0..BITMAP_BITS_BITS];
+            // match self.inputs.data().binary_search(&merged_inputs.last().unwrap()) {
+            //     Ok(p) = merged_
+            // }
+            let self_last_input_index = merged_inputs
+                .iter()
+                .rev()
+                .find(|(_, (_, isself))| *isself)
+                .map(|(i, (_, _))| *i);
+            let rhs_last_input_index = merged_inputs
+                .iter()
+                .rev()
+                .find(|(_, (_, isself))| !*isself)
+                .map(|(i, (_, _))| *i);
+            if self_last_input_index.is_none() || rhs_last_input_index.is_none() {
+                // if inputs are not overlapping
+                return None;
+            }
             None
         }
     }
@@ -658,8 +690,11 @@ mod tests {
                     0xf0fff0ffff00ff00
                 ]
             ),
-            smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14], &[0xbcda2135])
-                .apply_new_inputs(5, &[0, 1, 5, 12])
+            smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14], &[0xbcda2135]).apply_new_inputs(
+                5,
+                0,
+                &[0, 1, 5, 12]
+            )
         );
 
         assert_eq!(
@@ -684,8 +719,11 @@ mod tests {
                     0xafafafaff0f0f0f0
                 ]
             ),
-            smart_bitmap_from_data(&[3, 6, 9, 14, 17], &[0xbcda2135])
-                .apply_new_inputs(5, &[4, 7, 8, 15, 16])
+            smart_bitmap_from_data(&[3, 6, 9, 14, 17], &[0xbcda2135]).apply_new_inputs(
+                5,
+                0,
+                &[4, 7, 8, 15, 16]
+            )
         );
 
         assert_eq!(
@@ -719,12 +757,17 @@ mod tests {
                     0xa0a0444a03bbcc1
                 ]
             )
-            .apply_new_inputs(7, &[7, 20, 26])
+            .apply_new_inputs(7, 0, &[7, 20, 26])
         );
 
         assert_eq!(
             smart_bitmap_from_data(&[3, 4, 6, 7, 9], &[0b01011010010110101010111110101111]),
-            smart_bitmap_from_data(&[3, 6, 9, 11], &[0x1e6b]).apply_new_inputs(3, &[4, 7])
+            smart_bitmap_from_data(&[3, 6, 9, 11], &[0x1e6b]).apply_new_inputs(3, 0, &[4, 7])
+        );
+
+        assert_eq!(
+            smart_bitmap_from_data(&[3, 4, 6, 7, 9], &[0b00000101000001011111101011111010]),
+            smart_bitmap_from_data(&[3, 6, 9, 11], &[0x1e6b]).apply_new_inputs(3, 8, &[4, 7])
         );
     }
 }
