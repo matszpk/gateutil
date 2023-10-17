@@ -4,7 +4,7 @@ use std::cmp::{Ord, Ordering, PartialOrd};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::ops::{BitAnd, BitOr, BitXor, Not};
+use std::ops::{BitAnd, BitXor, Not};
 
 const BITMAP_BITS: usize = 2048;
 const BITMAP_BITS_BITS: usize = 11;
@@ -43,7 +43,7 @@ fn check_unused_bit_u64(index_bit: u32, value: u64) -> bool {
     (value & bitmask) == ((value >> shift) & bitmask)
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 struct SmallVec<T, const N: usize> {
     data: [T; N],
     len: u8,
@@ -107,7 +107,7 @@ enum SmartAllValues<T> {
     Bitmap(SmartBitmap<T>),
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 struct SmartBitmap<T> {
     // all inputs must be ordered.
     inputs: SmallVec<T, BITMAP_BITS_BITS>,
@@ -253,6 +253,55 @@ where
                 break;
             }
         }
+    }
+
+    fn make_op(self, rhs: Self, op: impl Fn(&mut [u64], &[u64], &[u64])) -> Option<Self> {
+        None
+    }
+}
+
+impl<T> Not for SmartBitmap<T>
+where
+    T: Default + Clone + Copy + Ord + PartialEq + Eq,
+{
+    type Output = SmartBitmap<T>;
+    fn not(self) -> Self::Output {
+        let mut out = self;
+        for x in out.bitmap_mut() {
+            *x = !*x;
+        }
+        if out.inputs.len() < 6 {
+            out.bitmap_mut()[0] &= (1 << (1 << out.inputs.len())) - 1;
+        }
+        self
+    }
+}
+
+impl<T> BitAnd for SmartBitmap<T>
+where
+    T: Default + Clone + Copy + Ord + PartialEq + Eq,
+{
+    type Output = Option<SmartBitmap<T>>;
+    fn bitand(self, rhs: Self) -> Self::Output {
+        self.make_op(rhs, |d, a, b| {
+            for i in 0..a.len() {
+                d[i] = a[i] & b[i];
+            }
+        })
+    }
+}
+
+impl<T> BitXor for SmartBitmap<T>
+where
+    T: Default + Clone + Copy + Ord + PartialEq + Eq,
+{
+    type Output = Option<SmartBitmap<T>>;
+    fn bitxor(self, rhs: Self) -> Self::Output {
+        self.make_op(rhs, |d, a, b| {
+            for i in 0..a.len() {
+                d[i] = a[i] ^ b[i];
+            }
+        })
     }
 }
 
