@@ -296,16 +296,18 @@ where
     }
 
     fn apply_new_inputs(&self, self_input_num: usize, bit_start: usize, b_inputs: &[T]) -> Self {
-        assert!(self_input_num + b_inputs.len() <= BITMAP_BITS_BITS);
         // create merged list of inputs
-        let merged_inputs = merge_sorted_by_key(
+        let mut merged_inputs = merge_sorted_by_key(
             self.inputs.data()[0..self_input_num]
                 .iter()
                 .enumerate()
                 .map(|(i, x)| (i, (*x, true))),
             b_inputs.iter().enumerate().map(|(i, x)| (i, (*x, false))),
-            |(_, (x, _))| *x,
+            // sort for dedup to skip rhs inputs
+            |(_, (x, s))| (*x, !s),
         );
+        merged_inputs.dedup_by_key(|(_, (x, _))| *x);
+        assert!(merged_inputs.len() <= BITMAP_BITS_BITS);
         let mut out_bitmap = [0u64; BITMAP_BITS >> 6];
         for i in 0..1 << merged_inputs.len() {
             let si =
@@ -340,7 +342,7 @@ where
             out.remove_unused_inputs();
             Some(out)
         } else if self.inputs.len() + rhs.inputs.len() <= BITMAP_BITS_BITS + 3 {
-            let merged_inputs = merge_sorted_by_key(
+            let mut merged_inputs = merge_sorted_by_key(
                 self.inputs
                     .data()
                     .iter()
@@ -351,8 +353,10 @@ where
                     .iter()
                     .enumerate()
                     .map(|(i, x)| (i, (*x, false))),
-                |(_, (x, _))| *x,
+                // sort for dedup to skip rhs inputs
+                |(_, (x, s))| (*x, !s),
             );
+            merged_inputs.dedup_by_key(|(_, (x, _))| *x);
             let merged_inputs_lasts = &merged_inputs[BITMAP_BITS_BITS..];
             let merged_inputs = &merged_inputs[0..BITMAP_BITS_BITS];
             // match self.inputs.data().binary_search(&merged_inputs.last().unwrap()) {
@@ -832,6 +836,28 @@ mod tests {
             )
         );
 
+        // input duplicates in rhs
+        assert_eq!(
+            smart_bitmap_from_data(
+                &[0, 1, 3, 4, 5, 6, 9, 11, 12],
+                &[
+                    0x00ff00ff0f0f0f0f,
+                    0x00f000f0000f000f,
+                    0xff0fff0ff0f0f0f0,
+                    0xf0fff0ffff00ff00,
+                    0x00ff00ff0f0f0f0f,
+                    0x00f000f0000f000f,
+                    0xff0fff0ff0f0f0f0,
+                    0xf0fff0ffff00ff00
+                ]
+            ),
+            smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14], &[0xbcda2135]).apply_new_inputs(
+                5,
+                0,
+                &[0, 1, 3, 4, 5, 12]
+            )
+        );
+
         assert_eq!(
             smart_bitmap_from_data(
                 &[3, 4, 6, 7, 8, 9, 14, 15, 16, 17],
@@ -858,6 +884,36 @@ mod tests {
                 5,
                 0,
                 &[4, 7, 8, 15, 16]
+            )
+        );
+
+        // input duplicates in rhs
+        assert_eq!(
+            smart_bitmap_from_data(
+                &[3, 4, 6, 7, 8, 9, 14, 15, 16, 17],
+                &[
+                    0x0f0f0f0f55555555,
+                    0x0a0a0a0a05050505,
+                    0x0f0f0f0f55555555,
+                    0x0a0a0a0a05050505,
+                    0x0f0f0f0f55555555,
+                    0x0a0a0a0a05050505,
+                    0x0f0f0f0f55555555,
+                    0x0a0a0a0a05050505,
+                    0xf5f5f5f5aaaaaaaa,
+                    0xafafafaff0f0f0f0,
+                    0xf5f5f5f5aaaaaaaa,
+                    0xafafafaff0f0f0f0,
+                    0xf5f5f5f5aaaaaaaa,
+                    0xafafafaff0f0f0f0,
+                    0xf5f5f5f5aaaaaaaa,
+                    0xafafafaff0f0f0f0
+                ]
+            ),
+            smart_bitmap_from_data(&[3, 6, 9, 14, 17], &[0xbcda2135]).apply_new_inputs(
+                5,
+                0,
+                &[3, 4, 6, 7, 8, 9, 14, 15, 16, 17]
             )
         );
 
