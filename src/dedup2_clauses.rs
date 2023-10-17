@@ -428,8 +428,38 @@ where
                 input_mask &= out.check_all_unused_inputs();
                 all_parts.push((out, self_bi, rhs_bi));
             }
+            let mut merged_inputs_lasts = merged_inputs_lasts.to_vec();
             {
                 // remove higher inputs and check
+                if all_parts.len() == 8 && all_parts[0..4] == all_parts[4..8] {
+                    all_parts.truncate(4);
+                    merged_inputs_lasts.pop();
+                }
+
+                while all_parts.len() >= 4
+                    && all_parts[0..2] == all_parts[2..4]
+                    && (all_parts.len() == 8 && all_parts[4..6] == all_parts[6..8])
+                {
+                    if all_parts.len() == 8 {
+                        all_parts.truncate(6);
+                    }
+                    all_parts.remove(2);
+                    all_parts.remove(3);
+                    merged_inputs_lasts.remove(1);
+                }
+
+                while (0..all_parts.len() >> 1)
+                    .all(|i| all_parts[i << 1] == all_parts[(i << 1) + 1])
+                {
+                    for i in (0..all_parts.len() >> 1).rev() {
+                        all_parts.remove((i << 1) + 1);
+                    }
+                    merged_inputs_lasts.remove(0);
+                }
+            }
+            // check if we can construct
+            if (input_mask.count_ones() as usize) < merged_inputs_lasts.len() {
+                return None;
             }
             None
         } else {
