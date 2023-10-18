@@ -1061,7 +1061,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bitmap_and_0() {
+    fn test_bitmap_bitand_0() {
         // first testcases for And and make_op
         assert_eq!(
             Some(smart_bitmap_from_data(&[3, 6, 9, 11], &[0x1c68])),
