@@ -1166,5 +1166,21 @@ mod tests {
             smart_bitmap_from_data(&[2, 5, 7, 9, 11], &[0xa0bc0417])
                 & smart_bitmap_from_data(&[1, 3, 4, 8, 10], &[0xe34ac0d2])
         );
+        // too many inputs to join
+        assert_eq!(
+            None,
+            smart_bitmap_from_data(
+                &[2, 5, 7, 9, 11, 14, 15, 18],
+                &[
+                    0xbc0a04502a78,
+                    0xba0350252577,
+                    0xa0a054948899,
+                    0xaab0c03af0315
+                ]
+            ) & smart_bitmap_from_data(
+                &[3, 4, 6, 10, 12, 13, 16],
+                &[0xbc11466aaa22, 0xba5bb0c22577]
+            )
+        );
     }
 }
