@@ -981,5 +981,19 @@ mod tests {
             )),
             smart_bitmap_from_data(&[3, 6, 9, 11], &[0x1e6b]).apply_new_inputs(3, 8, &[4, 7])
         );
+
+        assert_eq!(
+            None,
+            smart_bitmap_from_data(
+                &[3, 6, 9, 14, 17, 22, 25, 27],
+                &[
+                    0xe3a0c195bcda2135,
+                    0xb5d0ca0986104ca1,
+                    0xeeeeeabbbbbb3433,
+                    0xa0a0444a03bbcc1
+                ]
+            )
+            .apply_new_inputs(8, 0, &[7, 20, 26, 29])
+        );
     }
 }
