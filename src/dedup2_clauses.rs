@@ -327,7 +327,7 @@ where
         //println!("APlly {}", merged_inputs.len());
         if merged_inputs.len() > BITMAP_BITS_BITS {
             return None;
-        } else if merged_inputs.len() == self_input_num {
+        } else if merged_inputs.len() == self_input_num && bit_start == 0 {
             let mut out = SmartBitmap {
                 inputs: SmallVec::from_slice(&self.inputs.data()[0..self_input_num]),
                 bitmap: [0u64; BITMAP_BITS >> 6],
@@ -903,6 +903,27 @@ mod tests {
                     0xf0fff0ffff00ff00
                 ]
             )),
+            smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14], &[0xbcda2135cdaa]).apply_new_inputs(
+                5,
+                16,
+                &[0, 1, 5, 12]
+            )
+        );
+
+        assert_eq!(
+            Some(smart_bitmap_from_data(
+                &[0, 1, 3, 4, 5, 6, 9, 11, 12],
+                &[
+                    0x00ff00ff0f0f0f0f,
+                    0x00f000f0000f000f,
+                    0xff0fff0ff0f0f0f0,
+                    0xf0fff0ffff00ff00,
+                    0x00ff00ff0f0f0f0f,
+                    0x00f000f0000f000f,
+                    0xff0fff0ff0f0f0f0,
+                    0xf0fff0ffff00ff00
+                ]
+            )),
             smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14], &[0x112233bcda2135]).apply_new_inputs(
                 5,
                 0,
@@ -952,6 +973,16 @@ mod tests {
             )
         );
 
+        // no changes and bitstart
+        assert_eq!(
+            Some(smart_bitmap_from_data(&[3, 4, 6, 9, 11], &[0x11bcda21])),
+            smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14], &[0x11bcda2135]).apply_new_inputs(
+                5,
+                8,
+                &[3, 4, 6, 9, 11]
+            )
+        );
+
         // no changes
         assert_eq!(
             Some(smart_bitmap_from_data(
@@ -963,6 +994,19 @@ mod tests {
                 &[0x1111bcda2135, 0x4859fffaaa]
             )
             .apply_new_inputs(7, 0, &[3, 4, 6, 9, 11, 14, 15])
+        );
+
+        // no changes and bitstart
+        assert_eq!(
+            Some(smart_bitmap_from_data(
+                &[3, 4, 6, 9, 11, 14, 15],
+                &[0xfaaa00001111bcda, 0xfadd0000004859ff]
+            )),
+            smart_bitmap_from_data(
+                &[3, 4, 6, 9, 11, 14, 15, 16],
+                &[0x1111bcda2135, 0x4859fffaaa, 0xfadd]
+            )
+            .apply_new_inputs(7, 16, &[3, 4, 6, 9, 11, 14, 15])
         );
 
         // no changes
