@@ -546,7 +546,7 @@ where
         if out.inputs.len() < 6 {
             out.bitmap_mut()[0] &= (1 << (1 << out.inputs.len())) - 1;
         }
-        self
+        out
     }
 }
 
@@ -1029,6 +1029,34 @@ mod tests {
                 ]
             )
             .apply_new_inputs(8, 0, &[7, 20, 26, 29])
+        );
+    }
+
+    #[test]
+    fn test_bitmap_not() {
+        assert_eq!(
+            smart_bitmap_from_data(&[3, 6, 9, 11], &[(!0x1e6b) & 0xffff]),
+            !smart_bitmap_from_data(&[3, 6, 9, 11], &[0x1e6b])
+        );
+        assert_eq!(
+            smart_bitmap_from_data(
+                &[3, 6, 9, 14, 17, 22, 25, 27],
+                &[
+                    !0xe3a0c195bcda2135,
+                    !0xb5d0ca0986104ca1,
+                    !0xeeeeeabbbbbb3433,
+                    !0xa0a0444a03bbcc1
+                ]
+            ),
+            !smart_bitmap_from_data(
+                &[3, 6, 9, 14, 17, 22, 25, 27],
+                &[
+                    0xe3a0c195bcda2135,
+                    0xb5d0ca0986104ca1,
+                    0xeeeeeabbbbbb3433,
+                    0xa0a0444a03bbcc1
+                ]
+            )
         );
     }
 }
