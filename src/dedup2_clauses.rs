@@ -351,8 +351,6 @@ where
                 inputs: ext_self.inputs,
                 bitmap: [0; BITMAP_BITS >> 6],
             };
-            println!("  ArgsA: {:?}", ext_self.bitmap());
-            println!("  ArgsB: {:?}", ext_rhs.bitmap());
             op(out.bitmap_mut(), ext_self.bitmap(), ext_rhs.bitmap());
             out.remove_unused_inputs();
             Some(out)
