@@ -341,12 +341,12 @@ where
             }
             return Some(out);
         } else if self_input_num == 0 {
-            println!("Fill: {}", bit_start);
+            //println!("Fill: {}", bit_start);
             let mut out = SmartBitmap {
                 inputs: SmallVec::from_slice(&b_inputs),
                 bitmap: [0u64; BITMAP_BITS >> 6],
             };
-            let value = if (self.bitmap[bit_start >> 6] >> (bit_start & 63)) != 0 {
+            let value = if ((self.bitmap[bit_start >> 6] >> (bit_start & 63)) & 1) != 0 {
                 u64::MAX
             } else {
                 0
@@ -1060,6 +1060,26 @@ mod tests {
                 .apply_new_inputs(7, 0, &[3, 4, 6, 9, 11, 14, 15])
         );
 
+        // no changes (empties)
+        assert_eq!(
+            Some(smart_bitmap_from_data(&[], &[1])),
+            smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14], &[0x111bcda2135]).apply_new_inputs(
+                0,
+                0,
+                &[]
+            )
+        );
+
+        // no changes (empties) and bit_start
+        assert_eq!(
+            Some(smart_bitmap_from_data(&[], &[0])),
+            smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14], &[0x111bcda2135]).apply_new_inputs(
+                0,
+                3,
+                &[]
+            )
+        );
+
         // all zeros
         assert_eq!(
             Some(smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14, 15], &[0, 0])),
@@ -1087,6 +1107,16 @@ mod tests {
             smart_bitmap_from_data(&[1, 2, 3, 4, 5, 6, 7], &[0, 8]).apply_new_inputs(
                 0,
                 0,
+                &[3, 4, 6, 9]
+            )
+        );
+
+        // all zeros
+        assert_eq!(
+            Some(smart_bitmap_from_data(&[3, 4, 6, 9], &[0])),
+            smart_bitmap_from_data(&[1, 2, 3, 4, 5, 6, 7], &[0, 0xff00]).apply_new_inputs(
+                0,
+                67,
                 &[3, 4, 6, 9]
             )
         );
