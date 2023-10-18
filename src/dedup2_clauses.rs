@@ -1059,4 +1059,70 @@ mod tests {
             )
         );
     }
+
+    #[test]
+    fn test_bitmap_and_0() {
+        // first testcases for And and make_op
+        assert_eq!(
+            Some(smart_bitmap_from_data(&[3, 6, 9, 11], &[0x1c68])),
+            smart_bitmap_from_data(&[3, 6, 9, 11], &[0x1e6b])
+                & smart_bitmap_from_data(&[3, 6, 9, 11], &[0x3dec])
+        );
+        assert_eq!(
+            Some(smart_bitmap_from_data(&[3, 6, 9], &[0x08])),
+            smart_bitmap_from_data(&[3, 6, 9, 11], &[0x1e6b])
+                & smart_bitmap_from_data(&[3, 6, 9, 11], &[0x491c])
+        );
+        assert_eq!(
+            Some(smart_bitmap_from_data(
+                &[1, 3, 4, 7, 10, 13, 14, 16],
+                &[
+                    0xe300c0009c100020,
+                    0x1010420184104021,
+                    0xeacc001199414211,
+                    0x0a000510a03b20c0
+                ]
+            )),
+            smart_bitmap_from_data(
+                &[1, 3, 4, 7, 10, 13, 14, 16],
+                &[
+                    0xe3a0c195bcda2135,
+                    0xb5d0ca0986104ca1,
+                    0xebcdaab199634299,
+                    0x0a0a0774a03bbcc1
+                ]
+            ) & smart_bitmap_from_data(
+                &[1, 3, 4, 7, 10, 13, 14, 16],
+                &[
+                    0xff11ee22dd11cc22,
+                    0x12345677bcdef123,
+                    0xeeee1111dddd7777,
+                    0x1bb1dd11eeff22cc
+                ]
+            )
+        );
+        assert_eq!(
+            Some(smart_bitmap_from_data(
+                &[1, 3, 7, 10, 13, 16],
+                &[0xdeb031ef12345678]
+            )),
+            smart_bitmap_from_data(
+                &[1, 3, 4, 7, 10, 13, 14, 16],
+                &[
+                    0x1322334455667788,
+                    0x1122334455667788,
+                    0xddeebb003311eeff,
+                    0xddeebb003311eeff,
+                ]
+            ) & smart_bitmap_from_data(
+                &[1, 3, 4, 7, 10, 13, 14, 16],
+                &[
+                    0xfdffffffffffffff,
+                    0xffffffffffffffff,
+                    0xffffffffffffffff,
+                    0xffffffffffffffff,
+                ]
+            )
+        );
+    }
 }
