@@ -78,6 +78,18 @@ where
         out
     }
 
+    fn from_slice(t: &[T]) -> SmallVec<T, N>
+    where
+        T: Default + Clone + Copy,
+    {
+        let mut out = SmallVec {
+            data: [T::default(); N],
+            len: u8::try_from(t.len()).unwrap(),
+        };
+        out.data[0..t.len()].copy_from_slice(t);
+        out
+    }
+
     #[inline]
     fn data(&self) -> &[T] {
         &self.data[0..self.len as usize]
@@ -312,10 +324,22 @@ where
             |(_, (x, s))| (*x, !s),
         );
         merged_inputs.dedup_by_key(|(_, (x, _))| *x);
+        //println!("APlly {}", merged_inputs.len());
         if merged_inputs.len() > BITMAP_BITS_BITS {
             return None;
-        } else if merged_inputs.len() == self.inputs.len() {
-            return Some(*self);
+        } else if merged_inputs.len() == self_input_num {
+            let mut out = SmartBitmap {
+                inputs: SmallVec::from_slice(&self.inputs.data()[0..self_input_num]),
+                bitmap: [0u64; BITMAP_BITS >> 6],
+            };
+            //println!("VFLGF {} {}", out.inputs.len(), self_input_num);
+            if out.inputs.len() < 6 {
+                out.bitmap[0] = self.bitmap[0] & ((1 << out.bitmap_bitlen()) - 1);
+            } else {
+                let u64len = out.bitmap_u64len();
+                out.bitmap[0..u64len].copy_from_slice(&self.bitmap[0..u64len]);
+            }
+            return Some(out);
         }
         let mut out_bitmap = [0u64; BITMAP_BITS >> 6];
         for i in 0..1 << merged_inputs.len() {
@@ -356,6 +380,7 @@ where
             out.remove_unused_inputs();
             Some(out)
         } else if self.inputs.len() + rhs.inputs.len() <= BITMAP_BITS_BITS + 3 {
+            // TODO: Simplify to input+1 only.
             // println!("ComplexMakeOp");
             let mut merged_inputs_self = merge_sorted_by_key(
                 self.inputs
@@ -645,24 +670,12 @@ mod tests {
         }
     }
 
-    fn small_vec_from_slice<T, const N: usize>(t: &[T]) -> SmallVec<T, N>
-    where
-        T: Default + Clone + Copy,
-    {
-        let mut out = SmallVec {
-            data: [T::default(); N],
-            len: u8::try_from(t.len()).unwrap(),
-        };
-        out.data[0..t.len()].copy_from_slice(t);
-        out
-    }
-
     fn smart_bitmap_from_data<T>(inputs: &[T], bitmap: &[u64]) -> SmartBitmap<T>
     where
         T: Default + Clone + Copy + PartialEq + Eq + Ord,
     {
         let mut bmap = SmartBitmap {
-            inputs: small_vec_from_slice(inputs),
+            inputs: SmallVec::from_slice(inputs),
             bitmap: [0; BITMAP_BITS >> 6],
         };
         bmap.bitmap[0..bitmap.len()].copy_from_slice(bitmap);
@@ -876,6 +889,27 @@ mod tests {
             )
         );
 
+        assert_eq!(
+            Some(smart_bitmap_from_data(
+                &[0, 1, 3, 4, 5, 6, 9, 11, 12],
+                &[
+                    0x00ff00ff0f0f0f0f,
+                    0x00f000f0000f000f,
+                    0xff0fff0ff0f0f0f0,
+                    0xf0fff0ffff00ff00,
+                    0x00ff00ff0f0f0f0f,
+                    0x00f000f0000f000f,
+                    0xff0fff0ff0f0f0f0,
+                    0xf0fff0ffff00ff00
+                ]
+            )),
+            smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14], &[0x112233bcda2135]).apply_new_inputs(
+                5,
+                0,
+                &[0, 1, 5, 12]
+            )
+        );
+
         // input duplicates in rhs
         assert_eq!(
             Some(smart_bitmap_from_data(
@@ -891,11 +925,98 @@ mod tests {
                     0xf0fff0ffff00ff00
                 ]
             )),
-            smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14], &[0xbcda2135]).apply_new_inputs(
+            smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14], &[0x111bcda2135]).apply_new_inputs(
                 5,
                 0,
                 &[0, 1, 3, 4, 5, 12]
             )
+        );
+
+        // no changes
+        assert_eq!(
+            Some(smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14], &[0xbcda2135])),
+            smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14], &[0xbcda2135]).apply_new_inputs(
+                6,
+                0,
+                &[3, 4, 6, 9, 11, 14]
+            )
+        );
+
+        // no changes
+        assert_eq!(
+            Some(smart_bitmap_from_data(&[3, 4, 6, 9, 11], &[0xbcda2135])),
+            smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14], &[0xbcda2135]).apply_new_inputs(
+                5,
+                0,
+                &[3, 4, 6, 9, 11]
+            )
+        );
+
+        // no changes
+        assert_eq!(
+            Some(smart_bitmap_from_data(
+                &[3, 4, 6, 9, 11, 14, 15],
+                &[0x1111bcda2135, 0x4859fffaaa]
+            )),
+            smart_bitmap_from_data(
+                &[3, 4, 6, 9, 11, 14, 15, 16],
+                &[0x1111bcda2135, 0x4859fffaaa]
+            )
+            .apply_new_inputs(7, 0, &[3, 4, 6, 9, 11, 14, 15])
+        );
+
+        // no changes
+        assert_eq!(
+            Some(smart_bitmap_from_data(
+                &[3, 4, 6, 9, 11, 14, 15],
+                &[0x1111bcda2135, 0x4859fffaaa]
+            )),
+            smart_bitmap_from_data(
+                &[3, 4, 6, 9, 11, 14, 15, 16],
+                &[0x1111bcda2135, 0x4859fffaaa]
+            )
+            .apply_new_inputs(7, 0, &[])
+        );
+
+        // no changes
+        assert_eq!(
+            Some(smart_bitmap_from_data(
+                &[3, 4, 6, 9, 11, 14, 15],
+                &[0x1111bcda2135, 0x4859fffaaa]
+            )),
+            smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14, 15], &[0x1111bcda2135, 0x4859fffaaa])
+                .apply_new_inputs(7, 0, &[])
+        );
+
+        // no changes
+        assert_eq!(
+            Some(smart_bitmap_from_data(
+                &[3, 4, 6, 9, 11, 14, 15],
+                &[0x1111bcda2135, 0x4859fffaaa]
+            )),
+            smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14, 15], &[0x1111bcda2135, 0x4859fffaaa])
+                .apply_new_inputs(7, 0, &[3, 4, 6, 9, 11, 14, 15])
+        );
+
+        // all zeros
+        assert_eq!(
+            Some(smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14, 15], &[0, 0])),
+            smart_bitmap_from_data(&[], &[]).apply_new_inputs(0, 0, &[3, 4, 6, 9, 11, 14, 15])
+        );
+
+        // all ones
+        assert_eq!(
+            Some(smart_bitmap_from_data(
+                &[3, 4, 6, 9, 11, 14, 15],
+                &[u64::MAX, u64::MAX]
+            )),
+            smart_bitmap_from_data(&[], &[1]).apply_new_inputs(0, 0, &[3, 4, 6, 9, 11, 14, 15])
+        );
+
+        // all ones
+        assert_eq!(
+            Some(smart_bitmap_from_data(&[3, 4, 6, 9], &[0xffff])),
+            smart_bitmap_from_data(&[], &[1]).apply_new_inputs(0, 0, &[3, 4, 6, 9])
         );
 
         assert_eq!(
