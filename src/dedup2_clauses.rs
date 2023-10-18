@@ -314,6 +314,8 @@ where
         merged_inputs.dedup_by_key(|(_, (x, _))| *x);
         if merged_inputs.len() > BITMAP_BITS_BITS {
             return None;
+        } else if merged_inputs.len() == self.inputs.len() {
+            return Some(*self);
         }
         let mut out_bitmap = [0u64; BITMAP_BITS >> 6];
         for i in 0..1 << merged_inputs.len() {
