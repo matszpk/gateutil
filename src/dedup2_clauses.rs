@@ -984,6 +984,23 @@ mod tests {
 
         assert_eq!(
             Some(smart_bitmap_from_data(
+                &[3, 6, 9, 14, 17, 22, 25],
+                &[0xe3a0c195bcda2135, 0xb5d0ca0986104ca1]
+            )),
+            smart_bitmap_from_data(
+                &[3, 6, 9, 14, 17, 22, 25, 27],
+                &[
+                    0xe3a0c195bcda2135,
+                    0xb5d0ca0986104ca1,
+                    0xeeeeeabbbbbb3433,
+                    0xa0a0444a03bbcc1
+                ]
+            )
+            .apply_new_inputs(7, 0, &[3, 6, 9, 14, 17, 22, 25])
+        );
+
+        assert_eq!(
+            Some(smart_bitmap_from_data(
                 &[3, 4, 6, 7, 9],
                 &[0b01011010010110101010111110101111]
             )),
