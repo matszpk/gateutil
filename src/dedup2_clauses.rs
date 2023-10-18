@@ -133,7 +133,7 @@ struct SmartBitmap<T> {
 
 impl<T> SmartBitmap<T>
 where
-    T: Default + Clone + Copy + Ord + PartialEq + Eq,
+    T: Default + Clone + Copy + Ord + PartialEq + Eq + Debug,
 {
     fn from_bool(value: bool) -> Self {
         let mut out = Self {
@@ -340,6 +340,7 @@ where
     }
 
     fn make_op(self, rhs: Self, op: impl Fn(&mut [u64], &[u64], &[u64])) -> Option<Self> {
+        // println!("MakeOp");
         if let Some(ext_self) =
             self.apply_new_inputs(self.inputs.len() as usize, 0, rhs.inputs.data())
         {
@@ -355,6 +356,7 @@ where
             out.remove_unused_inputs();
             Some(out)
         } else if self.inputs.len() + rhs.inputs.len() <= BITMAP_BITS_BITS + 3 {
+            // println!("ComplexMakeOp");
             let mut merged_inputs_self = merge_sorted_by_key(
                 self.inputs
                     .data()
@@ -411,6 +413,11 @@ where
             let self_next_input_index = self_last_input_index.unwrap() + 1;
             let rhs_next_input_index = rhs_last_input_index.unwrap() + 1;
 
+            // println!(
+            //     "ComplexMakeOp 2: {:?} {:?}",
+            //     &self.inputs.data()[0..self_next_input_index],
+            //     &rhs.inputs.data()[0..rhs_next_input_index]
+            // );
             let mut all_parts = vec![];
             let mut input_mask = u64::MAX;
             for i in 0..1 << merged_inputs_self_lasts.len() {
@@ -424,7 +431,7 @@ where
                             si
                         }
                     },
-                ) << self_next_input_index;
+                );
                 let rhs_bi = merged_inputs_rhs_lasts.iter().enumerate().fold(
                     0,
                     |si, (sbit, (dbit, (_, selfbmap)))| {
@@ -434,7 +441,7 @@ where
                             si
                         }
                     },
-                ) << rhs_next_input_index;
+                );
                 // generate part of bitmap to operation
                 let ext_self = self
                     .apply_new_inputs(
@@ -535,7 +542,7 @@ where
 
 impl<T> Not for SmartBitmap<T>
 where
-    T: Default + Clone + Copy + Ord + PartialEq + Eq,
+    T: Default + Clone + Copy + Ord + PartialEq + Eq + Debug,
 {
     type Output = SmartBitmap<T>;
     fn not(self) -> Self::Output {
@@ -552,7 +559,7 @@ where
 
 impl<T> BitAnd for SmartBitmap<T>
 where
-    T: Default + Clone + Copy + Ord + PartialEq + Eq,
+    T: Default + Clone + Copy + Ord + PartialEq + Eq + Debug,
 {
     type Output = Option<SmartBitmap<T>>;
     fn bitand(self, rhs: Self) -> Self::Output {
@@ -566,7 +573,7 @@ where
 
 impl<T> BitXor for SmartBitmap<T>
 where
-    T: Default + Clone + Copy + Ord + PartialEq + Eq,
+    T: Default + Clone + Copy + Ord + PartialEq + Eq + Debug,
 {
     type Output = Option<SmartBitmap<T>>;
     fn bitxor(self, rhs: Self) -> Self::Output {
@@ -1181,6 +1188,14 @@ mod tests {
                 &[3, 4, 6, 10, 12, 13, 16],
                 &[0xbc11466aaa22, 0xba5bb0c22577]
             )
+        );
+        assert_eq!(
+            None,
+            smart_bitmap_from_data(&[2, 5, 7, 9, 11, 14, 15], &[0xbc0a04502a78, 0xba0350252577])
+                & smart_bitmap_from_data(
+                    &[3, 4, 6, 10, 12, 13, 16],
+                    &[0xbc11466aaa22, 0xba5bb0c22577]
+                )
         );
     }
 }
