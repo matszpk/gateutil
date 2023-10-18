@@ -295,7 +295,12 @@ where
         }
     }
 
-    fn apply_new_inputs(&self, self_input_num: usize, bit_start: usize, b_inputs: &[T]) -> Self {
+    fn apply_new_inputs(
+        &self,
+        self_input_num: usize,
+        bit_start: usize,
+        b_inputs: &[T],
+    ) -> Option<Self> {
         // create merged list of inputs
         let mut merged_inputs = merge_sorted_by_key(
             self.inputs.data()[0..self_input_num]
@@ -307,7 +312,9 @@ where
             |(_, (x, s))| (*x, !s),
         );
         merged_inputs.dedup_by_key(|(_, (x, _))| *x);
-        assert!(merged_inputs.len() <= BITMAP_BITS_BITS);
+        if merged_inputs.len() > BITMAP_BITS_BITS {
+            return None;
+        }
         let mut out_bitmap = [0u64; BITMAP_BITS >> 6];
         for i in 0..1 << merged_inputs.len() {
             let si =
@@ -324,16 +331,20 @@ where
                     + bit_start;
             out_bitmap[i >> 6] |= ((self.bitmap[si >> 6] >> (si & 63)) & 1) << (i & 63);
         }
-        Self {
+        Some(Self {
             inputs: SmallVec::from_iter(merged_inputs.into_iter().map(|(_, (x, _))| x)),
             bitmap: out_bitmap,
-        }
+        })
     }
 
     fn make_op(self, rhs: Self, op: impl Fn(&mut [u64], &[u64], &[u64])) -> Option<Self> {
         if self.inputs.len() + rhs.inputs.len() <= BITMAP_BITS_BITS {
-            let ext_self = self.apply_new_inputs(self.inputs.len() as usize, 0, rhs.inputs.data());
-            let ext_rhs = rhs.apply_new_inputs(rhs.inputs.len() as usize, 0, self.inputs.data());
+            let ext_self = self
+                .apply_new_inputs(self.inputs.len() as usize, 0, rhs.inputs.data())
+                .unwrap();
+            let ext_rhs = rhs
+                .apply_new_inputs(rhs.inputs.len() as usize, 0, self.inputs.data())
+                .unwrap();
             let mut out = SmartBitmap {
                 inputs: ext_self.inputs,
                 bitmap: [0; BITMAP_BITS >> 6],
@@ -407,16 +418,20 @@ where
                     },
                 ) << rhs_next_input_index;
                 // generate part of bitmap to operation
-                let ext_self = self.apply_new_inputs(
-                    self_next_input_index,
-                    self_bi,
-                    &rhs.inputs.data()[0..rhs_next_input_index],
-                );
-                let ext_rhs = rhs.apply_new_inputs(
-                    rhs_next_input_index,
-                    rhs_bi,
-                    &self.inputs.data()[0..self_next_input_index],
-                );
+                let ext_self = self
+                    .apply_new_inputs(
+                        self_next_input_index,
+                        self_bi,
+                        &rhs.inputs.data()[0..rhs_next_input_index],
+                    )
+                    .unwrap();
+                let ext_rhs = rhs
+                    .apply_new_inputs(
+                        rhs_next_input_index,
+                        rhs_bi,
+                        &self.inputs.data()[0..self_next_input_index],
+                    )
+                    .unwrap();
                 let mut out = SmartBitmap {
                     inputs: SmallVec::from_iter(merged_inputs.iter().map(|(_, (x, _))| *x)),
                     bitmap: [0; BITMAP_BITS >> 6],
@@ -816,7 +831,7 @@ mod tests {
     #[test]
     fn test_apply_new_inputs() {
         assert_eq!(
-            smart_bitmap_from_data(
+            Some(smart_bitmap_from_data(
                 &[0, 1, 3, 4, 5, 6, 9, 11, 12],
                 &[
                     0x00ff00ff0f0f0f0f,
@@ -828,7 +843,7 @@ mod tests {
                     0xff0fff0ff0f0f0f0,
                     0xf0fff0ffff00ff00
                 ]
-            ),
+            )),
             smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14], &[0xbcda2135]).apply_new_inputs(
                 5,
                 0,
@@ -838,7 +853,7 @@ mod tests {
 
         // input duplicates in rhs
         assert_eq!(
-            smart_bitmap_from_data(
+            Some(smart_bitmap_from_data(
                 &[0, 1, 3, 4, 5, 6, 9, 11, 12],
                 &[
                     0x00ff00ff0f0f0f0f,
@@ -850,7 +865,7 @@ mod tests {
                     0xff0fff0ff0f0f0f0,
                     0xf0fff0ffff00ff00
                 ]
-            ),
+            )),
             smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14], &[0xbcda2135]).apply_new_inputs(
                 5,
                 0,
@@ -859,7 +874,7 @@ mod tests {
         );
 
         assert_eq!(
-            smart_bitmap_from_data(
+            Some(smart_bitmap_from_data(
                 &[3, 4, 6, 7, 8, 9, 14, 15, 16, 17],
                 &[
                     0x0f0f0f0f55555555,
@@ -879,7 +894,7 @@ mod tests {
                     0xf5f5f5f5aaaaaaaa,
                     0xafafafaff0f0f0f0
                 ]
-            ),
+            )),
             smart_bitmap_from_data(&[3, 6, 9, 14, 17], &[0xbcda2135]).apply_new_inputs(
                 5,
                 0,
@@ -889,7 +904,7 @@ mod tests {
 
         // input duplicates in rhs
         assert_eq!(
-            smart_bitmap_from_data(
+            Some(smart_bitmap_from_data(
                 &[3, 4, 6, 7, 8, 9, 14, 15, 16, 17],
                 &[
                     0x0f0f0f0f55555555,
@@ -909,7 +924,7 @@ mod tests {
                     0xf5f5f5f5aaaaaaaa,
                     0xafafafaff0f0f0f0
                 ]
-            ),
+            )),
             smart_bitmap_from_data(&[3, 6, 9, 14, 17], &[0xbcda2135]).apply_new_inputs(
                 5,
                 0,
@@ -918,7 +933,7 @@ mod tests {
         );
 
         assert_eq!(
-            smart_bitmap_from_data(
+            Some(smart_bitmap_from_data(
                 &[3, 6, 7, 9, 14, 17, 20, 22, 25, 26],
                 &[
                     0xbbccddaa22113355,
@@ -938,7 +953,7 @@ mod tests {
                     0xbb55dd00ccaa0099,
                     0xbb55dd00ccaa0099
                 ]
-            ),
+            )),
             smart_bitmap_from_data(
                 &[3, 6, 9, 14, 17, 22, 25, 27],
                 &[
@@ -952,12 +967,18 @@ mod tests {
         );
 
         assert_eq!(
-            smart_bitmap_from_data(&[3, 4, 6, 7, 9], &[0b01011010010110101010111110101111]),
+            Some(smart_bitmap_from_data(
+                &[3, 4, 6, 7, 9],
+                &[0b01011010010110101010111110101111]
+            )),
             smart_bitmap_from_data(&[3, 6, 9, 11], &[0x1e6b]).apply_new_inputs(3, 0, &[4, 7])
         );
 
         assert_eq!(
-            smart_bitmap_from_data(&[3, 4, 6, 7, 9], &[0b00000101000001011111101011111010]),
+            Some(smart_bitmap_from_data(
+                &[3, 4, 6, 7, 9],
+                &[0b00000101000001011111101011111010]
+            )),
             smart_bitmap_from_data(&[3, 6, 9, 11], &[0x1e6b]).apply_new_inputs(3, 8, &[4, 7])
         );
     }
