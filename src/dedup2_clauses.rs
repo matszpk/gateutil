@@ -353,7 +353,7 @@ where
             out.remove_unused_inputs();
             Some(out)
         } else if self.inputs.len() + rhs.inputs.len() <= BITMAP_BITS_BITS + 3 {
-            let mut merged_inputs = merge_sorted_by_key(
+            let mut merged_inputs_self = merge_sorted_by_key(
                 self.inputs
                     .data()
                     .iter()
@@ -367,18 +367,34 @@ where
                 // sort for dedup to skip rhs inputs
                 |(_, (x, s))| (*x, !s),
             );
-            merged_inputs.dedup_by_key(|(_, (x, _))| *x);
-            let merged_inputs_lasts = &merged_inputs[BITMAP_BITS_BITS..];
-            let merged_inputs = &merged_inputs[0..BITMAP_BITS_BITS];
-            // match self.inputs.data().binary_search(&merged_inputs.last().unwrap()) {
-            //     Ok(p) = merged_
-            // }
-            let self_last_input_index = merged_inputs
+            merged_inputs_self.dedup_by_key(|(_, (x, _))| *x);
+            let merged_inputs_self_lasts = &merged_inputs_self[BITMAP_BITS_BITS..];
+            let merged_inputs_self = &merged_inputs_self[0..BITMAP_BITS_BITS];
+
+            let mut merged_inputs_rhs = merge_sorted_by_key(
+                self.inputs
+                    .data()
+                    .iter()
+                    .enumerate()
+                    .map(|(i, x)| (i, (*x, true))),
+                rhs.inputs
+                    .data()
+                    .iter()
+                    .enumerate()
+                    .map(|(i, x)| (i, (*x, false))),
+                // sort for dedup to skip rhs inputs
+                |(_, (x, s))| (*x, *s),
+            );
+            merged_inputs_rhs.dedup_by_key(|(_, (x, _))| *x);
+            let merged_inputs_rhs_lasts = &merged_inputs_rhs[BITMAP_BITS_BITS..];
+            let merged_inputs_rhs = &merged_inputs_rhs[0..BITMAP_BITS_BITS];
+
+            let self_last_input_index = merged_inputs_self
                 .iter()
                 .rev()
                 .find(|(_, (_, isself))| *isself)
                 .map(|(i, (_, _))| *i);
-            let rhs_last_input_index = merged_inputs
+            let rhs_last_input_index = merged_inputs_rhs
                 .iter()
                 .rev()
                 .find(|(_, (_, isself))| !*isself)
@@ -395,9 +411,9 @@ where
 
             let mut all_parts = vec![];
             let mut input_mask = u64::MAX;
-            for i in 0..1 << merged_inputs_lasts.len() {
+            for i in 0..1 << merged_inputs_self_lasts.len() {
                 // determine start bit index for bitmap
-                let self_bi = merged_inputs_lasts.iter().enumerate().fold(
+                let self_bi = merged_inputs_self_lasts.iter().enumerate().fold(
                     0,
                     |si, (sbit, (dbit, (_, selfbmap)))| {
                         if *selfbmap {
@@ -407,7 +423,7 @@ where
                         }
                     },
                 ) << self_next_input_index;
-                let rhs_bi = merged_inputs_lasts.iter().enumerate().fold(
+                let rhs_bi = merged_inputs_rhs_lasts.iter().enumerate().fold(
                     0,
                     |si, (sbit, (dbit, (_, selfbmap)))| {
                         if !*selfbmap {
@@ -433,7 +449,7 @@ where
                     )
                     .unwrap();
                 let mut out = SmartBitmap {
-                    inputs: SmallVec::from_iter(merged_inputs.iter().map(|(_, (x, _))| *x)),
+                    inputs: SmallVec::from_iter(merged_inputs_self.iter().map(|(_, (x, _))| *x)),
                     bitmap: [0; BITMAP_BITS >> 6],
                 };
                 // make operation
@@ -441,12 +457,12 @@ where
                 input_mask &= out.check_all_unused_inputs();
                 all_parts.push(out);
             }
-            let mut merged_inputs_lasts = merged_inputs_lasts.to_vec();
+            let mut merged_inputs_self_lasts = merged_inputs_self_lasts.to_vec();
             {
                 // remove higher inputs and check
                 if all_parts.len() == 8 && all_parts[0..4] == all_parts[4..8] {
                     all_parts.truncate(4);
-                    merged_inputs_lasts.pop();
+                    merged_inputs_self_lasts.pop();
                 }
 
                 while all_parts.len() >= 4
@@ -458,7 +474,7 @@ where
                     }
                     all_parts.remove(2);
                     all_parts.remove(3);
-                    merged_inputs_lasts.remove(1);
+                    merged_inputs_self_lasts.remove(1);
                 }
 
                 while (0..all_parts.len() >> 1)
@@ -467,16 +483,16 @@ where
                     for i in (0..all_parts.len() >> 1).rev() {
                         all_parts.remove((i << 1) + 1);
                     }
-                    merged_inputs_lasts.remove(0);
+                    merged_inputs_self_lasts.remove(0);
                 }
             }
             // check if we can construct
-            if (input_mask.count_ones() as usize) < merged_inputs_lasts.len() {
+            if (input_mask.count_ones() as usize) < merged_inputs_self_lasts.len() {
                 return None;
             }
             let mut final_out = SmartBitmap {
                 inputs: SmallVec::from_iter(
-                    merged_inputs
+                    merged_inputs_self
                         .iter()
                         .enumerate()
                         .filter_map(|(i, (_, (x, _)))| {
@@ -486,12 +502,12 @@ where
                                 None
                             }
                         })
-                        .chain(merged_inputs_lasts.iter().map(|(_, (x, _))| *x)),
+                        .chain(merged_inputs_self_lasts.iter().map(|(_, (x, _))| *x)),
                 ),
                 bitmap: [0; BITMAP_BITS >> 6],
             };
 
-            let part_bitshift = 1 << merged_inputs.len() - (input_mask.count_ones() as usize);
+            let part_bitshift = 1 << merged_inputs_self.len() - (input_mask.count_ones() as usize);
             let bdi_inc = if part_bitshift >= 6 {
                 1 << (part_bitshift - 6)
             } else {
