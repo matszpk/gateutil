@@ -1124,5 +1124,22 @@ mod tests {
                 ]
             )
         );
+
+        // joining inputs
+        assert_eq!(
+            Some(smart_bitmap_from_data(&[1, 2, 3, 4], &[0b0001000010000001])),
+            smart_bitmap_from_data(&[1, 2, 3], &[0b10011101])
+                & smart_bitmap_from_data(&[2, 3, 4], &[0b01001001])
+        );
+        assert_eq!(
+            Some(smart_bitmap_from_data(&[1, 2, 3, 4], &[0b0001000010000001])),
+            smart_bitmap_from_data(&[2, 3, 4], &[0b01001001])
+                & smart_bitmap_from_data(&[1, 2, 3], &[0b10011101])
+        );
+        assert_eq!(
+            Some(smart_bitmap_from_data(&[1, 2, 3], &[0b00000001])),
+            smart_bitmap_from_data(&[1, 2, 3], &[0b00001101])
+                & smart_bitmap_from_data(&[2, 3, 4], &[0b01011001])
+        );
     }
 }
