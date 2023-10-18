@@ -351,6 +351,8 @@ where
                 inputs: ext_self.inputs,
                 bitmap: [0; BITMAP_BITS >> 6],
             };
+            println!("  ArgsA: {:?}", ext_self.bitmap());
+            println!("  ArgsB: {:?}", ext_rhs.bitmap());
             op(out.bitmap_mut(), ext_self.bitmap(), ext_rhs.bitmap());
             out.remove_unused_inputs();
             Some(out)
@@ -1140,6 +1142,31 @@ mod tests {
             Some(smart_bitmap_from_data(&[1, 2, 3], &[0b00000001])),
             smart_bitmap_from_data(&[1, 2, 3], &[0b00001101])
                 & smart_bitmap_from_data(&[2, 3, 4], &[0b01011001])
+        );
+        assert_eq!(
+            Some(smart_bitmap_from_data(
+                &[1, 2, 3, 4, 5, 7, 8, 9, 10, 11],
+                &[
+                    0x000031023102f50a,
+                    0x000030003000f000,
+                    0x0000000031020000,
+                    0x0000000030000000,
+                    0x00001022102250aa,
+                    0x000032033203fa0f,
+                    0x0000000010220000,
+                    0x0000000032030000,
+                    0xc408f50af50a0000,
+                    0xc000f000f0000000,
+                    0xc408c40800000000,
+                    0xc000c00000000000,
+                    0x408850aa50aa0000,
+                    0xc80cfa0ffa0f0000,
+                    0x4088408800000000,
+                    0xc80cc80c00000000
+                ]
+            )),
+            smart_bitmap_from_data(&[2, 5, 7, 9, 11], &[0xa0bc0417])
+                & smart_bitmap_from_data(&[1, 3, 4, 8, 10], &[0xe34ac0d2])
         );
     }
 }
