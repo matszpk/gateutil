@@ -338,10 +338,10 @@ where
     }
 
     fn make_op(self, rhs: Self, op: impl Fn(&mut [u64], &[u64], &[u64])) -> Option<Self> {
-        if self.inputs.len() + rhs.inputs.len() <= BITMAP_BITS_BITS {
-            let ext_self = self
-                .apply_new_inputs(self.inputs.len() as usize, 0, rhs.inputs.data())
-                .unwrap();
+        if let Some(ext_self) =
+            self.apply_new_inputs(self.inputs.len() as usize, 0, rhs.inputs.data())
+        {
+            // if we can do it in single smart bitmap - not too many inputs
             let ext_rhs = rhs
                 .apply_new_inputs(rhs.inputs.len() as usize, 0, self.inputs.data())
                 .unwrap();
