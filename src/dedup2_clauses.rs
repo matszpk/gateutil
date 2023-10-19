@@ -1269,8 +1269,7 @@ mod tests {
     }
 
     #[test]
-    fn test_smart_bitmap_bitand_0() {
-        // first testcases for And and make_op
+    fn test_smart_bitmap_bitand() {
         assert_eq!(
             Some(smart_bitmap_from_data::<usize>(&[], &[0])),
             smart_bitmap_from_data::<usize>(&[], &[0]) & smart_bitmap_from_data::<usize>(&[], &[1])
@@ -1823,6 +1822,28 @@ mod tests {
         );
         assert_eq!(None, a & b);
         assert_eq!(None, b & a);
+    }
+
+    #[test]
+    fn test_smart_bitmap_bitxor() {
+        assert_eq!(
+            Some(smart_bitmap_from_data::<usize>(&[], &[1])),
+            smart_bitmap_from_data::<usize>(&[], &[0]) ^ smart_bitmap_from_data::<usize>(&[], &[1])
+        );
+        assert_eq!(
+            Some(smart_bitmap_from_data::<usize>(&[], &[0])),
+            smart_bitmap_from_data::<usize>(&[], &[1]) ^ smart_bitmap_from_data::<usize>(&[], &[1])
+        );
+        assert_eq!(
+            Some(smart_bitmap_from_data(&[3, 6, 9, 11], &[0x2387])),
+            smart_bitmap_from_data(&[3, 6, 9, 11], &[0x1e6b])
+                ^ smart_bitmap_from_data(&[3, 6, 9, 11], &[0x3dec])
+        );
+        assert_eq!(
+            Some(smart_bitmap_from_data(&[3, 6, 9], &[0x54])),
+            smart_bitmap_from_data(&[3, 6, 9, 11], &[0x1e6b])
+                ^ smart_bitmap_from_data(&[3, 6, 9, 11], &[0x4a3f])
+        );
     }
 
     #[test]
