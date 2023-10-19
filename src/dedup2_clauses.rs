@@ -855,7 +855,7 @@ mod tests {
     }
 
     #[test]
-    fn test_apply_new_inputs() {
+    fn test_smart_bitmap_apply_new_inputs() {
         assert_eq!(
             Ok(smart_bitmap_from_data(
                 &[0, 1, 3, 4, 5, 6, 9, 11, 12],
@@ -1243,7 +1243,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bitmap_not() {
+    fn test_smart_bitmap_not() {
         assert_eq!(
             smart_bitmap_from_data(&[3, 6, 9, 11], &[(!0x1e6b) & 0xffff]),
             !smart_bitmap_from_data(&[3, 6, 9, 11], &[0x1e6b])
@@ -1271,7 +1271,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bitmap_bitand_0() {
+    fn test_smart_bitmap_bitand_0() {
         // first testcases for And and make_op
         assert_eq!(
             Some(smart_bitmap_from_data::<usize>(&[], &[0])),
