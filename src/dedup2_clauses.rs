@@ -381,7 +381,7 @@ where
         })
     }
 
-    fn split(&self) -> (Self, Self) {
+    fn split(self) -> (Self, Self) {
         let inputs_len = self.inputs.len();
         if inputs_len <= 6 {
             let mut out1 = SmartBitmap {
@@ -423,186 +423,94 @@ where
             op(out.bitmap_mut(), ext_self.bitmap(), ext_rhs.bitmap());
             out.remove_unused_inputs();
             Some(out)
-        } else if self.inputs.len() + rhs.inputs.len() <= BITMAP_BITS_BITS + 3 {
-            // TODO: Simplify to input+1 only.
-            // println!("ComplexMakeOp");
-            let mut merged_inputs_self = merge_sorted_by_key(
-                self.inputs
-                    .data()
-                    .iter()
-                    .enumerate()
-                    .map(|(i, x)| (i, (*x, true))),
-                rhs.inputs
-                    .data()
-                    .iter()
-                    .enumerate()
-                    .map(|(i, x)| (i, (*x, false))),
-                // sort for dedup to skip rhs inputs
-                |(_, (x, s))| (*x, !s),
-            );
-            merged_inputs_self.dedup_by_key(|(_, (x, _))| *x);
-            let merged_inputs_self_lasts = &merged_inputs_self[BITMAP_BITS_BITS..];
-            let merged_inputs_self = &merged_inputs_self[0..BITMAP_BITS_BITS];
-
-            let mut merged_inputs_rhs = merge_sorted_by_key(
-                self.inputs
-                    .data()
-                    .iter()
-                    .enumerate()
-                    .map(|(i, x)| (i, (*x, true))),
-                rhs.inputs
-                    .data()
-                    .iter()
-                    .enumerate()
-                    .map(|(i, x)| (i, (*x, false))),
-                // sort for dedup to skip rhs inputs
-                |(_, (x, s))| (*x, *s),
-            );
-            merged_inputs_rhs.dedup_by_key(|(_, (x, _))| *x);
-            let merged_inputs_rhs_lasts = &merged_inputs_rhs[BITMAP_BITS_BITS..];
-            let merged_inputs_rhs = &merged_inputs_rhs[0..BITMAP_BITS_BITS];
-
-            let self_last_input_index = merged_inputs_self
-                .iter()
-                .rev()
-                .find(|(_, (_, isself))| *isself)
-                .map(|(i, (_, _))| *i);
-            let rhs_last_input_index = merged_inputs_rhs
-                .iter()
-                .rev()
-                .find(|(_, (_, isself))| !*isself)
-                .map(|(i, (_, _))| *i);
-            if self_last_input_index.is_none() || rhs_last_input_index.is_none() {
-                // if inputs are not overlapping.
-                // because for values where is at least one false and true (T)
-                // T AND false != T AND true, T OR false != T OR true,
-                // T XOR false != T XOR true then ignore such case.
-                return None;
-            }
-            let self_next_input_index = self_last_input_index.unwrap() + 1;
-            let rhs_next_input_index = rhs_last_input_index.unwrap() + 1;
-
-            // println!(
-            //     "ComplexMakeOp 2: {:?} {:?}",
-            //     &self.inputs.data()[0..self_next_input_index],
-            //     &rhs.inputs.data()[0..rhs_next_input_index]
-            // );
-            let mut all_parts = vec![];
-            let mut input_mask = u64::MAX;
-            for i in 0..1 << merged_inputs_self_lasts.len() {
-                // determine start bit index for bitmap
-                let self_bi = merged_inputs_self_lasts.iter().enumerate().fold(
-                    0,
-                    |si, (sbit, (dbit, (_, selfbmap)))| {
-                        if *selfbmap {
-                            si | (((i >> sbit) & 1) << dbit)
-                        } else {
-                            si
-                        }
-                    },
-                );
-                let rhs_bi = merged_inputs_rhs_lasts.iter().enumerate().fold(
-                    0,
-                    |si, (sbit, (dbit, (_, selfbmap)))| {
-                        if !*selfbmap {
-                            si | (((i >> sbit) & 1) << dbit)
-                        } else {
-                            si
-                        }
-                    },
-                );
-                // generate part of bitmap to operation
-                let ext_self = self
+        } else if self.inputs.len() + rhs.inputs.len() <= BITMAP_BITS_BITS + 1 {
+            let self_input_last = *self.inputs.data().last().unwrap();
+            let rhs_input_last = *rhs.inputs.data().last().unwrap();
+            let (mut out0, mut out1) = if self_input_last != rhs_input_last {
+                // split higher
+                let ((a_bmap0, a_bmap1), b_bmap, reversed) = if self_input_last > rhs_input_last {
+                    (self.split(), rhs, false)
+                } else {
+                    (rhs.split(), self, true)
+                };
+                let a0input_len = a_bmap0.inputs.len();
+                let ext_a_bmap0 = a_bmap0
+                    .apply_new_inputs(a0input_len, 0, b_bmap.inputs.data())
+                    .unwrap();
+                let ext_a_bmap1 = a_bmap1
+                    .apply_new_inputs(a0input_len, 0, b_bmap.inputs.data())
+                    .unwrap();
+                let ext_b_bmap = b_bmap
                     .apply_new_inputs(
-                        self_next_input_index,
-                        self_bi,
-                        &rhs.inputs.data()[0..rhs_next_input_index],
+                        b_bmap.inputs.len(),
+                        0,
+                        &a_bmap0.inputs.data()[0..a0input_len],
                     )
                     .unwrap();
-                let ext_rhs = rhs
-                    .apply_new_inputs(
-                        rhs_next_input_index,
-                        rhs_bi,
-                        &self.inputs.data()[0..self_next_input_index],
-                    )
-                    .unwrap();
-                let mut out = SmartBitmap {
-                    inputs: SmallVec::from_iter(merged_inputs_self.iter().map(|(_, (x, _))| *x)),
+                let mut out0 = SmartBitmap {
+                    inputs: ext_a_bmap0.inputs,
                     bitmap: [0; BITMAP_BITS >> 6],
                 };
-                // make operation
-                op(out.bitmap_mut(), ext_self.bitmap(), ext_rhs.bitmap());
-                input_mask &= out.check_all_unused_inputs();
-                all_parts.push(out);
-            }
-            let mut merged_inputs_self_lasts = merged_inputs_self_lasts.to_vec();
-            {
-                // remove higher inputs and check
-                if all_parts.len() == 8 && all_parts[0..4] == all_parts[4..8] {
-                    all_parts.truncate(4);
-                    merged_inputs_self_lasts.pop();
-                }
-
-                while all_parts.len() >= 4
-                    && all_parts[0..2] == all_parts[2..4]
-                    && (all_parts.len() == 8 && all_parts[4..6] == all_parts[6..8])
-                {
-                    if all_parts.len() == 8 {
-                        all_parts.truncate(6);
-                    }
-                    all_parts.remove(2);
-                    all_parts.remove(3);
-                    merged_inputs_self_lasts.remove(1);
-                }
-
-                while (0..all_parts.len() >> 1)
-                    .all(|i| all_parts[i << 1] == all_parts[(i << 1) + 1])
-                {
-                    for i in (0..all_parts.len() >> 1).rev() {
-                        all_parts.remove((i << 1) + 1);
-                    }
-                    merged_inputs_self_lasts.remove(0);
-                }
-            }
-            // check if we can construct
-            if (input_mask.count_ones() as usize) < merged_inputs_self_lasts.len() {
-                return None;
-            }
-            let mut final_out = SmartBitmap {
-                inputs: SmallVec::from_iter(
-                    merged_inputs_self
-                        .iter()
-                        .enumerate()
-                        .filter_map(|(i, (_, (x, _)))| {
-                            if (input_mask & (1 << i)) == 0 {
-                                Some(*x)
-                            } else {
-                                None
-                            }
-                        })
-                        .chain(merged_inputs_self_lasts.iter().map(|(_, (x, _))| *x)),
-                ),
-                bitmap: [0; BITMAP_BITS >> 6],
-            };
-
-            let part_bitshift = 1 << merged_inputs_self.len() - (input_mask.count_ones() as usize);
-            let bdi_inc = if part_bitshift >= 6 {
-                1 << (part_bitshift - 6)
-            } else {
-                0
-            };
-            // join bitmaps together
-            for (i, bmap) in all_parts.iter_mut().enumerate() {
-                bmap.remove_unused_inputs();
-                let bi = i << part_bitshift;
-                let bdi = bi >> 6;
-                if part_bitshift >= 6 {
-                    final_out.bitmap[bdi..bdi + bdi_inc].copy_from_slice(bmap.bitmap());
+                let mut out1 = out0;
+                if reversed {
+                    op(out0.bitmap_mut(), ext_b_bmap.bitmap(), ext_a_bmap0.bitmap());
+                    op(out1.bitmap_mut(), ext_b_bmap.bitmap(), ext_a_bmap1.bitmap());
                 } else {
-                    final_out.bitmap[bdi] |= bmap.bitmap[0] << (bi & 63);
+                    op(out0.bitmap_mut(), ext_a_bmap0.bitmap(), ext_b_bmap.bitmap());
+                    op(out1.bitmap_mut(), ext_a_bmap1.bitmap(), ext_b_bmap.bitmap());
                 }
+                (out0, out1)
+            } else {
+                let (a_bmap0, a_bmap1) = self.split();
+                let (b_bmap0, b_bmap1) = rhs.split();
+                let a0input_len = a_bmap0.inputs.len();
+                let b0input_len = b_bmap0.inputs.len();
+                let ext_a_bmap0 = a_bmap0
+                    .apply_new_inputs(a0input_len, 0, b_bmap0.inputs.data())
+                    .unwrap();
+                let ext_a_bmap1 = a_bmap1
+                    .apply_new_inputs(a0input_len, 0, b_bmap0.inputs.data())
+                    .unwrap();
+                let ext_b_bmap0 = b_bmap0
+                    .apply_new_inputs(b0input_len, 0, a_bmap0.inputs.data())
+                    .unwrap();
+                let ext_b_bmap1 = b_bmap1
+                    .apply_new_inputs(b0input_len, 0, a_bmap0.inputs.data())
+                    .unwrap();
+                let mut out0 = SmartBitmap {
+                    inputs: ext_a_bmap0.inputs,
+                    bitmap: [0; BITMAP_BITS >> 6],
+                };
+                let mut out1 = out0;
+                op(
+                    out0.bitmap_mut(),
+                    ext_a_bmap0.bitmap(),
+                    ext_b_bmap0.bitmap(),
+                );
+                op(
+                    out1.bitmap_mut(),
+                    ext_a_bmap1.bitmap(),
+                    ext_b_bmap1.bitmap(),
+                );
+                (out0, out1)
+            };
+
+            if out0 != out1 {
+                let unused_inputs = out0.check_all_unused_inputs() & out1.check_all_unused_inputs();
+                if unused_inputs != 0 {
+                    let input_to_remove = 63 - unused_inputs.leading_zeros();
+                    out0.remove_input(input_to_remove);
+                    out1.remove_input(input_to_remove);
+                    // join
+                    Some(out0)
+                } else {
+                    None
+                }
+            } else {
+                // same copy
+                out0.remove_unused_inputs();
+                Some(out0)
             }
-            Some(final_out)
         } else {
             None
         }
