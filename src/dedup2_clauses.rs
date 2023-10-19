@@ -381,6 +381,32 @@ where
         })
     }
 
+    fn split(&self) -> (Self, Self) {
+        let inputs_len = self.inputs.len();
+        if inputs_len <= 6 {
+            let mut out1 = SmartBitmap {
+                inputs: SmallVec::from_slice(&self.inputs.data()[0..inputs_len - 1]),
+                bitmap: [0u64; BITMAP_BITS >> 6],
+            };
+            let mut out2 = out1;
+            let half = 1 << (inputs_len - 1);
+            let mask = (1u64 << half) - 1;
+            out1.bitmap[0] = self.bitmap[0] & mask;
+            out2.bitmap[0] = (self.bitmap[0] >> half) & mask;
+            (out1, out2)
+        } else {
+            let mut out1 = SmartBitmap {
+                inputs: SmallVec::from_slice(&self.inputs.data()[0..inputs_len - 1]),
+                bitmap: [0u64; BITMAP_BITS >> 6],
+            };
+            let mut out2 = out1;
+            let half = 1 << (inputs_len - 6 - 1);
+            out1.bitmap[0..half].copy_from_slice(&self.bitmap[0..half]);
+            out2.bitmap[0..half].copy_from_slice(&self.bitmap[half..(half << 1)]);
+            (out1, out2)
+        }
+    }
+
     fn make_op(self, rhs: Self, op: impl Fn(&mut [u64], &[u64], &[u64])) -> Option<Self> {
         // println!("MakeOp");
         if let Some(ext_self) =
@@ -1437,6 +1463,60 @@ mod tests {
                     &[3, 4, 6, 10, 12, 13, 16],
                     &[0xbc11466aaa22, 0xba5bb0c22577]
                 )
+        );
+    }
+
+    #[test]
+    fn test_smart_bitmap_split() {
+        assert_eq!(
+            (
+                smart_bitmap_from_data(&[3, 6, 9], &[0x6b]),
+                smart_bitmap_from_data(&[3, 6, 9], &[0x1e])
+            ),
+            smart_bitmap_from_data(&[3, 6, 9, 11], &[0x1e6b]).split()
+        );
+        assert_eq!(
+            (
+                smart_bitmap_from_data(&[3, 6, 9, 11, 12], &[0x55667788]),
+                smart_bitmap_from_data(&[3, 6, 9, 11, 12], &[0x11223344])
+            ),
+            smart_bitmap_from_data(&[3, 6, 9, 11, 12, 14], &[0x1122334455667788]).split()
+        );
+        assert_eq!(
+            (
+                smart_bitmap_from_data(
+                    &[3, 6, 9, 11, 12, 14, 17, 18],
+                    &[
+                        0xe300c0009c100020,
+                        0x1010420184104021,
+                        0xeacc001199414211,
+                        0x0a000510a03b20c0,
+                    ]
+                ),
+                smart_bitmap_from_data(
+                    &[3, 6, 9, 11, 12, 14, 17, 18],
+                    &[
+                        0xbc0a04502a784113,
+                        0xba03502525770492,
+                        0xa0a0549488990490,
+                        0xaab0c03af031578d
+                    ]
+                )
+            ),
+            smart_bitmap_from_data(
+                &[3, 6, 9, 11, 12, 14, 17, 18, 20],
+                &[
+                    0xe300c0009c100020,
+                    0x1010420184104021,
+                    0xeacc001199414211,
+                    0x0a000510a03b20c0,
+                    0xbc0a04502a784113,
+                    0xba03502525770492,
+                    0xa0a0549488990490,
+                    0xaab0c03af031578d
+                ]
+            )
+            .split()
         );
     }
 }
