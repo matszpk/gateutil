@@ -1304,6 +1304,14 @@ mod tests {
     fn test_bitmap_bitand_0() {
         // first testcases for And and make_op
         assert_eq!(
+            Some(smart_bitmap_from_data::<usize>(&[], &[0])),
+            smart_bitmap_from_data::<usize>(&[], &[0]) & smart_bitmap_from_data::<usize>(&[], &[1])
+        );
+        assert_eq!(
+            Some(smart_bitmap_from_data::<usize>(&[], &[1])),
+            smart_bitmap_from_data::<usize>(&[], &[1]) & smart_bitmap_from_data::<usize>(&[], &[1])
+        );
+        assert_eq!(
             Some(smart_bitmap_from_data(&[3, 6, 9, 11], &[0x1c68])),
             smart_bitmap_from_data(&[3, 6, 9, 11], &[0x1e6b])
                 & smart_bitmap_from_data(&[3, 6, 9, 11], &[0x3dec])
