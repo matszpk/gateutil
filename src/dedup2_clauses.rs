@@ -312,7 +312,7 @@ where
         self_input_num: usize,
         bit_start: usize,
         b_inputs: &[T],
-    ) -> Option<Self> {
+    ) -> Result<Self, usize> {
         // create merged list of inputs
         let mut merged_inputs = merge_sorted_by_key(
             self.inputs.data()[0..self_input_num]
@@ -326,7 +326,7 @@ where
         merged_inputs.dedup_by_key(|(_, (x, _))| *x);
         //println!("APlly {}", merged_inputs.len());
         if merged_inputs.len() > BITMAP_BITS_BITS {
-            return None;
+            return Err(merged_inputs.len());
         } else if merged_inputs.len() == self_input_num && bit_start == 0 {
             let mut out = SmartBitmap {
                 inputs: SmallVec::from_slice(&self.inputs.data()[0..self_input_num]),
@@ -339,7 +339,7 @@ where
                 let u64len = out.bitmap_u64len();
                 out.bitmap[0..u64len].copy_from_slice(&self.bitmap[0..u64len]);
             }
-            return Some(out);
+            return Ok(out);
         } else if self_input_num == 0 {
             //println!("Fill: {}", bit_start);
             let mut out = SmartBitmap {
@@ -357,7 +357,7 @@ where
                 let u64len = out.bitmap_u64len();
                 out.bitmap[0..u64len].fill(value);
             }
-            return Some(out);
+            return Ok(out);
         }
         let mut out_bitmap = [0u64; BITMAP_BITS >> 6];
         for i in 0..1 << merged_inputs.len() {
@@ -375,7 +375,7 @@ where
                     + bit_start;
             out_bitmap[i >> 6] |= ((self.bitmap[si >> 6] >> (si & 63)) & 1) << (i & 63);
         }
-        Some(Self {
+        Ok(Self {
             inputs: SmallVec::from_iter(merged_inputs.into_iter().map(|(_, (x, _))| x)),
             bitmap: out_bitmap,
         })
@@ -437,112 +437,118 @@ where
 
     fn make_op(self, rhs: Self, op: impl Fn(&mut [u64], &[u64], &[u64])) -> Option<Self> {
         // println!("MakeOp");
-        if let Some(ext_self) =
-            self.apply_new_inputs(self.inputs.len() as usize, 0, rhs.inputs.data())
-        {
-            // if we can do it in single smart bitmap - not too many inputs
-            let ext_rhs = rhs
-                .apply_new_inputs(rhs.inputs.len() as usize, 0, self.inputs.data())
-                .unwrap();
-            let mut out = SmartBitmap {
-                inputs: ext_self.inputs,
-                bitmap: [0; BITMAP_BITS >> 6],
-            };
-            op(out.bitmap_mut(), ext_self.bitmap(), ext_rhs.bitmap());
-            out.remove_unused_inputs();
-            Some(out)
-        } else if self.inputs.len() + rhs.inputs.len() <= BITMAP_BITS_BITS + 1 {
-            let self_input_last = *self.inputs.data().last().unwrap();
-            let rhs_input_last = *rhs.inputs.data().last().unwrap();
-            let (mut out0, mut out1) = if self_input_last != rhs_input_last {
-                // split higher
-                let ((a_bmap0, a_bmap1), b_bmap, reversed) = if self_input_last > rhs_input_last {
-                    (self.split(), rhs, false)
-                } else {
-                    (rhs.split(), self, true)
-                };
-                let a0input_len = a_bmap0.inputs.len();
-                let ext_a_bmap0 = a_bmap0
-                    .apply_new_inputs(a0input_len, 0, b_bmap.inputs.data())
+        match self.apply_new_inputs(self.inputs.len() as usize, 0, rhs.inputs.data()) {
+            Ok(ext_self) => {
+                // if we can do it in single smart bitmap - not too many inputs
+                let ext_rhs = rhs
+                    .apply_new_inputs(rhs.inputs.len() as usize, 0, self.inputs.data())
                     .unwrap();
-                let ext_a_bmap1 = a_bmap1
-                    .apply_new_inputs(a0input_len, 0, b_bmap.inputs.data())
-                    .unwrap();
-                let ext_b_bmap = b_bmap
-                    .apply_new_inputs(
-                        b_bmap.inputs.len(),
-                        0,
-                        &a_bmap0.inputs.data()[0..a0input_len],
-                    )
-                    .unwrap();
-                let mut out0 = SmartBitmap {
-                    inputs: ext_a_bmap0.inputs,
+                let mut out = SmartBitmap {
+                    inputs: ext_self.inputs,
                     bitmap: [0; BITMAP_BITS >> 6],
                 };
-                let mut out1 = out0;
-                if reversed {
-                    op(out0.bitmap_mut(), ext_b_bmap.bitmap(), ext_a_bmap0.bitmap());
-                    op(out1.bitmap_mut(), ext_b_bmap.bitmap(), ext_a_bmap1.bitmap());
-                } else {
-                    op(out0.bitmap_mut(), ext_a_bmap0.bitmap(), ext_b_bmap.bitmap());
-                    op(out1.bitmap_mut(), ext_a_bmap1.bitmap(), ext_b_bmap.bitmap());
-                }
-                (out0, out1)
-            } else {
-                let (a_bmap0, a_bmap1) = self.split();
-                let (b_bmap0, b_bmap1) = rhs.split();
-                let a0input_len = a_bmap0.inputs.len();
-                let b0input_len = b_bmap0.inputs.len();
-                let ext_a_bmap0 = a_bmap0
-                    .apply_new_inputs(a0input_len, 0, b_bmap0.inputs.data())
-                    .unwrap();
-                let ext_a_bmap1 = a_bmap1
-                    .apply_new_inputs(a0input_len, 0, b_bmap0.inputs.data())
-                    .unwrap();
-                let ext_b_bmap0 = b_bmap0
-                    .apply_new_inputs(b0input_len, 0, a_bmap0.inputs.data())
-                    .unwrap();
-                let ext_b_bmap1 = b_bmap1
-                    .apply_new_inputs(b0input_len, 0, a_bmap0.inputs.data())
-                    .unwrap();
-                let mut out0 = SmartBitmap {
-                    inputs: ext_a_bmap0.inputs,
-                    bitmap: [0; BITMAP_BITS >> 6],
-                };
-                let mut out1 = out0;
-                op(
-                    out0.bitmap_mut(),
-                    ext_a_bmap0.bitmap(),
-                    ext_b_bmap0.bitmap(),
-                );
-                op(
-                    out1.bitmap_mut(),
-                    ext_a_bmap1.bitmap(),
-                    ext_b_bmap1.bitmap(),
-                );
-                (out0, out1)
-            };
+                op(out.bitmap_mut(), ext_self.bitmap(), ext_rhs.bitmap());
+                out.remove_unused_inputs();
+                Some(out)
+            }
+            Err(merged_inputs_len) => {
+                if merged_inputs_len <= BITMAP_BITS_BITS + 1 {
+                    let self_input_last = *self.inputs.data().last().unwrap();
+                    let rhs_input_last = *rhs.inputs.data().last().unwrap();
+                    let (mut out0, mut out1) = if self_input_last != rhs_input_last {
+                        // split higher
+                        let ((a_bmap0, a_bmap1), b_bmap, reversed) =
+                            if self_input_last > rhs_input_last {
+                                (self.split(), rhs, false)
+                            } else {
+                                (rhs.split(), self, true)
+                            };
+                        let a0input_len = a_bmap0.inputs.len();
+                        let ext_a_bmap0 = a_bmap0
+                            .apply_new_inputs(a0input_len, 0, b_bmap.inputs.data())
+                            .unwrap();
+                        let ext_a_bmap1 = a_bmap1
+                            .apply_new_inputs(a0input_len, 0, b_bmap.inputs.data())
+                            .unwrap();
+                        let ext_b_bmap = b_bmap
+                            .apply_new_inputs(
+                                b_bmap.inputs.len(),
+                                0,
+                                &a_bmap0.inputs.data()[0..a0input_len],
+                            )
+                            .unwrap();
+                        let mut out0 = SmartBitmap {
+                            inputs: ext_a_bmap0.inputs,
+                            bitmap: [0; BITMAP_BITS >> 6],
+                        };
+                        let mut out1 = out0;
+                        if reversed {
+                            op(out0.bitmap_mut(), ext_b_bmap.bitmap(), ext_a_bmap0.bitmap());
+                            op(out1.bitmap_mut(), ext_b_bmap.bitmap(), ext_a_bmap1.bitmap());
+                        } else {
+                            op(out0.bitmap_mut(), ext_a_bmap0.bitmap(), ext_b_bmap.bitmap());
+                            op(out1.bitmap_mut(), ext_a_bmap1.bitmap(), ext_b_bmap.bitmap());
+                        }
+                        (out0, out1)
+                    } else {
+                        let (a_bmap0, a_bmap1) = self.split();
+                        let (b_bmap0, b_bmap1) = rhs.split();
+                        let a0input_len = a_bmap0.inputs.len();
+                        let b0input_len = b_bmap0.inputs.len();
+                        let ext_a_bmap0 = a_bmap0
+                            .apply_new_inputs(a0input_len, 0, b_bmap0.inputs.data())
+                            .unwrap();
+                        let ext_a_bmap1 = a_bmap1
+                            .apply_new_inputs(a0input_len, 0, b_bmap0.inputs.data())
+                            .unwrap();
+                        let ext_b_bmap0 = b_bmap0
+                            .apply_new_inputs(b0input_len, 0, a_bmap0.inputs.data())
+                            .unwrap();
+                        let ext_b_bmap1 = b_bmap1
+                            .apply_new_inputs(b0input_len, 0, a_bmap0.inputs.data())
+                            .unwrap();
+                        let mut out0 = SmartBitmap {
+                            inputs: ext_a_bmap0.inputs,
+                            bitmap: [0; BITMAP_BITS >> 6],
+                        };
+                        let mut out1 = out0;
+                        op(
+                            out0.bitmap_mut(),
+                            ext_a_bmap0.bitmap(),
+                            ext_b_bmap0.bitmap(),
+                        );
+                        op(
+                            out1.bitmap_mut(),
+                            ext_a_bmap1.bitmap(),
+                            ext_b_bmap1.bitmap(),
+                        );
+                        (out0, out1)
+                    };
 
-            if out0 != out1 {
-                let unused_inputs = out0.check_all_unused_inputs() & out1.check_all_unused_inputs();
-                if unused_inputs != 0 {
-                    let input_to_remove = 63 - unused_inputs.leading_zeros();
-                    out0.remove_input(input_to_remove);
-                    out1.remove_input(input_to_remove);
-                    // join
-                    let mut out = out0.join(out1, std::cmp::max(self_input_last, rhs_input_last));
-                    out.remove_unused_inputs();
-                    Some(out)
+                    if out0 != out1 {
+                        let unused_inputs =
+                            out0.check_all_unused_inputs() & out1.check_all_unused_inputs();
+                        if unused_inputs != 0 {
+                            let input_to_remove = 63 - unused_inputs.leading_zeros();
+                            out0.remove_input(input_to_remove);
+                            out1.remove_input(input_to_remove);
+                            // join
+                            let mut out =
+                                out0.join(out1, std::cmp::max(self_input_last, rhs_input_last));
+                            out.remove_unused_inputs();
+                            Some(out)
+                        } else {
+                            None
+                        }
+                    } else {
+                        // same copy
+                        out0.remove_unused_inputs();
+                        Some(out0)
+                    }
                 } else {
                     None
                 }
-            } else {
-                // same copy
-                out0.remove_unused_inputs();
-                Some(out0)
             }
-        } else {
-            None
         }
     }
 }
@@ -851,7 +857,7 @@ mod tests {
     #[test]
     fn test_apply_new_inputs() {
         assert_eq!(
-            Some(smart_bitmap_from_data(
+            Ok(smart_bitmap_from_data(
                 &[0, 1, 3, 4, 5, 6, 9, 11, 12],
                 &[
                     0x00ff00ff0f0f0f0f,
@@ -872,7 +878,7 @@ mod tests {
         );
 
         assert_eq!(
-            Some(smart_bitmap_from_data(
+            Ok(smart_bitmap_from_data(
                 &[0, 1, 3, 4, 5, 6, 9, 11, 12],
                 &[
                     0x00ff00ff0f0f0f0f,
@@ -893,7 +899,7 @@ mod tests {
         );
 
         assert_eq!(
-            Some(smart_bitmap_from_data(
+            Ok(smart_bitmap_from_data(
                 &[0, 1, 3, 4, 5, 6, 9, 11, 12],
                 &[
                     0x00ff00ff0f0f0f0f,
@@ -915,7 +921,7 @@ mod tests {
 
         // input duplicates in rhs
         assert_eq!(
-            Some(smart_bitmap_from_data(
+            Ok(smart_bitmap_from_data(
                 &[0, 1, 3, 4, 5, 6, 9, 11, 12],
                 &[
                     0x00ff00ff0f0f0f0f,
@@ -937,7 +943,7 @@ mod tests {
 
         // no changes
         assert_eq!(
-            Some(smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14], &[0xbcda2135])),
+            Ok(smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14], &[0xbcda2135])),
             smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14], &[0xbcda2135]).apply_new_inputs(
                 6,
                 0,
@@ -947,7 +953,7 @@ mod tests {
 
         // no changes
         assert_eq!(
-            Some(smart_bitmap_from_data(&[3, 4, 6, 9, 11], &[0xbcda2135])),
+            Ok(smart_bitmap_from_data(&[3, 4, 6, 9, 11], &[0xbcda2135])),
             smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14], &[0xbcda2135]).apply_new_inputs(
                 5,
                 0,
@@ -957,7 +963,7 @@ mod tests {
 
         // no changes and bitstart
         assert_eq!(
-            Some(smart_bitmap_from_data(&[3, 4, 6, 9, 11], &[0x11bcda21])),
+            Ok(smart_bitmap_from_data(&[3, 4, 6, 9, 11], &[0x11bcda21])),
             smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14], &[0x11bcda2135]).apply_new_inputs(
                 5,
                 8,
@@ -967,7 +973,7 @@ mod tests {
 
         // no changes
         assert_eq!(
-            Some(smart_bitmap_from_data(
+            Ok(smart_bitmap_from_data(
                 &[3, 4, 6, 9, 11, 14, 15],
                 &[0x1111bcda2135, 0x4859fffaaa]
             )),
@@ -980,7 +986,7 @@ mod tests {
 
         // no changes and bitstart
         assert_eq!(
-            Some(smart_bitmap_from_data(
+            Ok(smart_bitmap_from_data(
                 &[3, 4, 6, 9, 11, 14, 15],
                 &[0xfaaa00001111bcda, 0xfadd0000004859ff]
             )),
@@ -993,7 +999,7 @@ mod tests {
 
         // no changes
         assert_eq!(
-            Some(smart_bitmap_from_data(
+            Ok(smart_bitmap_from_data(
                 &[3, 4, 6, 9, 11, 14, 15],
                 &[0x1111bcda2135, 0x4859fffaaa]
             )),
@@ -1006,7 +1012,7 @@ mod tests {
 
         // no changes
         assert_eq!(
-            Some(smart_bitmap_from_data(
+            Ok(smart_bitmap_from_data(
                 &[3, 4, 6, 9, 11, 14, 15],
                 &[0x1111bcda2135, 0x4859fffaaa]
             )),
@@ -1016,7 +1022,7 @@ mod tests {
 
         // no changes
         assert_eq!(
-            Some(smart_bitmap_from_data(
+            Ok(smart_bitmap_from_data(
                 &[3, 4, 6, 9, 11, 14, 15],
                 &[0x1111bcda2135, 0x4859fffaaa]
             )),
@@ -1026,7 +1032,7 @@ mod tests {
 
         // no changes (empties)
         assert_eq!(
-            Some(smart_bitmap_from_data(&[], &[1])),
+            Ok(smart_bitmap_from_data(&[], &[1])),
             smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14], &[0x111bcda2135]).apply_new_inputs(
                 0,
                 0,
@@ -1036,7 +1042,7 @@ mod tests {
 
         // no changes (empties) and bit_start
         assert_eq!(
-            Some(smart_bitmap_from_data(&[], &[0])),
+            Ok(smart_bitmap_from_data(&[], &[0])),
             smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14], &[0x111bcda2135]).apply_new_inputs(
                 0,
                 3,
@@ -1046,13 +1052,13 @@ mod tests {
 
         // all zeros
         assert_eq!(
-            Some(smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14, 15], &[0, 0])),
+            Ok(smart_bitmap_from_data(&[3, 4, 6, 9, 11, 14, 15], &[0, 0])),
             smart_bitmap_from_data(&[], &[]).apply_new_inputs(0, 0, &[3, 4, 6, 9, 11, 14, 15])
         );
 
         // all ones
         assert_eq!(
-            Some(smart_bitmap_from_data(
+            Ok(smart_bitmap_from_data(
                 &[3, 4, 6, 9, 11, 14, 15],
                 &[u64::MAX, u64::MAX]
             )),
@@ -1061,13 +1067,13 @@ mod tests {
 
         // all ones
         assert_eq!(
-            Some(smart_bitmap_from_data(&[3, 4, 6, 9], &[0xffff])),
+            Ok(smart_bitmap_from_data(&[3, 4, 6, 9], &[0xffff])),
             smart_bitmap_from_data(&[], &[1]).apply_new_inputs(0, 0, &[3, 4, 6, 9])
         );
 
         // all zeros
         assert_eq!(
-            Some(smart_bitmap_from_data(&[3, 4, 6, 9], &[0])),
+            Ok(smart_bitmap_from_data(&[3, 4, 6, 9], &[0])),
             smart_bitmap_from_data(&[1, 2, 3, 4, 5, 6, 7], &[0, 8]).apply_new_inputs(
                 0,
                 0,
@@ -1077,7 +1083,7 @@ mod tests {
 
         // all zeros
         assert_eq!(
-            Some(smart_bitmap_from_data(&[3, 4, 6, 9], &[0])),
+            Ok(smart_bitmap_from_data(&[3, 4, 6, 9], &[0])),
             smart_bitmap_from_data(&[1, 2, 3, 4, 5, 6, 7], &[0, 0xff00]).apply_new_inputs(
                 0,
                 67,
@@ -1087,7 +1093,7 @@ mod tests {
 
         // all ones
         assert_eq!(
-            Some(smart_bitmap_from_data(&[3, 4, 6, 9], &[0xffff])),
+            Ok(smart_bitmap_from_data(&[3, 4, 6, 9], &[0xffff])),
             smart_bitmap_from_data(&[1, 2, 3, 4, 5, 6, 7], &[0, 8]).apply_new_inputs(
                 0,
                 67,
@@ -1096,7 +1102,7 @@ mod tests {
         );
 
         assert_eq!(
-            Some(smart_bitmap_from_data(
+            Ok(smart_bitmap_from_data(
                 &[3, 4, 6, 7, 8, 9, 14, 15, 16, 17],
                 &[
                     0x0f0f0f0f55555555,
@@ -1126,7 +1132,7 @@ mod tests {
 
         // input duplicates in rhs
         assert_eq!(
-            Some(smart_bitmap_from_data(
+            Ok(smart_bitmap_from_data(
                 &[3, 4, 6, 7, 8, 9, 14, 15, 16, 17],
                 &[
                     0x0f0f0f0f55555555,
@@ -1155,7 +1161,7 @@ mod tests {
         );
 
         assert_eq!(
-            Some(smart_bitmap_from_data(
+            Ok(smart_bitmap_from_data(
                 &[3, 6, 7, 9, 14, 17, 20, 22, 25, 26],
                 &[
                     0xbbccddaa22113355,
@@ -1189,7 +1195,7 @@ mod tests {
         );
 
         assert_eq!(
-            Some(smart_bitmap_from_data(
+            Ok(smart_bitmap_from_data(
                 &[3, 6, 9, 14, 17, 22, 25],
                 &[0xe3a0c195bcda2135, 0xb5d0ca0986104ca1]
             )),
@@ -1206,7 +1212,7 @@ mod tests {
         );
 
         assert_eq!(
-            Some(smart_bitmap_from_data(
+            Ok(smart_bitmap_from_data(
                 &[3, 4, 6, 7, 9],
                 &[0b01011010010110101010111110101111]
             )),
@@ -1214,7 +1220,7 @@ mod tests {
         );
 
         assert_eq!(
-            Some(smart_bitmap_from_data(
+            Ok(smart_bitmap_from_data(
                 &[3, 4, 6, 7, 9],
                 &[0b00000101000001011111101011111010]
             )),
@@ -1222,7 +1228,7 @@ mod tests {
         );
 
         assert_eq!(
-            None,
+            Err(12),
             smart_bitmap_from_data(
                 &[3, 6, 9, 14, 17, 22, 25, 27],
                 &[
@@ -1402,6 +1408,72 @@ mod tests {
                     &[0xbc11466aaa22, 0xba5bb0c22577]
                 )
         );
+
+        // join and reduce
+        // assert_eq!(
+        //     Some(smart_bitmap_from_data(
+        //         &[10, 11, 15, 17, 20, 22, 23, 25, 29, 33],
+        //         &[
+        //             0x031405060708090a,
+        //             0xf0d0b09070503011,
+        //             0x030415060708090a,
+        //             0xf0d0b09070503011,
+        //             0x032405060708090a,
+        //             0xf0d0b09070503012,
+        //             0x030425060708090a,
+        //             0xf0d0b09070503012,
+        //             0x033405060708090a,
+        //             0xf0d0b09070503012,
+        //             0x030435060708090a,
+        //             0xf0d0b09070503012,
+        //             0x034405060708090a,
+        //             0xf0d0b09070503013,
+        //             0x030445060708090a,
+        //             0xf0d0b09070503013
+        //         ]
+        //     )),
+        //     smart_bitmap_from_data(
+        //         &[10, 11, 15, 17, 20, 22, 23, 25, 29, 33],
+        //         &[
+        //             0x031405060708090a,
+        //             0xf0d0b09070503011,
+        //             0x030415060708090a,
+        //             0xf0d0b09070503011,
+        //             0x032405060708090a,
+        //             0xf0d0b09070503012,
+        //             0x030425060708090a,
+        //             0xf0d0b09070503012,
+        //             0x033405060708090a,
+        //             0xf0d0b09070503012,
+        //             0x030435060708090a,
+        //             0xf0d0b09070503012,
+        //             0x034405060708090a,
+        //             0xf0d0b09070503013,
+        //             0x030445060708090a,
+        //             0xf0d0b09070503013
+        //         ]
+        //     ) & smart_bitmap_from_data(
+        //         &[6, 7, 10, 11, 15, 17, 20, 22, 23, 25],
+        //         &[
+        //             0xffffffffffffffff,
+        //             0xffffffffffffffff,
+        //             0xffffffffffffffff,
+        //             0xffffffffe000ffff,
+        //             0xffffffffffffd000,
+        //             0xffffffffffffffff,
+        //             0xffffffffffffffff,
+        //             0xffffffffffffffff,
+        //             0xffffffffffffffff,
+        //             0xffffffffffffffff,
+        //             0xb000ffffffffffff,
+        //             0xffffffffffffffff,
+        //             0xffffffffffffb000,
+        //             0xffffffffffffffff,
+        //             0xffffffffffffffff,
+        //             0xffffffffffffffff
+        //         ]
+        //     )
+        // );
     }
 
     #[test]
