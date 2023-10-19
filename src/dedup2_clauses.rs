@@ -1457,6 +1457,54 @@ mod tests {
                 ]
             )
         );
+        // change order of arguments
+        assert_eq!(
+            Some(smart_bitmap_from_data(
+                &[10, 11, 15, 17, 20, 22, 23],
+                &[0x030405060708090a, 0xf0d0b09070503010]
+            )),
+            smart_bitmap_from_data(
+                &[6, 7, 10, 11, 15, 17, 20, 22, 23, 25],
+                &[
+                    0xffffffffffffffff,
+                    0xffffffffffffffff,
+                    0xffffffffffffffff,
+                    0xffffffffe000ffff,
+                    0xffffffffffffd000,
+                    0xffffffffffffffff,
+                    0xffffffffffffffff,
+                    0xffffffffffffffff,
+                    0xffffffffffffffff,
+                    0xffffffffffffffff,
+                    0xb000ffffffffffff,
+                    0xffffffffffffffff,
+                    0xffffffffffffb000,
+                    0xffffffffffffffff,
+                    0xffffffffffffffff,
+                    0xffffffffffffffff
+                ]
+            ) & smart_bitmap_from_data(
+                &[10, 11, 15, 17, 20, 22, 23, 25, 29, 33],
+                &[
+                    0x031405060708090a,
+                    0xf0d0b09070503011,
+                    0x030415060708090a,
+                    0xf0d0b09070503011,
+                    0x032405060708090a,
+                    0xf0d0b09070503012,
+                    0x030425060708090a,
+                    0xf0d0b09070503012,
+                    0x033405060708090a,
+                    0xf0d0b09070503012,
+                    0x030435060708090a,
+                    0xf0d0b09070503012,
+                    0x034405060708090a,
+                    0xf0d0b09070503013,
+                    0x030445060708090a,
+                    0xf0d0b09070503013
+                ]
+            )
+        );
     }
 
     #[test]
