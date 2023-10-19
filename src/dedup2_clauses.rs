@@ -133,7 +133,7 @@ where
 
 enum SmartAllValues<T> {
     Unknown,
-    Bitmap(SmartBitmap<T>),
+    Bitmap(Box<SmartBitmap<T>>),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
