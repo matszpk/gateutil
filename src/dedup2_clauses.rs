@@ -407,6 +407,34 @@ where
         }
     }
 
+    fn join(self, rhs: Self, last_input: T) -> Self {
+        assert_eq!(self.inputs, rhs.inputs);
+        assert!(self.inputs.len() < BITMAP_BITS_BITS);
+        assert!(*self.inputs.data().last().unwrap() < last_input);
+        let inputs_len = self.inputs.len();
+        if inputs_len <= 5 {
+            let mut out = SmartBitmap {
+                inputs: self.inputs,
+                bitmap: [0u64; BITMAP_BITS >> 6],
+            };
+            out.inputs.insert(last_input);
+            let half = 1 << inputs_len;
+            let mask = (1u64 << half) - 1;
+            out.bitmap[0] = (self.bitmap[0] & mask) | ((rhs.bitmap[0] & mask) << half);
+            out
+        } else {
+            let mut out = SmartBitmap {
+                inputs: self.inputs,
+                bitmap: [0u64; BITMAP_BITS >> 6],
+            };
+            out.inputs.insert(last_input);
+            let half = 1 << (inputs_len - 6);
+            out.bitmap[0..half].copy_from_slice(&self.bitmap[0..half]);
+            out.bitmap[half..(half << 1)].copy_from_slice(&rhs.bitmap[0..half]);
+            out
+        }
+    }
+
     fn make_op(self, rhs: Self, op: impl Fn(&mut [u64], &[u64], &[u64])) -> Option<Self> {
         // println!("MakeOp");
         if let Some(ext_self) =
@@ -502,7 +530,9 @@ where
                     out0.remove_input(input_to_remove);
                     out1.remove_input(input_to_remove);
                     // join
-                    Some(out0)
+                    let mut out = out0.join(out1, std::cmp::max(self_input_last, rhs_input_last));
+                    out.remove_unused_inputs();
+                    Some(out)
                 } else {
                     None
                 }
@@ -1425,6 +1455,58 @@ mod tests {
                 ]
             )
             .split()
+        );
+    }
+
+    #[test]
+    fn test_smart_bitmap_join() {
+        assert_eq!(
+            smart_bitmap_from_data(&[3, 6, 9, 13], &[0x1e6b]),
+            smart_bitmap_from_data(&[3, 6, 9], &[0x6b])
+                .join(smart_bitmap_from_data(&[3, 6, 9], &[0x1e]), 13)
+        );
+        assert_eq!(
+            smart_bitmap_from_data(&[3, 6, 9, 11, 12, 17], &[0x1122334455667788]),
+            smart_bitmap_from_data(&[3, 6, 9, 11, 12], &[0x55667788]).join(
+                smart_bitmap_from_data(&[3, 6, 9, 11, 12], &[0x11223344]),
+                17
+            )
+        );
+        assert_eq!(
+            smart_bitmap_from_data(
+                &[3, 6, 9, 11, 12, 14, 17, 18, 20],
+                &[
+                    0xe300c0009c100020,
+                    0x1010420184104021,
+                    0xeacc001199414211,
+                    0x0a000510a03b20c0,
+                    0xbc0a04502a784113,
+                    0xba03502525770492,
+                    0xa0a0549488990490,
+                    0xaab0c03af031578d
+                ]
+            ),
+            smart_bitmap_from_data(
+                &[3, 6, 9, 11, 12, 14, 17, 18],
+                &[
+                    0xe300c0009c100020,
+                    0x1010420184104021,
+                    0xeacc001199414211,
+                    0x0a000510a03b20c0,
+                ]
+            )
+            .join(
+                smart_bitmap_from_data(
+                    &[3, 6, 9, 11, 12, 14, 17, 18],
+                    &[
+                        0xbc0a04502a784113,
+                        0xba03502525770492,
+                        0xa0a0549488990490,
+                        0xaab0c03af031578d
+                    ]
+                ),
+                20
+            ),
         );
     }
 }
