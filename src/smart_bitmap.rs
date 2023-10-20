@@ -236,6 +236,14 @@ where
         out
     }
 
+    pub fn bool_value(&self) -> Option<bool> {
+        if self.inputs.len() == 0 {
+            Some((self.bitmap[0] & 1) != 0)
+        } else {
+            None
+        }
+    }
+
     #[inline]
     pub fn bitmap_bitlen(&self) -> usize {
         1 << self.inputs.len()
@@ -736,6 +744,19 @@ mod tests {
         };
         bmap.bitmap[0..bitmap.len()].copy_from_slice(bitmap);
         bmap
+    }
+
+    #[test]
+    fn test_smart_bitmap_bool_value() {
+        assert_eq!(
+            Some(true),
+            smart_bitmap_from_data::<usize>(&[], &[0b1]).bool_value()
+        );
+        assert_eq!(
+            Some(false),
+            smart_bitmap_from_data::<usize>(&[], &[0b0]).bool_value()
+        );
+        assert_eq!(None, smart_bitmap_from_data(&[3], &[0b00]).bool_value());
     }
 
     #[test]
