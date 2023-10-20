@@ -42,6 +42,7 @@ where
     // example: (l1 (used:1), l2 (used:1), l3)
     // idea: while replacing clause by subclause other clause, then
     // update both target clause and other clause hash entries.
+    // handle negation of allvalues to find duplicate.
     fn compare_and_dedup(
         &mut self,
         extra_clause_start: usize,
