@@ -405,6 +405,7 @@ where
         if merged_inputs.len() > BITMAP_BITS_BITS {
             return Err(merged_inputs.len());
         } else if merged_inputs.len() == self_input_num && bit_start == 0 {
+            // just copy bitmap
             let mut out = SmartBitmap {
                 inputs: SmallVec::from_slice(&self.inputs.data()[0..self_input_num]),
                 bitmap: [0u64; BITMAP_BITS >> 6],
@@ -417,6 +418,7 @@ where
             }
             return Ok(out);
         } else if self_input_num == 0 {
+            // just fill bitmap
             let mut out = SmartBitmap {
                 inputs: SmallVec::from_slice(&b_inputs),
                 bitmap: [0u64; BITMAP_BITS >> 6],
