@@ -131,9 +131,67 @@ where
     }
 }
 
+#[derive(Clone, PartialEq, Eq)]
 pub enum SmartAllValues<T> {
     Unknown,
     Bitmap(Box<SmartBitmap<T>>),
+}
+
+impl<T> Not for SmartAllValues<T>
+where
+    T: Default + Clone + Copy + Ord + PartialEq + Eq + Debug,
+{
+    type Output = SmartAllValues<T>;
+    fn not(self) -> Self::Output {
+        match self {
+            SmartAllValues::Unknown => SmartAllValues::Unknown,
+            SmartAllValues::Bitmap(b) => SmartAllValues::Bitmap(Box::new(!*b)),
+        }
+    }
+}
+
+impl<T> BitAnd for SmartAllValues<T>
+where
+    T: Default + Clone + Copy + Ord + PartialEq + Eq + Debug,
+{
+    type Output = SmartAllValues<T>;
+    fn bitand(self, rhs: Self) -> Self::Output {
+        match self {
+            SmartAllValues::Unknown =>  SmartAllValues::Unknown,
+            SmartAllValues::Bitmap(a) => {
+                match rhs {
+                    SmartAllValues::Unknown =>  SmartAllValues::Unknown,
+                    SmartAllValues::Bitmap(b) => if let Some(r) = *a & *b {
+                        SmartAllValues::Bitmap(Box::new(r))
+                    } else {
+                        SmartAllValues::Unknown
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl<T> BitXor for SmartAllValues<T>
+where
+    T: Default + Clone + Copy + Ord + PartialEq + Eq + Debug,
+{
+    type Output = SmartAllValues<T>;
+    fn bitxor(self, rhs: Self) -> Self::Output {
+        match self {
+            SmartAllValues::Unknown =>  SmartAllValues::Unknown,
+            SmartAllValues::Bitmap(a) => {
+                match rhs {
+                    SmartAllValues::Unknown =>  SmartAllValues::Unknown,
+                    SmartAllValues::Bitmap(b) => if let Some(r) = *a ^ *b {
+                        SmartAllValues::Bitmap(Box::new(r))
+                    } else {
+                        SmartAllValues::Unknown
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
