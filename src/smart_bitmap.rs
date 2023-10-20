@@ -385,6 +385,7 @@ where
         }
     }
 
+    // INTERNAL: returnd bitmap without removing unused inputs
     fn apply_new_inputs(
         &self,
         self_input_num: usize,
@@ -458,7 +459,7 @@ where
         })
     }
 
-    // return raw splitted bitmaps - without removing unused inputs
+    // INTERNAL: returns raw splitted bitmaps - without removing unused inputs
     fn split(self) -> (Self, Self) {
         let inputs_len = self.inputs.len();
         if inputs_len <= 6 {
@@ -485,7 +486,7 @@ where
         }
     }
 
-    // return raw join bitmap - without removing unused inputs
+    //  INTERNAL: returns raw join bitmap - without removing unused inputs
     fn join(self, rhs: Self, last_input: T) -> Self {
         assert_eq!(self.inputs, rhs.inputs);
         assert!(self.inputs.len() < BITMAP_BITS_BITS);
