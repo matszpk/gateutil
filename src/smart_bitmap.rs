@@ -1,7 +1,4 @@
-use gatesim::*;
-
-use std::cmp::{Ord, Ordering, PartialOrd};
-use std::collections::{HashMap, HashSet};
+use std::cmp::Ord;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::{BitAnd, BitXor, Not};
@@ -45,7 +42,7 @@ fn check_unused_bit_u64(index_bit: u32, value: u64) -> bool {
     (value & bitmask) == ((value >> shift) & bitmask)
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct SmallVec<T, const N: usize> {
     data: [T; N],
     len: u8,
@@ -56,14 +53,14 @@ where
     T: Default + Clone + Copy + Ord + PartialEq + Eq,
 {
     #[inline]
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             data: [T::default(); N],
             len: 0,
         }
     }
 
-    fn from_iter(iter: impl IntoIterator<Item = T>) -> Self
+    pub fn from_iter(iter: impl IntoIterator<Item = T>) -> Self
     where
         T: Default + Clone + Copy,
     {
@@ -78,7 +75,7 @@ where
         out
     }
 
-    fn from_slice(t: &[T]) -> SmallVec<T, N>
+    pub fn from_slice(t: &[T]) -> SmallVec<T, N>
     where
         T: Default + Clone + Copy,
     {
@@ -131,10 +128,25 @@ where
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
-pub enum SmartAllValues<T> {
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub enum SmartAllValues<T: Default + Clone + Copy + Ord + PartialEq + Eq + Debug> {
     Unknown,
     Bitmap(Box<SmartBitmap<T>>),
+}
+
+impl<T> SmartAllValues<T>
+where
+    T: Default + Clone + Copy + Ord + PartialEq + Eq + Debug,
+{
+    fn value_eq(&self, other: &Self) -> bool {
+        match self {
+            SmartAllValues::Unknown => false,
+            SmartAllValues::Bitmap(a) => match other {
+                SmartAllValues::Unknown => false,
+                SmartAllValues::Bitmap(b) => **a == **b,
+            },
+        }
+    }
 }
 
 impl<T> Not for SmartAllValues<T>
@@ -157,17 +169,17 @@ where
     type Output = SmartAllValues<T>;
     fn bitand(self, rhs: Self) -> Self::Output {
         match self {
-            SmartAllValues::Unknown =>  SmartAllValues::Unknown,
-            SmartAllValues::Bitmap(a) => {
-                match rhs {
-                    SmartAllValues::Unknown =>  SmartAllValues::Unknown,
-                    SmartAllValues::Bitmap(b) => if let Some(r) = *a & *b {
+            SmartAllValues::Unknown => SmartAllValues::Unknown,
+            SmartAllValues::Bitmap(a) => match rhs {
+                SmartAllValues::Unknown => SmartAllValues::Unknown,
+                SmartAllValues::Bitmap(b) => {
+                    if let Some(r) = *a & *b {
                         SmartAllValues::Bitmap(Box::new(r))
                     } else {
                         SmartAllValues::Unknown
                     }
                 }
-            }
+            },
         }
     }
 }
@@ -179,22 +191,22 @@ where
     type Output = SmartAllValues<T>;
     fn bitxor(self, rhs: Self) -> Self::Output {
         match self {
-            SmartAllValues::Unknown =>  SmartAllValues::Unknown,
-            SmartAllValues::Bitmap(a) => {
-                match rhs {
-                    SmartAllValues::Unknown =>  SmartAllValues::Unknown,
-                    SmartAllValues::Bitmap(b) => if let Some(r) = *a ^ *b {
+            SmartAllValues::Unknown => SmartAllValues::Unknown,
+            SmartAllValues::Bitmap(a) => match rhs {
+                SmartAllValues::Unknown => SmartAllValues::Unknown,
+                SmartAllValues::Bitmap(b) => {
+                    if let Some(r) = *a ^ *b {
                         SmartAllValues::Bitmap(Box::new(r))
                     } else {
                         SmartAllValues::Unknown
                     }
                 }
-            }
+            },
         }
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct SmartBitmap<T> {
     // all inputs must be ordered.
     pub inputs: SmallVec<T, BITMAP_BITS_BITS>,
@@ -205,7 +217,7 @@ impl<T> SmartBitmap<T>
 where
     T: Default + Clone + Copy + Ord + PartialEq + Eq + Debug,
 {
-    fn from_bool(value: bool) -> Self {
+    pub fn from_bool(value: bool) -> Self {
         let mut out = Self {
             inputs: SmallVec::new(),
             bitmap: [0; BITMAP_BITS >> 6],
@@ -214,7 +226,7 @@ where
         out
     }
 
-    fn from_input(input: T) -> Self {
+    pub fn from_input(input: T) -> Self {
         let mut out = Self {
             inputs: SmallVec::new(),
             bitmap: [0; BITMAP_BITS >> 6],
