@@ -128,7 +128,7 @@ where
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum SmartAllValues<T: Default + Clone + Copy + Ord + PartialEq + Eq + Debug> {
     Unknown,
     Bitmap(Box<SmartBitmap<T>>),
@@ -2019,6 +2019,115 @@ mod tests {
                 ),
                 20
             ),
+        );
+    }
+
+    #[test]
+    fn test_smart_all_values() {
+        //value eq
+        assert!(
+            !(SmartAllValues::Bitmap(Box::new(smart_bitmap_from_data::<usize>(&[], &[0])))
+                .value_eq(&SmartAllValues::Bitmap(Box::new(smart_bitmap_from_data::<
+                    usize,
+                >(
+                    &[], &[1]
+                )))))
+        );
+        assert!(
+            SmartAllValues::Bitmap(Box::new(smart_bitmap_from_data::<usize>(&[], &[1]))).value_eq(
+                &SmartAllValues::Bitmap(Box::new(smart_bitmap_from_data::<usize>(&[], &[1])))
+            )
+        );
+        assert!(
+            !(SmartAllValues::Unknown.value_eq(&SmartAllValues::Bitmap(Box::new(
+                smart_bitmap_from_data::<usize>(&[], &[1])
+            ))))
+        );
+        assert!(
+            !(SmartAllValues::Bitmap(Box::new(smart_bitmap_from_data::<usize>(&[], &[0])))
+                .value_eq(&SmartAllValues::Unknown))
+        );
+        assert!(!(SmartAllValues::<usize>::Unknown.value_eq(&SmartAllValues::Unknown)));
+
+        // Not
+        assert_eq!(SmartAllValues::<usize>::Unknown, !SmartAllValues::Unknown);
+        assert_eq!(
+            SmartAllValues::Bitmap(Box::new(smart_bitmap_from_data::<usize>(&[], &[1]))),
+            !SmartAllValues::Bitmap(Box::new(smart_bitmap_from_data::<usize>(&[], &[0])))
+        );
+
+        // BitAnd
+        assert_eq!(
+            SmartAllValues::<usize>::Unknown,
+            SmartAllValues::Unknown & SmartAllValues::Unknown
+        );
+        assert_eq!(
+            SmartAllValues::Unknown,
+            SmartAllValues::Bitmap(Box::new(smart_bitmap_from_data::<usize>(&[], &[0])))
+                & SmartAllValues::Unknown
+        );
+        assert_eq!(
+            SmartAllValues::Unknown,
+            SmartAllValues::Unknown
+                & SmartAllValues::Bitmap(Box::new(smart_bitmap_from_data::<usize>(&[], &[0])))
+        );
+        assert_eq!(
+            SmartAllValues::Bitmap(Box::new(smart_bitmap_from_data::<usize>(&[], &[0]))),
+            SmartAllValues::Bitmap(Box::new(smart_bitmap_from_data::<usize>(&[], &[0])))
+                & SmartAllValues::Bitmap(Box::new(smart_bitmap_from_data::<usize>(&[], &[1])))
+        );
+        // if bitand returns None
+        assert_eq!(
+            SmartAllValues::Unknown,
+            SmartAllValues::Bitmap(Box::new(smart_bitmap_from_data(
+                &[2, 5, 7, 9, 11, 14, 15, 18],
+                &[
+                    0xbc0a04502a78,
+                    0xba0350252577,
+                    0xa0a054948899,
+                    0xaab0c03af0315
+                ]
+            ))) & SmartAllValues::Bitmap(Box::new(smart_bitmap_from_data(
+                &[3, 4, 6, 10, 12, 13, 16],
+                &[0xbc11466aaa22, 0xba5bb0c22577]
+            )))
+        );
+
+        // BitXor
+        assert_eq!(
+            SmartAllValues::<usize>::Unknown,
+            SmartAllValues::Unknown ^ SmartAllValues::Unknown
+        );
+        assert_eq!(
+            SmartAllValues::Unknown,
+            SmartAllValues::Bitmap(Box::new(smart_bitmap_from_data::<usize>(&[], &[0])))
+                ^ SmartAllValues::Unknown
+        );
+        assert_eq!(
+            SmartAllValues::Unknown,
+            SmartAllValues::Unknown
+                ^ SmartAllValues::Bitmap(Box::new(smart_bitmap_from_data::<usize>(&[], &[0])))
+        );
+        assert_eq!(
+            SmartAllValues::Bitmap(Box::new(smart_bitmap_from_data::<usize>(&[], &[1]))),
+            SmartAllValues::Bitmap(Box::new(smart_bitmap_from_data::<usize>(&[], &[0])))
+                ^ SmartAllValues::Bitmap(Box::new(smart_bitmap_from_data::<usize>(&[], &[1])))
+        );
+        // if bitxor returns None
+        assert_eq!(
+            SmartAllValues::Unknown,
+            SmartAllValues::Bitmap(Box::new(smart_bitmap_from_data(
+                &[2, 5, 7, 9, 11, 14, 15, 18],
+                &[
+                    0xbc0a04502a78,
+                    0xba0350252577,
+                    0xa0a054948899,
+                    0xaab0c03af0315
+                ]
+            ))) ^ SmartAllValues::Bitmap(Box::new(smart_bitmap_from_data(
+                &[3, 4, 6, 10, 12, 13, 16],
+                &[0xbc11466aaa22, 0xba5bb0c22577]
+            )))
         );
     }
 }
