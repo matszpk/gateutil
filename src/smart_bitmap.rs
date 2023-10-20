@@ -88,7 +88,7 @@ where
     }
 
     #[inline]
-    fn data(&self) -> &[T] {
+    pub fn data(&self) -> &[T] {
         &self.data[0..self.len as usize]
     }
 
@@ -98,12 +98,12 @@ where
     }
 
     #[inline]
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.len as usize
     }
 
     #[inline]
-    fn insert(&mut self, e: T) {
+    pub fn insert(&mut self, e: T) {
         let p = match self.data().binary_search(&e) {
             Ok(p) => p,
             Err(p) => p,
@@ -115,7 +115,7 @@ where
     }
 
     #[inline]
-    fn remove(&mut self, e: T) {
+    pub fn remove(&mut self, e: T) {
         match self.data().binary_search(&e) {
             Ok(p) => {
                 let old_len = self.len as usize;
@@ -237,18 +237,18 @@ where
     }
 
     #[inline]
-    fn bitmap_bitlen(&self) -> usize {
+    pub fn bitmap_bitlen(&self) -> usize {
         1 << self.inputs.len()
     }
 
     #[inline]
-    fn bitmap_u64len(&self) -> usize {
+    pub fn bitmap_u64len(&self) -> usize {
         let bl = self.bitmap_bitlen();
         (bl + 63) >> 6
     }
 
     #[inline]
-    fn bitmap(&self) -> &[u64] {
+    pub fn bitmap(&self) -> &[u64] {
         &self.bitmap[0..self.bitmap_u64len()]
     }
 
