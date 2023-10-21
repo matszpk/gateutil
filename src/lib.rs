@@ -665,14 +665,6 @@ where
     (opt_circuit, out_input_map, out_output_map)
 }
 
-// TODO: write deduplication for clause circuit based on evaluation of all combinations of input.
-// include AND-clauses literal combinations and XOR-clause literal combinations.
-// include all-true -> true and all-false -> false.
-// finding N-inter-input subcircuit by traversing from output to input.
-// NEW IDEA: use smart bitmasks with compression. if some bitmask need too much memory
-// then set it as unknown. Start from inputs. Continue from higher gates if some previous
-// bitmasks are unknown. Reduce subclauses by many passes including some threshold of combinations.
-
 #[cfg(test)]
 mod tests {
     use super::*;
