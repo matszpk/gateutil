@@ -10,10 +10,6 @@ mod join_clauses;
 use join_clauses::*;
 mod dedup_clauses;
 use dedup_clauses::*;
-mod dedup2_clauses;
-use dedup2_clauses::*;
-mod smart_bitmap;
-use smart_bitmap::*;
 mod utils;
 
 pub fn deduplicate<T: Clone + Copy + Ord + PartialEq + Eq>(circuit: Circuit<T>) -> Circuit<T>
