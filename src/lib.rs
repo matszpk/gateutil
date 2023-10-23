@@ -12,6 +12,7 @@ mod dedup_clauses;
 use dedup_clauses::*;
 mod utils;
 
+/// Deduplicates gates in circuit. It finds duplicates by comparing gate and its inputs.
 pub fn deduplicate<T: Clone + Copy + Ord + PartialEq + Eq>(circuit: Circuit<T>) -> Circuit<T>
 where
     T: Default + TryFrom<usize>,
@@ -67,14 +68,15 @@ where
     Circuit::new(circuit.input_len(), new_gates, new_outputs).unwrap()
 }
 
+/// Output entry to store assignment of value (for output and input).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OutputEntry<T> {
     NewIndex(T),
     Value(bool),
 }
 
-// return circuit with assignment and mapping from older input to new input
-// and output mapping from older output index to new output index or value
+/// Returns circuit with assignment and mapping from older input to new input
+/// and output mapping from older output index to new output index or value.
 pub fn assign_to_circuit<T>(
     circuit: &Circuit<T>,
     inputs: impl IntoIterator<Item = (T, bool)>,
@@ -289,7 +291,9 @@ where
     to_reduce_tree
 }
 
-// return optimized circuit, mapping to new inputs, mapping to new outputs
+/// Return optimized circuit, mapping to new inputs, mapping to new outputs.
+/// It optimize circuit by joining clauses with same type and resolving duplicates
+/// of literals in clauses and resolving values from that clauses.
 pub fn optimize_clause_circuit<T>(
     circuit: ClauseCircuit<T>,
 ) -> (ClauseCircuit<T>, Vec<Option<T>>, Vec<OutputEntry<T>>)
@@ -394,6 +398,7 @@ where
     )
 }
 
+/// Assigns and optimize clause circuit. See to optimize_clause_circuit and assign_to_circuit.
 pub fn assign_to_circuit_and_optimize<T>(
     circuit: &Circuit<T>,
     inputs: impl IntoIterator<Item = (T, bool)>,
@@ -420,7 +425,7 @@ where
     (opt_circuit, out_input_map, out_output_map)
 }
 
-// joins input/output maps from previous and next operation and returns joined in/out map.
+/// Joins input/output maps from previous and next operation and returns joined in/out map.
 pub fn join_input_entry_and_input_map<T>(
     input_map: &[OutputEntry<T>],
     opt_input_map: &[Option<T>],
@@ -446,7 +451,7 @@ where
     out_input_map
 }
 
-// joins input/output maps from previous and next operation and returns joined in/out map.
+/// Joins input/output maps from previous and next operation and returns joined in/out map.
 pub fn join_input_map<T>(map: &[Option<T>], next_map: &[Option<T>]) -> Vec<Option<T>>
 where
     T: Clone + Copy,
@@ -463,7 +468,7 @@ where
     out_map
 }
 
-// joins input/output maps from previous and next operation and returns joined in/out map.
+/// Joins input/output maps from previous and next operation and returns joined in/out map.
 pub fn join_output_entry_map<T>(
     map: &[OutputEntry<T>],
     next_map: &[OutputEntry<T>],
@@ -483,9 +488,9 @@ where
     out_map
 }
 
-// deduplicate clauses and clause literals
-// return new circuit and boolean value.
-// if some possible literal duplicates then returns true, otherwise return false
+/// Deduplicate clauses and clause literals. It deduplciates same clauses and literals and
+/// subclauses (part of clauses). Returns new circuit and boolean value.
+/// If some possible literal duplicates then returns true, otherwise return false.
 pub fn deduplicate_clause_circuit<T>(circuit: ClauseCircuit<T>) -> (ClauseCircuit<T>, bool)
 where
     T: Clone + Copy + Ord + PartialEq + Eq + Hash,
@@ -611,7 +616,7 @@ where
     )
 }
 
-// return optimized circuit, mapping to new inputs, mapping to new outputs
+/// Returns optimized circuit, mapping to new inputs, mapping to new outputs.
 pub fn optimize_and_dedup_clause_circuit<T>(
     circuit: ClauseCircuit<T>,
 ) -> (ClauseCircuit<T>, Vec<Option<T>>, Vec<OutputEntry<T>>)
@@ -633,7 +638,7 @@ where
     }
     (new_circuit, input_map, output_map)
 }
-
+/// Assigns and optimize and deduplicate clause circuit.
 pub fn assign_to_circuit_optimize_and_dedup<T>(
     circuit: &Circuit<T>,
     inputs: impl IntoIterator<Item = (T, bool)>,
