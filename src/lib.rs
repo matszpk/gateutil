@@ -12,6 +12,8 @@ mod dedup_clauses;
 use dedup_clauses::*;
 mod utils;
 
+// TODO: add optimization that uses database of circuits (firstly with 1 output).
+
 /// Deduplicates gates in circuit. It finds duplicates by comparing gate and its inputs.
 pub fn deduplicate<T: Clone + Copy + Ord + PartialEq + Eq>(circuit: Circuit<T>) -> Circuit<T>
 where
