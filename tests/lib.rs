@@ -489,6 +489,306 @@ fn test_join_circuits() {
             Circuit::new(2, [Gate::new_nor(0, 1)], [(0, true), (2, false)]).unwrap()
         )
     );
+    // no fill
+    assert_eq!(
+        Circuit::new(
+            9,
+            [
+                Gate::new_and(0, 1),
+                Gate::new_nimpl(2, 3),
+                Gate::new_nor(4, 5),
+                Gate::new_xor(6, 8),
+                Gate::new_nimpl(12, 7),
+            ],
+            [
+                (1, false),
+                (2, false),
+                (9, false),
+                (10, false),
+                (4, false),
+                (7, false),
+                (11, false),
+                (13, false)
+            ]
+        )
+        .unwrap(),
+        join_circuits(
+            Circuit::new(
+                4,
+                [Gate::new_and(0, 1), Gate::new_nimpl(2, 3),],
+                [(1, false), (2, false), (4, false), (5, false)]
+            )
+            .unwrap(),
+            [None, None, None, None, None],
+            Circuit::new(
+                5,
+                [
+                    Gate::new_nor(0, 1),
+                    Gate::new_xor(2, 4),
+                    Gate::new_nimpl(6, 3),
+                ],
+                [(0, false), (3, false), (5, false), (7, false)]
+            )
+            .unwrap()
+        )
+    );
+    assert_eq!(
+        Circuit::new(
+            9,
+            [
+                Gate::new_and(0, 1),
+                Gate::new_nimpl(2, 3),
+                Gate::new_nor(4, 5),
+                Gate::new_xor(6, 8),
+                Gate::new_nimpl(12, 7),
+            ],
+            [
+                (1, false),
+                (2, true),
+                (9, false),
+                (10, true),
+                (4, true),
+                (7, false),
+                (11, true),
+                (13, false)
+            ]
+        )
+        .unwrap(),
+        join_circuits(
+            Circuit::new(
+                4,
+                [Gate::new_and(0, 1), Gate::new_nimpl(2, 3),],
+                [(1, false), (2, true), (4, false), (5, true)]
+            )
+            .unwrap(),
+            [None, None, None, None, None],
+            Circuit::new(
+                5,
+                [
+                    Gate::new_nor(0, 1),
+                    Gate::new_xor(2, 4),
+                    Gate::new_nimpl(6, 3),
+                ],
+                [(0, true), (3, false), (5, true), (7, false)]
+            )
+            .unwrap()
+        )
+    );
+    // full fill
+    assert_eq!(
+        Circuit::new(
+            4,
+            [
+                Gate::new_and(0, 1),
+                Gate::new_nimpl(2, 3),
+                Gate::new_nor(5, 2),
+                Gate::new_xor(1, 2),
+                Gate::new_nimpl(7, 4),
+            ],
+            [(5, false), (4, false), (6, false), (8, false)]
+        )
+        .unwrap(),
+        join_circuits(
+            Circuit::new(
+                4,
+                [Gate::new_and(0, 1), Gate::new_nimpl(2, 3),],
+                [(1, false), (2, false), (4, false), (5, false)]
+            )
+            .unwrap(),
+            [Some(3), Some(1), Some(0), Some(2), Some(1)],
+            Circuit::new(
+                5,
+                [
+                    Gate::new_nor(0, 1),
+                    Gate::new_xor(2, 4),
+                    Gate::new_nimpl(6, 3),
+                ],
+                [(0, false), (3, false), (5, false), (7, false)]
+            )
+            .unwrap()
+        )
+    );
+    assert_eq!(
+        Circuit::new(
+            4,
+            [
+                Gate::new_and(0, 1),
+                Gate::new_nimpl(2, 3),
+                Gate::new_nimpl(5, 2),
+                Gate::new_xor(1, 2),
+                Gate::new_nor(7, 4),
+            ],
+            [(5, true), (4, true), (6, true), (8, false)]
+        )
+        .unwrap(),
+        join_circuits(
+            Circuit::new(
+                4,
+                [Gate::new_and(0, 1), Gate::new_nimpl(2, 3),],
+                [(1, true), (2, false), (4, false), (5, true)]
+            )
+            .unwrap(),
+            [Some(3), Some(1), Some(0), Some(2), Some(1)],
+            Circuit::new(
+                5,
+                [
+                    Gate::new_nor(0, 1),
+                    Gate::new_xor(2, 4),
+                    Gate::new_nimpl(6, 3),
+                ],
+                [(0, false), (3, true), (5, true), (7, false)]
+            )
+            .unwrap()
+        )
+    );
+    // full fill only in input2
+    assert_eq!(
+        Circuit::new(
+            4,
+            [
+                Gate::new_and(0, 1),
+                Gate::new_nimpl(2, 3),
+                Gate::new_nor(4, 2),
+                Gate::new_xor(4, 2),
+                Gate::new_nimpl(7, 2),
+            ],
+            [
+                (1, false),
+                (5, false),
+                (4, false),
+                (2, false),
+                (6, false),
+                (8, false)
+            ]
+        )
+        .unwrap(),
+        join_circuits(
+            Circuit::new(
+                4,
+                [Gate::new_and(0, 1), Gate::new_nimpl(2, 3),],
+                [(1, false), (2, false), (4, false), (5, false)]
+            )
+            .unwrap(),
+            [Some(2), Some(1), Some(2), Some(1), Some(1)],
+            Circuit::new(
+                5,
+                [
+                    Gate::new_nor(0, 1),
+                    Gate::new_xor(2, 4),
+                    Gate::new_nimpl(6, 3),
+                ],
+                [(0, false), (3, false), (5, false), (7, false)]
+            )
+            .unwrap()
+        )
+    );
+    assert_eq!(
+        Circuit::new(
+            4,
+            [
+                Gate::new_and(0, 1),
+                Gate::new_nimpl(2, 3),
+                Gate::new_and(4, 2),
+                Gate::new_xor(4, 2),
+                Gate::new_and(7, 2),
+            ],
+            [
+                (1, false),
+                (5, false),
+                (4, true),
+                (2, false),
+                (6, false),
+                (8, true)
+            ]
+        )
+        .unwrap(),
+        join_circuits(
+            Circuit::new(
+                4,
+                [Gate::new_and(0, 1), Gate::new_nimpl(2, 3),],
+                [(1, false), (2, true), (4, true), (5, false)]
+            )
+            .unwrap(),
+            [Some(2), Some(1), Some(2), Some(1), Some(1)],
+            Circuit::new(
+                5,
+                [
+                    Gate::new_nor(0, 1),
+                    Gate::new_xor(2, 4),
+                    Gate::new_nimpl(6, 3),
+                ],
+                [(0, false), (3, true), (5, false), (7, true)]
+            )
+            .unwrap()
+        )
+    );
+    // full fill only in output1
+    assert_eq!(
+        Circuit::new(
+            5,
+            [
+                Gate::new_and(0, 1),
+                Gate::new_nimpl(2, 3),
+                Gate::new_nor(6, 4),
+                Gate::new_xor(1, 2),
+                Gate::new_nimpl(8, 5),
+            ],
+            [(6, false), (5, false), (7, false), (9, false)]
+        )
+        .unwrap(),
+        join_circuits(
+            Circuit::new(
+                4,
+                [Gate::new_and(0, 1), Gate::new_nimpl(2, 3),],
+                [(1, false), (2, false), (4, false), (5, false)]
+            )
+            .unwrap(),
+            [Some(3), None, Some(0), Some(2), Some(1)],
+            Circuit::new(
+                5,
+                [
+                    Gate::new_nor(0, 1),
+                    Gate::new_xor(2, 4),
+                    Gate::new_nimpl(6, 3),
+                ],
+                [(0, false), (3, false), (5, false), (7, false)]
+            )
+            .unwrap()
+        )
+    );
+    assert_eq!(
+        Circuit::new(
+            5,
+            [
+                Gate::new_and(0, 1),
+                Gate::new_nimpl(2, 3),
+                Gate::new_nimpl(6, 4),
+                Gate::new_xor(1, 2),
+                Gate::new_and(8, 5),
+            ],
+            [(6, true), (5, false), (7, true), (9, false)]
+        )
+        .unwrap(),
+        join_circuits(
+            Circuit::new(
+                4,
+                [Gate::new_and(0, 1), Gate::new_nimpl(2, 3),],
+                [(1, false), (2, false), (4, true), (5, true)]
+            )
+            .unwrap(),
+            [Some(3), None, Some(0), Some(2), Some(1)],
+            Circuit::new(
+                5,
+                [
+                    Gate::new_nor(0, 1),
+                    Gate::new_xor(2, 4),
+                    Gate::new_nimpl(6, 3),
+                ],
+                [(0, false), (3, true), (5, true), (7, false)]
+            )
+            .unwrap()
+        )
+    );
 }
 
 #[test]
