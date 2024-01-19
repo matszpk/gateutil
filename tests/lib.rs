@@ -154,6 +154,193 @@ fn test_translate_inputs_rev() {
 }
 
 #[test]
+fn test_negate_inputs() {
+    assert_eq!(
+        Circuit::new(0, [], [],).unwrap(),
+        negate_inputs(Circuit::new(0, [], []).unwrap(), [])
+    );
+    // combinations of negations
+    let circuit = Circuit::new(
+        8,
+        [
+            Gate::new_and(0, 1),
+            Gate::new_nor(2, 3),
+            Gate::new_nimpl(4, 5),
+            Gate::new_xor(6, 7),
+        ],
+        [(8, false), (9, true), (10, false), (11, true)],
+    )
+    .unwrap();
+    assert_eq!(circuit.clone(), negate_inputs(circuit.clone(), []));
+    assert_eq!(
+        Circuit::new(
+            8,
+            [
+                Gate::new_nimpl(1, 0),
+                Gate::new_nimpl(2, 3),
+                Gate::new_nor(4, 5),
+                Gate::new_xor(6, 7),
+            ],
+            [(8, false), (9, true), (10, false), (11, false)]
+        )
+        .unwrap(),
+        negate_inputs(circuit.clone(), [0, 2, 4, 6])
+    );
+    assert_eq!(
+        Circuit::new(
+            8,
+            [
+                Gate::new_nimpl(0, 1),
+                Gate::new_nimpl(3, 2),
+                Gate::new_and(4, 5),
+                Gate::new_xor(6, 7),
+            ],
+            [(8, false), (9, true), (10, false), (11, false)]
+        )
+        .unwrap(),
+        negate_inputs(circuit.clone(), [1, 3, 5, 7])
+    );
+    assert_eq!(
+        Circuit::new(
+            8,
+            [
+                Gate::new_nor(0, 1),
+                Gate::new_and(2, 3),
+                Gate::new_nimpl(5, 4),
+                Gate::new_xor(6, 7),
+            ],
+            [(8, false), (9, true), (10, false), (11, true)]
+        )
+        .unwrap(),
+        negate_inputs(circuit.clone(), [0, 1, 2, 3, 4, 5, 6, 7])
+    );
+
+    // with output connected to inputs
+    let circuit = Circuit::new(
+        8,
+        [
+            Gate::new_and(0, 1),
+            Gate::new_nor(2, 3),
+            Gate::new_nimpl(4, 5),
+            Gate::new_xor(6, 7),
+        ],
+        [
+            (0, false),
+            (3, true),
+            (8, false),
+            (9, true),
+            (10, false),
+            (11, true),
+        ],
+    )
+    .unwrap();
+    assert_eq!(
+        Circuit::new(
+            8,
+            [
+                Gate::new_nimpl(0, 1),
+                Gate::new_nimpl(3, 2),
+                Gate::new_and(4, 5),
+                Gate::new_xor(6, 7),
+            ],
+            [
+                (0, false),
+                (3, false),
+                (8, false),
+                (9, true),
+                (10, false),
+                (11, false)
+            ]
+        )
+        .unwrap(),
+        negate_inputs(circuit.clone(), [1, 3, 5, 7])
+    );
+    // nested xors
+    let circuit = Circuit::new(
+        4,
+        [
+            Gate::new_and(0, 1),
+            Gate::new_and(2, 3),
+            Gate::new_nor(4, 5),
+            Gate::new_xor(0, 1),
+            Gate::new_xor(2, 3),
+            Gate::new_xor(7, 8),
+            Gate::new_and(6, 9),
+        ],
+        [(6, false), (9, false), (10, true)],
+    )
+    .unwrap();
+    assert_eq!(
+        Circuit::new(
+            4,
+            [
+                Gate::new_nimpl(1, 0),
+                Gate::new_and(2, 3),
+                Gate::new_nor(4, 5),
+                Gate::new_xor(0, 1),
+                Gate::new_xor(2, 3),
+                Gate::new_xor(7, 8),
+                Gate::new_nimpl(6, 9),
+            ],
+            [(6, false), (9, true), (10, true)],
+        )
+        .unwrap(),
+        negate_inputs(circuit.clone(), [0])
+    );
+    assert_eq!(
+        Circuit::new(
+            4,
+            [
+                Gate::new_nimpl(0, 1),
+                Gate::new_and(2, 3),
+                Gate::new_nor(4, 5),
+                Gate::new_xor(0, 1),
+                Gate::new_xor(2, 3),
+                Gate::new_xor(7, 8),
+                Gate::new_nimpl(6, 9),
+            ],
+            [(6, false), (9, true), (10, true)],
+        )
+        .unwrap(),
+        negate_inputs(circuit.clone(), [1])
+    );
+    assert_eq!(
+        Circuit::new(
+            4,
+            [
+                Gate::new_and(0, 1),
+                Gate::new_nimpl(3, 2),
+                Gate::new_nor(4, 5),
+                Gate::new_xor(0, 1),
+                Gate::new_xor(2, 3),
+                Gate::new_xor(7, 8),
+                Gate::new_nimpl(6, 9),
+            ],
+            [(6, false), (9, true), (10, true)],
+        )
+        .unwrap(),
+        negate_inputs(circuit.clone(), [2])
+    );
+    assert_eq!(
+        Circuit::new(
+            4,
+            [
+                Gate::new_nimpl(0, 1),
+                Gate::new_nimpl(2, 3),
+                Gate::new_nor(4, 5),
+                Gate::new_xor(0, 1),
+                Gate::new_xor(2, 3),
+                Gate::new_xor(7, 8),
+                Gate::new_and(6, 9),
+            ],
+            [(6, false), (9, false), (10, true)],
+        )
+        .unwrap(),
+        negate_inputs(circuit.clone(), [3, 1])
+    );
+}
+
+#[test]
 fn test_deduplicate() {
     assert_eq!(
         Circuit::new(0, [], [],).unwrap(),

@@ -95,6 +95,87 @@ where
 
 // TODO: add routines to join, split and separate subcircuit
 
+pub fn negate_inputs<T>(circuit: Circuit<T>, to_neg: impl IntoIterator<Item = T>) -> Circuit<T>
+where
+    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Default + TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    let input_len_t = circuit.input_len();
+    let input_len = usize::try_from(input_len_t).unwrap();
+    let len = circuit.len();
+    let mut negs = vec![false; input_len + len];
+    for t in to_neg {
+        negs[usize::try_from(t).unwrap()] = true;
+    }
+    let gates = circuit
+        .gates()
+        .into_iter()
+        .enumerate()
+        .map(|(i, g)| {
+            let gi0 = usize::try_from(g.i0).unwrap();
+            let gi1 = usize::try_from(g.i1).unwrap();
+            let (f_neg0, f_neg1) = match g.func {
+                GateFunc::And => (false, false),
+                GateFunc::Nor => (true, true),
+                GateFunc::Nimpl => (false, true),
+                GateFunc::Xor => (false, false),
+            };
+            let neg0 = negs[gi0] ^ f_neg0;
+            let neg1 = negs[gi1] ^ f_neg1;
+            match g.func {
+                GateFunc::And | GateFunc::Nor | GateFunc::Nimpl => {
+                    if neg0 {
+                        if neg1 {
+                            Gate {
+                                i0: g.i0,
+                                i1: g.i1,
+                                func: GateFunc::Nor,
+                            }
+                        } else {
+                            Gate {
+                                i0: g.i1,
+                                i1: g.i0,
+                                func: GateFunc::Nimpl,
+                            }
+                        }
+                    } else {
+                        if neg1 {
+                            Gate {
+                                i0: g.i0,
+                                i1: g.i1,
+                                func: GateFunc::Nimpl,
+                            }
+                        } else {
+                            Gate {
+                                i0: g.i0,
+                                i1: g.i1,
+                                func: GateFunc::And,
+                            }
+                        }
+                    }
+                }
+                GateFunc::Xor => {
+                    negs[input_len + i] ^= neg0 ^ neg1;
+                    Gate {
+                        i0: g.i0,
+                        i1: g.i1,
+                        func: GateFunc::Xor,
+                    }
+                }
+            }
+        })
+        .collect::<Vec<_>>();
+    let outputs = circuit
+        .outputs()
+        .into_iter()
+        .map(|(o, n)| (*o, n ^ negs[usize::try_from(*o).unwrap()]))
+        .collect::<Vec<_>>();
+    Circuit::new(input_len_t, gates, outputs).unwrap()
+}
+
 /// Deduplicates gates in circuit. It finds duplicates by comparing gate and its inputs.
 pub fn deduplicate<T: Clone + Copy + Ord + PartialEq + Eq>(circuit: Circuit<T>) -> Circuit<T>
 where
