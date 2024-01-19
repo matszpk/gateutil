@@ -374,6 +374,41 @@ fn test_join_circuits() {
             Circuit::new(2, [Gate::new_nor(0, 1)], [(2, false)]).unwrap()
         )
     );
+    // with input2 negation
+    assert_eq!(
+        Circuit::new(
+            3,
+            [Gate::new_and(0, 1), Gate::new_nimpl(3, 2),],
+            [(4, false)]
+        )
+        .unwrap(),
+        join_circuits(
+            Circuit::new(2, [Gate::new_and(0, 1)], [(2, true)]).unwrap(),
+            [Some(0), None],
+            Circuit::new(2, [Gate::new_nor(0, 1)], [(2, false)]).unwrap()
+        )
+    );
+    assert_eq!(
+        Circuit::new(
+            3,
+            [Gate::new_and(0, 1), Gate::new_nimpl(3, 2),],
+            [(4, false)]
+        )
+        .unwrap(),
+        join_circuits(
+            Circuit::new(2, [Gate::new_and(0, 1)], [(2, true)]).unwrap(),
+            [None, Some(0)],
+            Circuit::new(2, [Gate::new_nor(0, 1)], [(2, false)]).unwrap()
+        )
+    );
+    assert_eq!(
+        Circuit::new(2, [Gate::new_and(0, 1), Gate::new_and(2, 2),], [(3, false)]).unwrap(),
+        join_circuits(
+            Circuit::new(2, [Gate::new_and(0, 1)], [(2, true)]).unwrap(),
+            [Some(0), Some(0)],
+            Circuit::new(2, [Gate::new_nor(0, 1)], [(2, false)]).unwrap()
+        )
+    );
 }
 
 #[test]
