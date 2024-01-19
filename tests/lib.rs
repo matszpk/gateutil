@@ -789,6 +789,47 @@ fn test_join_circuits() {
             .unwrap()
         )
     );
+    // no full fill
+    assert_eq!(
+        Circuit::new(
+            5,
+            [
+                Gate::new_and(0, 1),
+                Gate::new_nimpl(2, 3),
+                Gate::new_nor(5, 2),
+                Gate::new_xor(5, 2),
+                Gate::new_nimpl(8, 4),
+            ],
+            [
+                (1, false),
+                (6, false),
+                (5, false),
+                (4, false),
+                (7, false),
+                (9, false)
+            ]
+        )
+        .unwrap(),
+        join_circuits(
+            Circuit::new(
+                4,
+                [Gate::new_and(0, 1), Gate::new_nimpl(2, 3),],
+                [(1, false), (2, false), (4, false), (5, false)]
+            )
+            .unwrap(),
+            [Some(2), Some(1), Some(2), None, Some(1)],
+            Circuit::new(
+                5,
+                [
+                    Gate::new_nor(0, 1),
+                    Gate::new_xor(2, 4),
+                    Gate::new_nimpl(6, 3),
+                ],
+                [(0, false), (3, false), (5, false), (7, false)]
+            )
+            .unwrap()
+        )
+    );
 }
 
 #[test]
