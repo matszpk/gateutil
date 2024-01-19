@@ -291,7 +291,12 @@ where
         .enumerate()
         .filter_map(|(i, (x, n))| {
             if !used_outputs1[i] {
-                Some((*x, *n))
+                let x = if *x >= input1_len_t {
+                    T::try_from(usize::try_from(*x).unwrap() + input_len - input1_len).unwrap()
+                } else {
+                    *x
+                };
+                Some((x, *n))
             } else {
                 None
             }
