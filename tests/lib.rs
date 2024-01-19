@@ -351,6 +351,19 @@ fn test_join_circuits() {
         )
     );
     assert_eq!(
+        Circuit::new(
+            4,
+            [Gate::new_and(0, 1), Gate::new_nor(2, 3),],
+            [(4, false), (5, false)]
+        )
+        .unwrap(),
+        join_circuits(
+            Circuit::new(2, [Gate::new_and(0, 1)], [(2, false)]).unwrap(),
+            [None, None],
+            Circuit::new(2, [Gate::new_nor(0, 1)], [(2, false)]).unwrap()
+        )
+    );
+    assert_eq!(
         Circuit::new(3, [Gate::new_and(0, 1), Gate::new_nor(3, 2),], [(4, false)]).unwrap(),
         join_circuits(
             Circuit::new(2, [Gate::new_and(0, 1)], [(2, false)]).unwrap(),
@@ -375,6 +388,19 @@ fn test_join_circuits() {
         )
     );
     // with input2 negation
+    assert_eq!(
+        Circuit::new(
+            4,
+            [Gate::new_and(0, 1), Gate::new_nor(2, 3),],
+            [(4, true), (5, false)]
+        )
+        .unwrap(),
+        join_circuits(
+            Circuit::new(2, [Gate::new_and(0, 1)], [(2, true)]).unwrap(),
+            [None, None],
+            Circuit::new(2, [Gate::new_nor(0, 1)], [(2, false)]).unwrap()
+        )
+    );
     assert_eq!(
         Circuit::new(
             3,
@@ -407,6 +433,60 @@ fn test_join_circuits() {
             Circuit::new(2, [Gate::new_and(0, 1)], [(2, true)]).unwrap(),
             [Some(0), Some(0)],
             Circuit::new(2, [Gate::new_nor(0, 1)], [(2, false)]).unwrap()
+        )
+    );
+    // with connected inputs to outputs
+    assert_eq!(
+        Circuit::new(
+            3,
+            [Gate::new_and(0, 1), Gate::new_nor(1, 2),],
+            [(3, false), (1, true), (4, false)]
+        )
+        .unwrap(),
+        join_circuits(
+            Circuit::new(2, [Gate::new_and(0, 1)], [(1, false), (2, false)]).unwrap(),
+            [Some(0), None],
+            Circuit::new(2, [Gate::new_nor(0, 1)], [(0, true), (2, false)]).unwrap()
+        )
+    );
+    assert_eq!(
+        Circuit::new(
+            3,
+            [Gate::new_and(0, 1), Gate::new_nor(3, 2),],
+            [(1, false), (3, true), (4, false)]
+        )
+        .unwrap(),
+        join_circuits(
+            Circuit::new(2, [Gate::new_and(0, 1)], [(1, false), (2, false)]).unwrap(),
+            [Some(1), None],
+            Circuit::new(2, [Gate::new_nor(0, 1)], [(0, true), (2, false)]).unwrap()
+        )
+    );
+    // with connected inputs to outputs (negs)
+    assert_eq!(
+        Circuit::new(
+            3,
+            [Gate::new_and(0, 1), Gate::new_nimpl(1, 2),],
+            [(3, false), (1, false), (4, false)]
+        )
+        .unwrap(),
+        join_circuits(
+            Circuit::new(2, [Gate::new_and(0, 1)], [(1, true), (2, false)]).unwrap(),
+            [Some(0), None],
+            Circuit::new(2, [Gate::new_nor(0, 1)], [(0, true), (2, false)]).unwrap()
+        )
+    );
+    assert_eq!(
+        Circuit::new(
+            3,
+            [Gate::new_and(0, 1), Gate::new_nimpl(3, 2),],
+            [(1, false), (3, false), (4, false)]
+        )
+        .unwrap(),
+        join_circuits(
+            Circuit::new(2, [Gate::new_and(0, 1)], [(1, false), (2, true)]).unwrap(),
+            [Some(1), None],
+            Circuit::new(2, [Gate::new_nor(0, 1)], [(0, true), (2, false)]).unwrap()
         )
     );
 }
