@@ -93,6 +93,8 @@ where
     translate_inputs(circuit, &out)
 }
 
+// TODO: add routines to join, split and separate subcircuit
+
 /// Deduplicates gates in circuit. It finds duplicates by comparing gate and its inputs.
 pub fn deduplicate<T: Clone + Copy + Ord + PartialEq + Eq>(circuit: Circuit<T>) -> Circuit<T>
 where
