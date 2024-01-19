@@ -2,6 +2,78 @@ use gatesim::*;
 use gateutil::*;
 
 #[test]
+fn test_translate_inputs() {
+    assert_eq!(
+        Circuit::new(0, [], [],).unwrap(),
+        translate_inputs::<u32, u32>(Circuit::new(0, [], []).unwrap(), &[])
+    );
+    assert_eq!(
+        Circuit::new(
+            3,
+            [
+                Gate::new_xor(2, 0),
+                Gate::new_xor(1, 3),
+                Gate::new_and(1, 3),
+                Gate::new_and(2, 0),
+                Gate::new_nor(5, 6),
+            ],
+            [(4, false), (7, true)],
+        )
+        .unwrap(),
+        translate_inputs::<u32, u32>(
+            Circuit::new(
+                3,
+                [
+                    Gate::new_xor(0, 1),
+                    Gate::new_xor(2, 3),
+                    Gate::new_and(2, 3),
+                    Gate::new_and(0, 1),
+                    Gate::new_nor(5, 6),
+                ],
+                [(4, false), (7, true)],
+            )
+            .unwrap(),
+            &[2, 0, 1]
+        )
+    );
+    assert_eq!(
+        Circuit::new(
+            4,
+            [
+                Gate::new_xor(2, 0),
+                Gate::new_xor(3, 1),
+                Gate::new_nor(2, 0),
+                Gate::new_nor(3, 1),
+                Gate::new_and(4, 5),
+                Gate::new_and(6, 7),
+                Gate::new_nimpl(8, 9),
+                Gate::new_nimpl(9, 10),
+            ],
+            [(11, true)],
+        )
+        .unwrap(),
+        translate_inputs::<u32, u32>(
+            Circuit::new(
+                4,
+                [
+                    Gate::new_xor(0, 1),
+                    Gate::new_xor(2, 3),
+                    Gate::new_nor(0, 1),
+                    Gate::new_nor(2, 3),
+                    Gate::new_and(4, 5),
+                    Gate::new_and(6, 7),
+                    Gate::new_nimpl(8, 9),
+                    Gate::new_nimpl(9, 10),
+                ],
+                [(11, true)],
+            )
+            .unwrap(),
+            &[2, 0, 3, 1]
+        )
+    );
+}
+
+#[test]
 fn test_deduplicate() {
     assert_eq!(
         Circuit::new(0, [], [],).unwrap(),

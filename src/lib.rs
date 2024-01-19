@@ -14,6 +14,44 @@ mod utils;
 
 // TODO: add optimization that uses database of circuits (firstly with 1 output).
 
+pub fn translate_inputs<T, U>(circuit: Circuit<T>, trans: &[U]) -> Circuit<T>
+where
+    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Default + TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+    U: Clone + Copy,
+    T: TryFrom<U>,
+    <T as TryFrom<U>>::Error: Debug,
+{
+    let input_len_t = circuit.input_len();
+    let input_len = usize::try_from(input_len_t).unwrap();
+    assert_eq!(input_len, trans.len());
+    let gates = circuit
+        .gates()
+        .into_iter()
+        .map(|g| {
+            let t0 = if g.i0 < input_len_t {
+                T::try_from(trans[usize::try_from(g.i0).unwrap()]).unwrap()
+            } else {
+                g.i0
+            };
+            let t1 = if g.i1 < input_len_t {
+                T::try_from(trans[usize::try_from(g.i1).unwrap()]).unwrap()
+            } else {
+                g.i1
+            };
+            Gate {
+                i0: t0,
+                i1: t1,
+                func: g.func,
+            }
+        })
+        .collect::<Vec<_>>();
+    Circuit::new(input_len_t, gates, circuit.outputs().into_iter().copied()).unwrap()
+}
+
 /// Deduplicates gates in circuit. It finds duplicates by comparing gate and its inputs.
 pub fn deduplicate<T: Clone + Copy + Ord + PartialEq + Eq>(circuit: Circuit<T>) -> Circuit<T>
 where
