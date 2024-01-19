@@ -341,6 +341,42 @@ fn test_negate_inputs() {
 }
 
 #[test]
+fn test_join_circuits() {
+    assert_eq!(
+        Circuit::new(0, [], [],).unwrap(),
+        join_circuits(
+            Circuit::new(0, [], []).unwrap(),
+            [],
+            Circuit::new(0, [], []).unwrap()
+        )
+    );
+    assert_eq!(
+        Circuit::new(3, [Gate::new_and(0, 1), Gate::new_nor(3, 2),], [(4, false)]).unwrap(),
+        join_circuits(
+            Circuit::new(2, [Gate::new_and(0, 1)], [(2, false)]).unwrap(),
+            [Some(0), None],
+            Circuit::new(2, [Gate::new_nor(0, 1)], [(2, false)]).unwrap()
+        )
+    );
+    assert_eq!(
+        Circuit::new(3, [Gate::new_and(0, 1), Gate::new_nor(2, 3),], [(4, false)]).unwrap(),
+        join_circuits(
+            Circuit::new(2, [Gate::new_and(0, 1)], [(2, false)]).unwrap(),
+            [None, Some(0)],
+            Circuit::new(2, [Gate::new_nor(0, 1)], [(2, false)]).unwrap()
+        )
+    );
+    assert_eq!(
+        Circuit::new(2, [Gate::new_and(0, 1), Gate::new_nor(2, 2),], [(3, false)]).unwrap(),
+        join_circuits(
+            Circuit::new(2, [Gate::new_and(0, 1)], [(2, false)]).unwrap(),
+            [Some(0), Some(0)],
+            Circuit::new(2, [Gate::new_nor(0, 1)], [(2, false)]).unwrap()
+        )
+    );
+}
+
+#[test]
 fn test_deduplicate() {
     assert_eq!(
         Circuit::new(0, [], [],).unwrap(),
