@@ -20,7 +20,7 @@ fn test_translate_inputs() {
             [(4, false), (7, true)],
         )
         .unwrap(),
-        translate_inputs::<u32, u32>(
+        translate_inputs(
             Circuit::new(
                 3,
                 [
@@ -52,7 +52,7 @@ fn test_translate_inputs() {
             [(11, true)],
         )
         .unwrap(),
-        translate_inputs::<u32, u32>(
+        translate_inputs(
             Circuit::new(
                 4,
                 [
@@ -69,6 +69,85 @@ fn test_translate_inputs() {
             )
             .unwrap(),
             &[2, 0, 3, 1]
+        )
+    );
+    assert_eq!(
+        Circuit::new(
+            4,
+            [
+                Gate::new_xor(2, 0),
+                Gate::new_xor(1, 3),
+                Gate::new_nor(2, 0),
+                Gate::new_nor(1, 3),
+                Gate::new_and(4, 5),
+                Gate::new_and(6, 7),
+                Gate::new_nimpl(8, 9),
+                Gate::new_nimpl(9, 10),
+            ],
+            [(11, true)],
+        )
+        .unwrap(),
+        translate_inputs(
+            Circuit::new(
+                4,
+                [
+                    Gate::new_xor(0, 1),
+                    Gate::new_xor(2, 3),
+                    Gate::new_nor(0, 1),
+                    Gate::new_nor(2, 3),
+                    Gate::new_and(4, 5),
+                    Gate::new_and(6, 7),
+                    Gate::new_nimpl(8, 9),
+                    Gate::new_nimpl(9, 10),
+                ],
+                [(11, true)],
+            )
+            .unwrap(),
+            &[2, 0, 1, 3]
+        )
+    );
+}
+
+#[test]
+fn test_reverse_trans() {
+    assert_eq!(vec![1, 2, 0, 3], reverse_trans([2, 0, 1, 3]));
+}
+
+#[test]
+fn test_translate_inputs_rev() {
+    assert_eq!(
+        Circuit::new(
+            4,
+            [
+                Gate::new_xor(1, 2),
+                Gate::new_xor(0, 3),
+                Gate::new_nor(1, 2),
+                Gate::new_nor(0, 3),
+                Gate::new_and(4, 5),
+                Gate::new_and(6, 7),
+                Gate::new_nimpl(8, 9),
+                Gate::new_nimpl(9, 10),
+            ],
+            [(11, true)],
+        )
+        .unwrap(),
+        translate_inputs_rev(
+            Circuit::new(
+                4,
+                [
+                    Gate::new_xor(0, 1),
+                    Gate::new_xor(2, 3),
+                    Gate::new_nor(0, 1),
+                    Gate::new_nor(2, 3),
+                    Gate::new_and(4, 5),
+                    Gate::new_and(6, 7),
+                    Gate::new_nimpl(8, 9),
+                    Gate::new_nimpl(9, 10),
+                ],
+                [(11, true)],
+            )
+            .unwrap(),
+            [2, 0, 1, 3]
         )
     );
 }

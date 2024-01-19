@@ -52,6 +52,47 @@ where
     Circuit::new(input_len_t, gates, circuit.outputs().into_iter().copied()).unwrap()
 }
 
+pub fn reverse_trans<T>(trans: impl IntoIterator<Item = T>) -> Vec<T>
+where
+    T: Clone + Copy,
+    T: Default + TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    let mut out = vec![];
+    for (i, idx) in trans.into_iter().enumerate() {
+        let idx = usize::try_from(idx).unwrap();
+        if idx >= out.len() {
+            out.resize(idx + 1, T::default());
+        }
+        out[idx] = T::try_from(i).unwrap();
+    }
+    out
+}
+
+pub fn translate_inputs_rev<T, U>(
+    circuit: Circuit<T>,
+    trans: impl IntoIterator<Item = U>,
+) -> Circuit<T>
+where
+    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Default + TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+    U: Clone + Copy,
+    T: TryFrom<U>,
+    <T as TryFrom<U>>::Error: Debug,
+    U: Default + TryFrom<usize>,
+    <U as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<U>,
+    <usize as TryFrom<U>>::Error: Debug,
+{
+    let out = reverse_trans(trans);
+    translate_inputs(circuit, &out)
+}
+
 /// Deduplicates gates in circuit. It finds duplicates by comparing gate and its inputs.
 pub fn deduplicate<T: Clone + Copy + Ord + PartialEq + Eq>(circuit: Circuit<T>) -> Circuit<T>
 where
