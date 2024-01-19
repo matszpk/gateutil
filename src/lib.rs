@@ -108,6 +108,7 @@ where
     let len = circuit.len();
     let mut negs = vec![false; input_len + len];
     for t in to_neg {
+        assert!(t < input_len_t);
         negs[usize::try_from(t).unwrap()] = true;
     }
     let gates = circuit
