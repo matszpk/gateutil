@@ -245,6 +245,7 @@ where
         })
         .collect::<Vec<_>>();
 
+    let new_total1_len = input_len + circuit1_len;
     let gates = circuit1
         .gates()
         .into_iter()
@@ -267,14 +268,12 @@ where
         })
         .chain(circuit2.gates().into_iter().map(|g| {
             let gi0 = if g.i0 >= input2_len_t {
-                T::try_from(usize::try_from(g.i0).unwrap() - input2_len + input_len + circuit1_len)
-                    .unwrap()
+                T::try_from(usize::try_from(g.i0).unwrap() - input2_len + new_total1_len).unwrap()
             } else {
                 input2_map[usize::try_from(g.i0).unwrap()]
             };
             let gi1 = if g.i1 >= input2_len_t {
-                T::try_from(usize::try_from(g.i1).unwrap() - input2_len + input_len + circuit1_len)
-                    .unwrap()
+                T::try_from(usize::try_from(g.i1).unwrap() - input2_len + new_total1_len).unwrap()
             } else {
                 input2_map[usize::try_from(g.i1).unwrap()]
             };
@@ -292,7 +291,7 @@ where
         .filter_map(|(i, (x, n))| {
             if !used_outputs1[i] {
                 let x = if *x >= input1_len_t {
-                    T::try_from(usize::try_from(*x).unwrap() + input_len - input1_len).unwrap()
+                    T::try_from(usize::try_from(*x).unwrap() + unused_input2_count).unwrap()
                 } else {
                     *x
                 };
@@ -303,8 +302,7 @@ where
         })
         .chain(circuit2.outputs().into_iter().map(|(x, n)| {
             let out = if *x >= input2_len_t {
-                T::try_from(usize::try_from(*x).unwrap() - input2_len + input_len + circuit1_len)
-                    .unwrap()
+                T::try_from(usize::try_from(*x).unwrap() - input2_len + new_total1_len).unwrap()
             } else {
                 input2_map[usize::try_from(*x).unwrap()]
             };
