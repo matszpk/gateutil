@@ -332,7 +332,7 @@ where
     while !seq.is_empty() {
         let mut new_seq: Vec<(Circuit<T>, Vec<Option<T>>)> = vec![];
         let seq_len = seq.len();
-        for i in 0..(seq_len >> 1) {
+        for i in 0..((seq_len + 1) >> 1) {
             let i0 = i << 1;
             let i1 = i0 + 1;
             if i0 < seq_len {
