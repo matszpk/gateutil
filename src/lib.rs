@@ -313,52 +313,58 @@ where
     Circuit::new(T::try_from(input_len).unwrap(), gates, outputs).unwrap()
 }
 
-pub fn join_circuits<T>(
+pub fn join_circuits_seq<T>(
     seq: impl IntoIterator<Item = (Circuit<T>, impl IntoIterator<Item = Option<T>>)>,
     last: Circuit<T>,
 ) -> Circuit<T>
 where
-    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Clone + Copy + Ord + PartialEq + Eq + Debug,
     T: Default + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
     usize: TryFrom<T>,
     <usize as TryFrom<T>>::Error: Debug,
 {
+    println!("Join start");
     let mut seq = seq
         .into_iter()
         .map(|(c, t)| (c, t.into_iter().collect::<Vec<_>>()))
         .collect::<Vec<_>>();
     let mut last = last;
     while !seq.is_empty() {
+        println!("Join phase: {}", seq.len());
         let mut new_seq: Vec<(Circuit<T>, Vec<Option<T>>)> = vec![];
         let seq_len = seq.len();
         for i in 0..((seq_len + 1) >> 1) {
             let i0 = i << 1;
             let i1 = i0 + 1;
             if i0 < seq_len {
-                let mut t = seq[i0].1.clone();
-                let old_outputs_len = seq[i0].0.outputs().len();
-                let joined = if i1 < seq_len {
-                    join_two_circuits(seq[i0].0.clone(), seq[i0].1.clone(), seq[i1].0.clone())
-                } else {
-                    join_two_circuits(seq[i0].0.clone(), seq[i0].1.clone(), last.clone())
-                };
-                let add_t = joined.outputs().len() - old_outputs_len;
-                // fix first_from for next joining - because outputs from previous circuit
-                // can be prepended to joined.
-                for xopt in &mut t {
-                    if let Some(x) = xopt {
-                        *x = T::try_from(usize::try_from(*x).unwrap() + add_t).unwrap();
+                let new_input_len = if i1 < seq_len {
+                    let old_outputs_len = seq[i1].0.outputs().len();
+                    println!("Join {}: old_outputs_len={}", i0, old_outputs_len);
+                    let joined =
+                        join_two_circuits(seq[i0].0.clone(), seq[i0].1.clone(), seq[i1].0.clone());
+                    println!("Circuit: {:?}", joined);
+                    // fix first_from for next joining - because outputs from previous circuit
+                    // can be prepended to joined.
+                    let add_t = joined.outputs().len() - old_outputs_len;
+                    println!("Join {}: add_t={}", i0, add_t);
+                    let mut t = seq[i1].1.clone();
+                    for xopt in &mut t {
+                        if let Some(x) = xopt {
+                            *x = T::try_from(usize::try_from(*x).unwrap() + add_t).unwrap();
+                        }
                     }
-                }
+                    println!("Join {}: t={:?}", i0, t);
+                    let input_len = joined.input_len();
+                    new_seq.push((joined, t));
+                    input_len
+                } else {
+                    last = join_two_circuits(seq[i0].0.clone(), seq[i0].1.clone(), last.clone());
+                    last.input_len()
+                };
                 if let Some((_, new_t)) = new_seq.last_mut() {
                     // fix previous new first_from
-                    new_t.resize(usize::try_from(joined.input_len()).unwrap(), None)
-                }
-                if i1 < seq_len {
-                    new_seq.push((joined, t));
-                } else {
-                    last = joined;
+                    new_t.resize(usize::try_from(new_input_len).unwrap(), None)
                 }
             }
         }

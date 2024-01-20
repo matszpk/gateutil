@@ -833,6 +833,115 @@ fn test_join_two_circuits() {
 }
 
 #[test]
+fn test_join_circuits_seq() {
+    assert_eq!(
+        Circuit::new(0, [], [],).unwrap(),
+        join_circuits_seq(
+            Vec::<(Circuit<_>, Vec<Option<_>>)>::new(),
+            Circuit::new(0, [], []).unwrap()
+        )
+    );
+    assert_eq!(
+        Circuit::new(2, [Gate::new_and(0, 1)], [(1, false), (2, true)]).unwrap(),
+        join_circuits_seq(
+            Vec::<(Circuit<_>, Vec<Option<_>>)>::new(),
+            Circuit::new(2, [Gate::new_and(0, 1)], [(1, false), (2, true)]).unwrap(),
+        )
+    );
+    assert_eq!(
+        Circuit::new(
+            5,
+            [
+                Gate::new_and(0, 1),
+                Gate::new_nimpl(2, 3),
+                Gate::new_nor(6, 4),
+                Gate::new_xor(1, 2),
+                Gate::new_nimpl(8, 5),
+            ],
+            [(6, false), (5, false), (7, false), (9, false)]
+        )
+        .unwrap(),
+        join_circuits_seq(
+            [(
+                Circuit::new(
+                    4,
+                    [Gate::new_and(0, 1), Gate::new_nimpl(2, 3),],
+                    [(1, false), (2, false), (4, false), (5, false)]
+                )
+                .unwrap(),
+                [Some(3), None, Some(0), Some(2), Some(1)]
+            )],
+            Circuit::new(
+                5,
+                [
+                    Gate::new_nor(0, 1),
+                    Gate::new_xor(2, 4),
+                    Gate::new_nimpl(6, 3),
+                ],
+                [(0, false), (3, false), (5, false), (7, false)]
+            )
+            .unwrap()
+        )
+    );
+    // three
+    assert_eq!(
+        Circuit::new(
+            6,
+            [
+                Gate::new_and(0, 1),
+                Gate::new_nimpl(2, 3),
+                Gate::new_nor(7, 4),
+                Gate::new_xor(1, 2),
+                Gate::new_nimpl(9, 6),
+                Gate::new_and(10, 7),
+                Gate::new_nor(5, 6),
+                Gate::new_nor(12, 8),
+                Gate::new_nimpl(11, 5),
+            ],
+            [(10, false), (8, false), (13, false), (14, false)]
+        )
+        .unwrap(),
+        join_circuits_seq(
+            [
+                (
+                    Circuit::new(
+                        4,
+                        [Gate::new_and(0, 1), Gate::new_nimpl(2, 3),],
+                        [(1, false), (2, false), (4, false), (5, false)]
+                    )
+                    .unwrap(),
+                    [Some(3), None, Some(0), Some(2), Some(1)]
+                ),
+                (
+                    Circuit::new(
+                        5,
+                        [
+                            Gate::new_nor(0, 1),
+                            Gate::new_xor(2, 4),
+                            Gate::new_nimpl(6, 3),
+                        ],
+                        [(0, false), (3, false), (5, false), (7, false)]
+                    )
+                    .unwrap(),
+                    [Some(3), Some(0), None, Some(2), Some(1)]
+                ),
+            ],
+            Circuit::new(
+                5,
+                [
+                    Gate::new_and(0, 1),
+                    Gate::new_nor(2, 4),
+                    Gate::new_nor(6, 3),
+                    Gate::new_nimpl(5, 2),
+                ],
+                [(0, false), (3, false), (7, false), (8, false)]
+            )
+            .unwrap()
+        )
+    );
+}
+
+#[test]
 fn test_deduplicate() {
     assert_eq!(
         Circuit::new(0, [], [],).unwrap(),
