@@ -313,64 +313,182 @@ where
     Circuit::new(T::try_from(input_len).unwrap(), gates, outputs).unwrap()
 }
 
+// structure seq: iterator over:
+// tuple.0 - circuit to join
+// tuple.1 - from_first: key - input index for next circuit
+//                       value - option of cumulative output index for current circuit
+// cumulative index for current circuit - sum + output index for current circuit
+// where sum is sum of outputs from previous circuits
 pub fn join_circuits_seq<T>(
     seq: impl IntoIterator<Item = (Circuit<T>, impl IntoIterator<Item = Option<T>>)>,
     last: Circuit<T>,
 ) -> Circuit<T>
 where
-    T: Clone + Copy + Ord + PartialEq + Eq + Debug,
+    T: Clone + Copy + Ord + PartialEq + Eq,
     T: Default + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
     usize: TryFrom<T>,
     <usize as TryFrom<T>>::Error: Debug,
 {
-    println!("Join start");
-    let mut seq = seq
+    let seq = seq
         .into_iter()
         .map(|(c, t)| (c, t.into_iter().collect::<Vec<_>>()))
         .collect::<Vec<_>>();
-    let mut last = last;
-    while !seq.is_empty() {
-        println!("Join phase: {}", seq.len());
-        let mut new_seq: Vec<(Circuit<T>, Vec<Option<T>>)> = vec![];
-        let seq_len = seq.len();
-        for i in 0..((seq_len + 1) >> 1) {
-            let i0 = i << 1;
-            let i1 = i0 + 1;
-            if i0 < seq_len {
-                let new_input_len = if i1 < seq_len {
-                    let old_outputs_len = seq[i1].0.outputs().len();
-                    println!("Join {}: old_outputs_len={}", i0, old_outputs_len);
-                    let joined =
-                        join_two_circuits(seq[i0].0.clone(), seq[i0].1.clone(), seq[i1].0.clone());
-                    println!("Circuit: {:?}", joined);
-                    // fix first_from for next joining - because outputs from previous circuit
-                    // can be prepended to joined.
-                    let add_t = joined.outputs().len() - old_outputs_len;
-                    println!("Join {}: add_t={}", i0, add_t);
-                    let mut t = seq[i1].1.clone();
-                    for xopt in &mut t {
-                        if let Some(x) = xopt {
-                            *x = T::try_from(usize::try_from(*x).unwrap() + add_t).unwrap();
-                        }
-                    }
-                    println!("Join {}: t={:?}", i0, t);
-                    let input_len = joined.input_len();
-                    new_seq.push((joined, t));
-                    input_len
-                } else {
-                    last = join_two_circuits(seq[i0].0.clone(), seq[i0].1.clone(), last.clone());
-                    last.input_len()
-                };
-                if let Some((_, new_t)) = new_seq.last_mut() {
-                    // fix previous new first_from
-                    new_t.resize(usize::try_from(new_input_len).unwrap(), None)
-                }
+    if seq.is_empty() {
+        return last;
+    }
+    let input1_len = usize::try_from(seq.first().unwrap().0.input_len()).unwrap();
+    let total_input_len = input1_len
+        + seq
+            .iter()
+            .map(|(_, t)| t.iter().filter(|x| x.is_some()).count())
+            .sum::<usize>();
+    let total_gate_num = seq.iter().map(|(c, _)| c.len()).sum::<usize>();
+    // generate used_outputs for all circuits
+    let total_output_num = seq.iter().map(|(c, _)| c.outputs().len()).sum::<usize>();
+    let used_outputs = {
+        let mut used_outputs = vec![false; total_output_num];
+        let mut output_count = 0;
+        for (c, t) in &seq {
+            output_count += c.outputs().len();
+            for o in t.iter().filter_map(|x| *x) {
+                let o = usize::try_from(o).unwrap();
+                assert!(o < output_count);
+                used_outputs[o] = true;
             }
         }
-        seq = new_seq;
+        used_outputs
+    };
+    // inout_trans - translation map for all inputs
+    let mut input_trans = (0..input1_len)
+        .map(|x| T::try_from(x).unwrap())
+        .collect::<Vec<_>>();
+    input_trans.reserve(total_input_len - input1_len);
+    // total outputs from first circuit to last
+    let mut outputs = Vec::<(T, bool)>::with_capacity(total_output_num);
+    let mut gates = Vec::with_capacity(total_gate_num);
+    let mut input_index = 0;
+    let mut gate_index = 0;
+    for i in 0..seq.len() {
+        let circuit1 = &seq[i].0;
+        let circuit2 = if i + 1 < seq.len() {
+            &seq[i + 1].0
+        } else {
+            &last
+        };
+        let from_first = &seq[i].1;
+
+        let input2_len_t = circuit2.input_len();
+        let input2_len = usize::try_from(input2_len_t).unwrap();
+        if i == 0 {
+            let input1_len_t = circuit1.input_len();
+            let input1_len = usize::try_from(input1_len_t).unwrap();
+            outputs.extend(circuit1.outputs().iter().map(|(xt, n)| {
+                let x = usize::try_from(*xt).unwrap();
+                let x = if *xt >= input1_len_t {
+                    T::try_from(x - input1_len + gate_index + total_input_len).unwrap()
+                } else {
+                    *xt
+                };
+                (x, *n)
+            }));
+
+            gates.extend(circuit1.gates().iter().map(|g| {
+                let gi0 = if g.i0 >= input1_len_t {
+                    T::try_from(usize::try_from(g.i0).unwrap() - input1_len + total_input_len)
+                        .unwrap()
+                } else {
+                    g.i0
+                };
+                let gi1 = if g.i1 >= input1_len_t {
+                    T::try_from(usize::try_from(g.i1).unwrap() - input1_len + total_input_len)
+                        .unwrap()
+                } else {
+                    g.i1
+                };
+                Gate {
+                    i0: gi0,
+                    i1: gi1,
+                    func: g.func,
+                }
+            }));
+            gate_index = gates.len();
+            input_index += input1_len;
+        }
+        let mut unused_input2_count = 0;
+        let joined_input2_map = from_first
+            .into_iter()
+            .map(|idx| {
+                if let Some(idx) = idx {
+                    let idxu = usize::try_from(*idx).unwrap();
+                    // assign output index from circuit1 to used input from circuit2
+                    (idxu, true)
+                } else {
+                    let idx = unused_input2_count;
+                    unused_input2_count += 1;
+                    // assign unused index to unused input from circuit2
+                    (idx, false)
+                }
+            })
+            .collect::<Vec<_>>();
+        // negations to inputs from circuit2
+        let negs = joined_input2_map
+            .iter()
+            .enumerate()
+            .filter_map(|(i, (idx, joined))| {
+                if *joined && outputs[*idx].1 {
+                    Some(T::try_from(i).unwrap())
+                } else {
+                    None
+                }
+            });
+        let circuit2 = negate_inputs(circuit2.clone(), negs);
+        // make input2_map - to translate inputs from circuit2
+        input_trans.extend(joined_input2_map.into_iter().map(|(idx, joined)| {
+            if joined {
+                outputs[idx].0
+            } else {
+                T::try_from(input_index + idx).unwrap()
+            }
+        }));
+        outputs.extend(circuit2.outputs().iter().map(|(x, n)| {
+            let x = usize::try_from(*x).unwrap();
+            let x = if x >= input2_len {
+                T::try_from(x - input2_len + gate_index + total_input_len).unwrap()
+            } else {
+                input_trans[x + input_index]
+            };
+            (x, *n)
+        }));
+        gates.extend(circuit2.gates().iter().map(|g| {
+            let gi0 = if g.i0 >= input2_len_t {
+                T::try_from(usize::try_from(g.i0).unwrap() - input2_len + total_input_len).unwrap()
+            } else {
+                let iin = usize::try_from(g.i0).unwrap();
+                input_trans[iin + input_index]
+            };
+            let gi1 = if g.i1 >= input2_len_t {
+                T::try_from(usize::try_from(g.i1).unwrap() - input2_len + total_input_len).unwrap()
+            } else {
+                let iin = usize::try_from(g.i0).unwrap();
+                input_trans[iin + input_index]
+            };
+            Gate {
+                i0: gi0,
+                i1: gi1,
+                func: g.func,
+            }
+        }));
+        gate_index = gates.len();
+        input_index += input2_len;
     }
-    last
+    outputs = outputs
+        .into_iter()
+        .enumerate()
+        .filter_map(|(i, x)| if used_outputs[i] { Some(x) } else { None })
+        .collect::<Vec<_>>();
+
+    Circuit::new(T::try_from(total_input_len).unwrap(), gates, outputs).unwrap()
 }
 
 /// Deduplicates gates in circuit. It finds duplicates by comparing gate and its inputs.
