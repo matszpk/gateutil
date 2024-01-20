@@ -357,7 +357,7 @@ where
                 }
                 if i1 < seq_len {
                     new_seq.push((joined, t));
-                } else {
+                } else if i0 < seq_len {
                     last = joined;
                 }
             }
