@@ -890,6 +890,118 @@ fn test_join_circuits_seq() {
             .unwrap()
         )
     );
+    // three 2
+    assert_eq!(
+        Circuit::new(
+            6,
+            [
+                Gate::new_and(0, 1),
+                Gate::new_nimpl(2, 3),
+                Gate::new_nor(7, 4),
+                Gate::new_xor(6, 2),
+                Gate::new_nimpl(8, 6),
+                Gate::new_and(10, 7),
+                Gate::new_nor(5, 1),
+                Gate::new_nor(12, 9),
+                Gate::new_nimpl(11, 5),
+            ],
+            [(10, false), (9, false), (13, false), (14, false)]
+        )
+        .unwrap(),
+        join_circuits_seq(
+            [
+                (
+                    Circuit::new(
+                        4,
+                        [Gate::new_and(0, 1), Gate::new_nimpl(2, 3),],
+                        [(1, false), (2, false), (4, false), (5, false)]
+                    )
+                    .unwrap(),
+                    [Some(3), None, Some(0), Some(2), Some(1)]
+                ),
+                (
+                    Circuit::new(
+                        5,
+                        [
+                            Gate::new_nor(0, 1),
+                            Gate::new_xor(3, 4),
+                            Gate::new_nimpl(5, 3),
+                        ],
+                        [(0, false), (2, false), (6, false), (7, false)]
+                    )
+                    .unwrap(),
+                    [Some(7), Some(4), None, Some(6), Some(5)]
+                ),
+            ],
+            Circuit::new(
+                5,
+                [
+                    Gate::new_and(0, 1),
+                    Gate::new_nor(2, 4),
+                    Gate::new_nor(6, 3),
+                    Gate::new_nimpl(5, 2),
+                ],
+                [(0, false), (3, false), (7, false), (8, false)]
+            )
+            .unwrap()
+        )
+    );
+    // three 2 with negations
+    assert_eq!(
+        Circuit::new(
+            6,
+            [
+                Gate::new_and(0, 1),
+                Gate::new_nimpl(2, 3),
+                Gate::new_nor(7, 4),
+                Gate::new_xor(6, 2),
+                Gate::new_and(8, 6),
+                Gate::new_and(10, 7),
+                Gate::new_nor(5, 1),
+                Gate::new_nimpl(9, 12),
+                Gate::new_nimpl(11, 5),
+            ],
+            [(10, false), (9, true), (13, false), (14, false)]
+        )
+        .unwrap(),
+        join_circuits_seq(
+            [
+                (
+                    Circuit::new(
+                        4,
+                        [Gate::new_and(0, 1), Gate::new_nimpl(2, 3),],
+                        [(1, false), (2, false), (4, true), (5, false)]
+                    )
+                    .unwrap(),
+                    [Some(3), None, Some(0), Some(2), Some(1)]
+                ),
+                (
+                    Circuit::new(
+                        5,
+                        [
+                            Gate::new_nor(0, 1),
+                            Gate::new_xor(3, 4),
+                            Gate::new_nimpl(5, 3),
+                        ],
+                        [(0, false), (2, false), (6, false), (7, false)]
+                    )
+                    .unwrap(),
+                    [Some(7), Some(4), None, Some(6), Some(5)]
+                ),
+            ],
+            Circuit::new(
+                5,
+                [
+                    Gate::new_and(0, 1),
+                    Gate::new_nor(2, 4),
+                    Gate::new_nor(6, 3),
+                    Gate::new_nimpl(5, 2),
+                ],
+                [(0, false), (3, false), (7, false), (8, false)]
+            )
+            .unwrap()
+        )
+    );
 }
 
 #[test]
