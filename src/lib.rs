@@ -188,7 +188,7 @@ pub fn join_circuits_seq<T>(
     last: Circuit<T>,
 ) -> Circuit<T>
 where
-    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Clone + Copy + Ord + PartialEq + Eq + Debug,
     T: Default + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
     usize: TryFrom<T>,
@@ -223,7 +223,8 @@ where
         .sum::<usize>();
     let total_gate_num = seq.iter().map(|(c, _)| c.len()).sum::<usize>();
     // generate used_outputs for all circuits
-    let total_output_num = seq.iter().map(|(c, _)| c.outputs().len()).sum::<usize>();
+    let total_output_num =
+        seq.iter().map(|(c, _)| c.outputs().len()).sum::<usize>() + last.outputs().len();
     let used_outputs = {
         let mut used_outputs = vec![false; total_output_num];
         let mut output_count = 0;
@@ -338,15 +339,17 @@ where
         }));
         gates.extend(circuit2.gates().iter().map(|g| {
             let gi0 = if g.i0 >= input2_len_t {
-                T::try_from(usize::try_from(g.i0).unwrap() - input2_len + input_len).unwrap()
+                T::try_from(usize::try_from(g.i0).unwrap() - input2_len + input_len + gate_index)
+                    .unwrap()
             } else {
                 let iin = usize::try_from(g.i0).unwrap();
                 input_trans[iin + input_index]
             };
             let gi1 = if g.i1 >= input2_len_t {
-                T::try_from(usize::try_from(g.i1).unwrap() - input2_len + input_len).unwrap()
+                T::try_from(usize::try_from(g.i1).unwrap() - input2_len + input_len + gate_index)
+                    .unwrap()
             } else {
-                let iin = usize::try_from(g.i0).unwrap();
+                let iin = usize::try_from(g.i1).unwrap();
                 input_trans[iin + input_index]
             };
             Gate {
@@ -376,7 +379,7 @@ pub fn join_two_circuits<T>(
     circuit2: Circuit<T>,
 ) -> Circuit<T>
 where
-    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Clone + Copy + Ord + PartialEq + Eq + Debug,
     T: Default + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
     usize: TryFrom<T>,
