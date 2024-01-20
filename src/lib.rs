@@ -235,7 +235,7 @@ where
             if joined {
                 let out = outputs1[idx].0;
                 if out >= input1_len_t {
-                    T::try_from(usize::try_from(out).unwrap() + input_len - input1_len).unwrap()
+                    T::try_from(usize::try_from(out).unwrap() + unused_input2_count).unwrap()
                 } else {
                     out
                 }
@@ -250,12 +250,12 @@ where
         .into_iter()
         .map(|g| {
             let gi0 = if g.i0 >= input1_len_t {
-                T::try_from(usize::try_from(g.i0).unwrap() + input_len - input1_len).unwrap()
+                T::try_from(usize::try_from(g.i0).unwrap() + unused_input2_count).unwrap()
             } else {
                 g.i0
             };
             let gi1 = if g.i1 >= input1_len_t {
-                T::try_from(usize::try_from(g.i1).unwrap() + input_len - input1_len).unwrap()
+                T::try_from(usize::try_from(g.i1).unwrap() + unused_input2_count).unwrap()
             } else {
                 g.i1
             };
