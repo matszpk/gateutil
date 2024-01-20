@@ -349,7 +349,7 @@ where
     outputs = outputs
         .into_iter()
         .enumerate()
-        .filter_map(|(i, x)| if used_outputs[i] { Some(x) } else { None })
+        .filter_map(|(i, x)| if !used_outputs[i] { Some(x) } else { None })
         .collect::<Vec<_>>();
 
     Circuit::new(T::try_from(total_input_len).unwrap(), gates, outputs).unwrap()
