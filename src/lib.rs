@@ -250,7 +250,7 @@ where
             outputs.extend(circuit1.outputs().iter().map(|(xt, n)| {
                 let x = usize::try_from(*xt).unwrap();
                 let x = if *xt >= input1_len_t {
-                    T::try_from(x - input1_len + gate_index + total_input_len).unwrap()
+                    T::try_from(x - input1_len + total_input_len).unwrap()
                 } else {
                     *xt
                 };
