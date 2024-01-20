@@ -202,6 +202,15 @@ where
         return last;
     }
     let input1_len = usize::try_from(seq.first().unwrap().0.input_len()).unwrap();
+    // check whether length of from_firsts are equal to input length of next circuit
+    assert!(seq
+        .iter()
+        .enumerate()
+        .all(|(i, (_, t))| if i + 1 < seq.len() {
+            t.len() == usize::try_from(seq[i].0.input_len()).unwrap()
+        } else {
+            t.len() == usize::try_from(last.input_len()).unwrap()
+        }));
     let input_len = input1_len
         + seq
             .iter()
