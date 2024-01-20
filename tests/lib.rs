@@ -1002,6 +1002,62 @@ fn test_join_circuits_seq() {
             .unwrap()
         )
     );
+    // three with negations
+    assert_eq!(
+        Circuit::new(
+            6,
+            [
+                Gate::new_and(0, 1),
+                Gate::new_nimpl(2, 3),
+                Gate::new_xor(7, 4),
+                Gate::new_nor(1, 2),
+                Gate::new_nimpl(9, 6),
+                Gate::new_nimpl(10, 7),
+                Gate::new_nor(5, 6),
+                Gate::new_nimpl(8, 12),
+                Gate::new_nimpl(11, 5),
+            ],
+            [(10, false), (8, true), (13, false), (14, false)]
+        )
+        .unwrap(),
+        join_circuits_seq(
+            [
+                (
+                    Circuit::new(
+                        4,
+                        [Gate::new_and(0, 1), Gate::new_nimpl(2, 3),],
+                        [(1, false), (2, false), (4, false), (5, true)]
+                    )
+                    .unwrap(),
+                    [Some(3), None, Some(0), Some(2), Some(1)]
+                ),
+                (
+                    Circuit::new(
+                        5,
+                        [
+                            Gate::new_xor(0, 1),
+                            Gate::new_nor(2, 4),
+                            Gate::new_nimpl(6, 3),
+                        ],
+                        [(0, false), (3, false), (5, false), (7, false)]
+                    )
+                    .unwrap(),
+                    [Some(7), Some(4), None, Some(6), Some(5)]
+                ),
+            ],
+            Circuit::new(
+                5,
+                [
+                    Gate::new_and(0, 1),
+                    Gate::new_nor(2, 4),
+                    Gate::new_nor(6, 3),
+                    Gate::new_nimpl(5, 2),
+                ],
+                [(0, false), (3, false), (7, false), (8, false)]
+            )
+            .unwrap()
+        )
+    );
 }
 
 #[test]
