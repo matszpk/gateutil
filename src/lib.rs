@@ -201,7 +201,8 @@ where
     if seq.is_empty() {
         return last;
     }
-    let input1_len = usize::try_from(seq.first().unwrap().0.input_len()).unwrap();
+    let input1_len_t = seq.first().unwrap().0.input_len();
+    let input1_len = usize::try_from(input1_len_t).unwrap();
     // check whether length of from_firsts are equal to input length of next circuit
     assert!(seq
         .iter()
@@ -259,11 +260,9 @@ where
         let input2_len_t = circuit2.input_len();
         let input2_len = usize::try_from(input2_len_t).unwrap();
         if i == 0 {
-            let input1_len_t = circuit1.input_len();
-            let input1_len = usize::try_from(input1_len_t).unwrap();
             outputs.extend(circuit1.outputs().iter().map(|(xt, n)| {
                 let x = usize::try_from(*xt).unwrap();
-                let x = if *xt >= input1_len_t {
+                let x = if x >= input1_len {
                     T::try_from(x - input1_len + input_len).unwrap()
                 } else {
                     *xt
