@@ -207,7 +207,7 @@ where
         .iter()
         .enumerate()
         .all(|(i, (_, t))| if i + 1 < seq.len() {
-            t.len() == usize::try_from(seq[i].0.input_len()).unwrap()
+            t.len() == usize::try_from(seq[i + 1].0.input_len()).unwrap()
         } else {
             t.len() == usize::try_from(last.input_len()).unwrap()
         }));
