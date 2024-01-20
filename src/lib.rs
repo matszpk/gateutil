@@ -177,142 +177,6 @@ where
     Circuit::new(input_len_t, gates, outputs).unwrap()
 }
 
-// INFO: from_first - index - input index for circuit2,
-//                    value - option of output index for circuit1
-pub fn join_two_circuits<T>(
-    circuit1: Circuit<T>,
-    from_first: impl IntoIterator<Item = Option<T>>,
-    circuit2: Circuit<T>,
-) -> Circuit<T>
-where
-    T: Clone + Copy + Ord + PartialEq + Eq,
-    T: Default + TryFrom<usize>,
-    <T as TryFrom<usize>>::Error: Debug,
-    usize: TryFrom<T>,
-    <usize as TryFrom<T>>::Error: Debug,
-{
-    let circuit1_len = circuit1.len();
-    let input1_len_t = circuit1.input_len();
-    let input1_len = usize::try_from(input1_len_t).unwrap();
-    let input2_len_t = circuit2.input_len();
-    let input2_len = usize::try_from(input2_len_t).unwrap();
-    let outputs1 = circuit1.outputs();
-    let mut used_outputs1 = vec![false; outputs1.len()];
-    let mut unused_input2_count = 0;
-    let joined_input2_map = from_first
-        .into_iter()
-        .map(|idx| {
-            if let Some(idx) = idx {
-                let idxu = usize::try_from(idx).unwrap();
-                used_outputs1[idxu] = true;
-                // assign output index from circuit1 to used input from circuit2
-                (idxu, true)
-            } else {
-                let idx = unused_input2_count;
-                unused_input2_count += 1;
-                // assign unused index to unused input from circuit2
-                (idx, false)
-            }
-        })
-        .collect::<Vec<_>>();
-    // negations to inputs from circuit2
-    let negs = joined_input2_map
-        .iter()
-        .enumerate()
-        .filter_map(|(i, (idx, joined))| {
-            if *joined && outputs1[*idx].1 {
-                Some(T::try_from(i).unwrap())
-            } else {
-                None
-            }
-        });
-    let circuit2 = negate_inputs(circuit2, negs);
-    let input_len = input1_len + unused_input2_count;
-    // make input2_map - to translate inputs from circuit2
-    let input2_map = joined_input2_map
-        .into_iter()
-        .map(|(idx, joined)| {
-            if joined {
-                let out = outputs1[idx].0;
-                if out >= input1_len_t {
-                    T::try_from(usize::try_from(out).unwrap() + unused_input2_count).unwrap()
-                } else {
-                    out
-                }
-            } else {
-                T::try_from(input1_len + idx).unwrap()
-            }
-        })
-        .collect::<Vec<_>>();
-
-    let new_total1_len = input_len + circuit1_len;
-    let gates = circuit1
-        .gates()
-        .into_iter()
-        .map(|g| {
-            let gi0 = if g.i0 >= input1_len_t {
-                T::try_from(usize::try_from(g.i0).unwrap() + unused_input2_count).unwrap()
-            } else {
-                g.i0
-            };
-            let gi1 = if g.i1 >= input1_len_t {
-                T::try_from(usize::try_from(g.i1).unwrap() + unused_input2_count).unwrap()
-            } else {
-                g.i1
-            };
-            Gate {
-                i0: gi0,
-                i1: gi1,
-                func: g.func,
-            }
-        })
-        .chain(circuit2.gates().into_iter().map(|g| {
-            let gi0 = if g.i0 >= input2_len_t {
-                T::try_from(usize::try_from(g.i0).unwrap() - input2_len + new_total1_len).unwrap()
-            } else {
-                input2_map[usize::try_from(g.i0).unwrap()]
-            };
-            let gi1 = if g.i1 >= input2_len_t {
-                T::try_from(usize::try_from(g.i1).unwrap() - input2_len + new_total1_len).unwrap()
-            } else {
-                input2_map[usize::try_from(g.i1).unwrap()]
-            };
-            Gate {
-                i0: gi0,
-                i1: gi1,
-                func: g.func,
-            }
-        }))
-        .collect::<Vec<_>>();
-
-    let outputs = outputs1
-        .into_iter()
-        .enumerate()
-        .filter_map(|(i, (x, n))| {
-            if !used_outputs1[i] {
-                let x = if *x >= input1_len_t {
-                    T::try_from(usize::try_from(*x).unwrap() + unused_input2_count).unwrap()
-                } else {
-                    *x
-                };
-                Some((x, *n))
-            } else {
-                None
-            }
-        })
-        .chain(circuit2.outputs().into_iter().map(|(x, n)| {
-            let out = if *x >= input2_len_t {
-                T::try_from(usize::try_from(*x).unwrap() - input2_len + new_total1_len).unwrap()
-            } else {
-                input2_map[usize::try_from(*x).unwrap()]
-            };
-            (out, *n)
-        }))
-        .collect::<Vec<_>>();
-
-    Circuit::new(T::try_from(input_len).unwrap(), gates, outputs).unwrap()
-}
-
 // structure seq: iterator over:
 // tuple.0 - circuit to join
 // tuple.1 - from_first: key - input index for next circuit
@@ -341,7 +205,7 @@ where
     let total_input_len = input1_len
         + seq
             .iter()
-            .map(|(_, t)| t.iter().filter(|x| x.is_some()).count())
+            .map(|(_, t)| t.iter().filter(|x| x.is_none()).count())
             .sum::<usize>();
     let total_gate_num = seq.iter().map(|(c, _)| c.len()).sum::<usize>();
     // generate used_outputs for all circuits
@@ -359,7 +223,7 @@ where
         }
         used_outputs
     };
-    // inout_trans - translation map for all inputs
+    // input_trans - translation map for all inputs
     let mut input_trans = (0..input1_len)
         .map(|x| T::try_from(x).unwrap())
         .collect::<Vec<_>>();
@@ -489,6 +353,23 @@ where
         .collect::<Vec<_>>();
 
     Circuit::new(T::try_from(total_input_len).unwrap(), gates, outputs).unwrap()
+}
+
+// INFO: from_first - index - input index for circuit2,
+//                    value - option of output index for circuit1
+pub fn join_two_circuits<T>(
+    circuit1: Circuit<T>,
+    from_first: impl IntoIterator<Item = Option<T>>,
+    circuit2: Circuit<T>,
+) -> Circuit<T>
+where
+    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Default + TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    join_circuits_seq([(circuit1, from_first)], circuit2)
 }
 
 /// Deduplicates gates in circuit. It finds duplicates by comparing gate and its inputs.
