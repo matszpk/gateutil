@@ -179,7 +179,7 @@ where
 
 // INFO: from_first - index - input index for circuit2,
 //                    value - option of output index for circuit1
-pub fn join_circuits<T>(
+pub fn join_two_circuits<T>(
     circuit1: Circuit<T>,
     from_first: impl IntoIterator<Item = Option<T>>,
     circuit2: Circuit<T>,

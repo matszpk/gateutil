@@ -341,10 +341,10 @@ fn test_negate_inputs() {
 }
 
 #[test]
-fn test_join_circuits() {
+fn test_join_two_circuits() {
     assert_eq!(
         Circuit::new(0, [], [],).unwrap(),
-        join_circuits(
+        join_two_circuits(
             Circuit::new(0, [], []).unwrap(),
             [],
             Circuit::new(0, [], []).unwrap()
@@ -357,7 +357,7 @@ fn test_join_circuits() {
             [(4, false), (5, false)]
         )
         .unwrap(),
-        join_circuits(
+        join_two_circuits(
             Circuit::new(2, [Gate::new_and(0, 1)], [(2, false)]).unwrap(),
             [None, None],
             Circuit::new(2, [Gate::new_nor(0, 1)], [(2, false)]).unwrap()
@@ -365,7 +365,7 @@ fn test_join_circuits() {
     );
     assert_eq!(
         Circuit::new(3, [Gate::new_and(0, 1), Gate::new_nor(3, 2),], [(4, false)]).unwrap(),
-        join_circuits(
+        join_two_circuits(
             Circuit::new(2, [Gate::new_and(0, 1)], [(2, false)]).unwrap(),
             [Some(0), None],
             Circuit::new(2, [Gate::new_nor(0, 1)], [(2, false)]).unwrap()
@@ -373,7 +373,7 @@ fn test_join_circuits() {
     );
     assert_eq!(
         Circuit::new(3, [Gate::new_and(0, 1), Gate::new_nor(2, 3),], [(4, false)]).unwrap(),
-        join_circuits(
+        join_two_circuits(
             Circuit::new(2, [Gate::new_and(0, 1)], [(2, false)]).unwrap(),
             [None, Some(0)],
             Circuit::new(2, [Gate::new_nor(0, 1)], [(2, false)]).unwrap()
@@ -381,7 +381,7 @@ fn test_join_circuits() {
     );
     assert_eq!(
         Circuit::new(2, [Gate::new_and(0, 1), Gate::new_nor(2, 2),], [(3, false)]).unwrap(),
-        join_circuits(
+        join_two_circuits(
             Circuit::new(2, [Gate::new_and(0, 1)], [(2, false)]).unwrap(),
             [Some(0), Some(0)],
             Circuit::new(2, [Gate::new_nor(0, 1)], [(2, false)]).unwrap()
@@ -395,7 +395,7 @@ fn test_join_circuits() {
             [(4, true), (5, false)]
         )
         .unwrap(),
-        join_circuits(
+        join_two_circuits(
             Circuit::new(2, [Gate::new_and(0, 1)], [(2, true)]).unwrap(),
             [None, None],
             Circuit::new(2, [Gate::new_nor(0, 1)], [(2, false)]).unwrap()
@@ -408,7 +408,7 @@ fn test_join_circuits() {
             [(4, false)]
         )
         .unwrap(),
-        join_circuits(
+        join_two_circuits(
             Circuit::new(2, [Gate::new_and(0, 1)], [(2, true)]).unwrap(),
             [Some(0), None],
             Circuit::new(2, [Gate::new_nor(0, 1)], [(2, false)]).unwrap()
@@ -421,7 +421,7 @@ fn test_join_circuits() {
             [(4, false)]
         )
         .unwrap(),
-        join_circuits(
+        join_two_circuits(
             Circuit::new(2, [Gate::new_and(0, 1)], [(2, true)]).unwrap(),
             [None, Some(0)],
             Circuit::new(2, [Gate::new_nor(0, 1)], [(2, false)]).unwrap()
@@ -429,7 +429,7 @@ fn test_join_circuits() {
     );
     assert_eq!(
         Circuit::new(2, [Gate::new_and(0, 1), Gate::new_and(2, 2),], [(3, false)]).unwrap(),
-        join_circuits(
+        join_two_circuits(
             Circuit::new(2, [Gate::new_and(0, 1)], [(2, true)]).unwrap(),
             [Some(0), Some(0)],
             Circuit::new(2, [Gate::new_nor(0, 1)], [(2, false)]).unwrap()
@@ -443,7 +443,7 @@ fn test_join_circuits() {
             [(3, false), (1, true), (4, false)]
         )
         .unwrap(),
-        join_circuits(
+        join_two_circuits(
             Circuit::new(2, [Gate::new_and(0, 1)], [(1, false), (2, false)]).unwrap(),
             [Some(0), None],
             Circuit::new(2, [Gate::new_nor(0, 1)], [(0, true), (2, false)]).unwrap()
@@ -456,7 +456,7 @@ fn test_join_circuits() {
             [(1, false), (3, true), (4, false)]
         )
         .unwrap(),
-        join_circuits(
+        join_two_circuits(
             Circuit::new(2, [Gate::new_and(0, 1)], [(1, false), (2, false)]).unwrap(),
             [Some(1), None],
             Circuit::new(2, [Gate::new_nor(0, 1)], [(0, true), (2, false)]).unwrap()
@@ -470,7 +470,7 @@ fn test_join_circuits() {
             [(3, false), (1, false), (4, false)]
         )
         .unwrap(),
-        join_circuits(
+        join_two_circuits(
             Circuit::new(2, [Gate::new_and(0, 1)], [(1, true), (2, false)]).unwrap(),
             [Some(0), None],
             Circuit::new(2, [Gate::new_nor(0, 1)], [(0, true), (2, false)]).unwrap()
@@ -483,7 +483,7 @@ fn test_join_circuits() {
             [(1, false), (3, false), (4, false)]
         )
         .unwrap(),
-        join_circuits(
+        join_two_circuits(
             Circuit::new(2, [Gate::new_and(0, 1)], [(1, false), (2, true)]).unwrap(),
             [Some(1), None],
             Circuit::new(2, [Gate::new_nor(0, 1)], [(0, true), (2, false)]).unwrap()
@@ -512,7 +512,7 @@ fn test_join_circuits() {
             ]
         )
         .unwrap(),
-        join_circuits(
+        join_two_circuits(
             Circuit::new(
                 4,
                 [Gate::new_and(0, 1), Gate::new_nimpl(2, 3),],
@@ -554,7 +554,7 @@ fn test_join_circuits() {
             ]
         )
         .unwrap(),
-        join_circuits(
+        join_two_circuits(
             Circuit::new(
                 4,
                 [Gate::new_and(0, 1), Gate::new_nimpl(2, 3),],
@@ -588,7 +588,7 @@ fn test_join_circuits() {
             [(5, false), (4, false), (6, false), (8, false)]
         )
         .unwrap(),
-        join_circuits(
+        join_two_circuits(
             Circuit::new(
                 4,
                 [Gate::new_and(0, 1), Gate::new_nimpl(2, 3),],
@@ -621,7 +621,7 @@ fn test_join_circuits() {
             [(5, true), (4, true), (6, true), (8, false)]
         )
         .unwrap(),
-        join_circuits(
+        join_two_circuits(
             Circuit::new(
                 4,
                 [Gate::new_and(0, 1), Gate::new_nimpl(2, 3),],
@@ -662,7 +662,7 @@ fn test_join_circuits() {
             ]
         )
         .unwrap(),
-        join_circuits(
+        join_two_circuits(
             Circuit::new(
                 4,
                 [Gate::new_and(0, 1), Gate::new_nimpl(2, 3),],
@@ -702,7 +702,7 @@ fn test_join_circuits() {
             ]
         )
         .unwrap(),
-        join_circuits(
+        join_two_circuits(
             Circuit::new(
                 4,
                 [Gate::new_and(0, 1), Gate::new_nimpl(2, 3),],
@@ -736,7 +736,7 @@ fn test_join_circuits() {
             [(6, false), (5, false), (7, false), (9, false)]
         )
         .unwrap(),
-        join_circuits(
+        join_two_circuits(
             Circuit::new(
                 4,
                 [Gate::new_and(0, 1), Gate::new_nimpl(2, 3),],
@@ -769,7 +769,7 @@ fn test_join_circuits() {
             [(6, true), (5, false), (7, true), (9, false)]
         )
         .unwrap(),
-        join_circuits(
+        join_two_circuits(
             Circuit::new(
                 4,
                 [Gate::new_and(0, 1), Gate::new_nimpl(2, 3),],
@@ -810,7 +810,7 @@ fn test_join_circuits() {
             ]
         )
         .unwrap(),
-        join_circuits(
+        join_two_circuits(
             Circuit::new(
                 4,
                 [Gate::new_and(0, 1), Gate::new_nimpl(2, 3),],
