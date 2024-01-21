@@ -180,10 +180,10 @@ where
 // structure seq: iterator over:
 // tuple.0 - circuit to join
 // tuple.1 - from_first: key - input index for next circuit
-//               (value, neg) - option of cumulative output index for current circuit
+//               (value, neg) - option of index of output from some previous circuit
 //               and negation for this input
-// cumulative index for current circuit - sum + output index for current circuit
-// where sum is sum of outputs from previous circuits
+// index of output from some previous circuit - just index of output from list of
+// all outputs from all circuits ordered from first to last circuit.
 pub fn join_circuits_seq<T>(
     seq: impl IntoIterator<Item = (Circuit<T>, impl IntoIterator<Item = Option<(T, bool)>>)>,
     last: Circuit<T>,
