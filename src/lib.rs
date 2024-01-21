@@ -180,11 +180,12 @@ where
 // structure seq: iterator over:
 // tuple.0 - circuit to join
 // tuple.1 - from_first: key - input index for next circuit
-//                       value - option of cumulative output index for current circuit
+//               (value, neg) - option of cumulative output index for current circuit
+//               and negation for this input
 // cumulative index for current circuit - sum + output index for current circuit
 // where sum is sum of outputs from previous circuits
 pub fn join_circuits_seq<T>(
-    seq: impl IntoIterator<Item = (Circuit<T>, impl IntoIterator<Item = Option<T>>)>,
+    seq: impl IntoIterator<Item = (Circuit<T>, impl IntoIterator<Item = Option<(T, bool)>>)>,
     last: Circuit<T>,
 ) -> Circuit<T>
 where
@@ -230,7 +231,7 @@ where
         let mut output_count = 0;
         for (c, t) in &seq {
             output_count += c.outputs().len();
-            for o in t.iter().filter_map(|x| *x) {
+            for (o, _) in t.iter().filter_map(|x| *x) {
                 let o = usize::try_from(o).unwrap();
                 assert!(o < output_count);
                 used_outputs[o] = true;
@@ -296,15 +297,15 @@ where
         let joined_input2_map = from_first
             .into_iter()
             .map(|idx| {
-                if let Some(idx) = idx {
+                if let Some((idx, n)) = idx {
                     let idxu = usize::try_from(*idx).unwrap();
                     // assign output index from circuit1 to used input from circuit2
-                    (idxu, true)
+                    (idxu, true, *n)
                 } else {
                     let idx = unused_input2_count;
                     unused_input2_count += 1;
                     // assign unused index to unused input from circuit2
-                    (idx, false)
+                    (idx, false, false)
                 }
             })
             .collect::<Vec<_>>();
@@ -312,8 +313,8 @@ where
         let negs = joined_input2_map
             .iter()
             .enumerate()
-            .filter_map(|(i, (idx, joined))| {
-                if *joined && outputs[*idx].1 {
+            .filter_map(|(i, (idx, joined, neg))| {
+                if *joined && (outputs[*idx].1 ^ neg) {
                     Some(T::try_from(i).unwrap())
                 } else {
                     None
@@ -321,7 +322,7 @@ where
             });
         let circuit2 = negate_inputs(circuit2.clone(), negs);
         // make input2_map - to translate inputs from circuit2
-        input_trans.extend(joined_input2_map.into_iter().map(|(idx, joined)| {
+        input_trans.extend(joined_input2_map.into_iter().map(|(idx, joined, _)| {
             if joined {
                 outputs[idx].0
             } else {
@@ -375,7 +376,7 @@ where
 //                    value - option of output index for circuit1
 pub fn join_two_circuits<T>(
     circuit1: Circuit<T>,
-    from_first: impl IntoIterator<Item = Option<T>>,
+    from_first: impl IntoIterator<Item = Option<(T, bool)>>,
     circuit2: Circuit<T>,
 ) -> Circuit<T>
 where
