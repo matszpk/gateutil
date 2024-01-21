@@ -1470,6 +1470,153 @@ fn test_join_circuits_seq() {
             .unwrap()
         )
     );
+    // five
+    assert_eq!(
+        Circuit::new(
+            8,
+            [
+                Gate::new_and(0, 1),
+                Gate::new_nimpl(2, 3),
+                Gate::new_xor(4, 5),
+                Gate::new_and(5, 3),
+                Gate::new_nimpl(11, 8),
+                Gate::new_nor(3, 12),
+                Gate::new_and(9, 10),
+                Gate::new_nimpl(8, 14),
+                Gate::new_xor(12, 15),
+                Gate::new_xor(11, 6),
+                Gate::new_nor(13, 10),
+                Gate::new_and(18, 10),
+                Gate::new_nor(14, 11),
+                Gate::new_nimpl(15, 10),
+                Gate::new_nimpl(9, 7),
+                Gate::new_nimpl(4, 19),
+            ],
+            [
+                (1, false),
+                (5, false),
+                (8, false),
+                (16, true),
+                (13, false),
+                (10, false),
+                (17, false),
+                (20, false),
+                (21, true),
+                (22, false),
+                (23, true)
+            ]
+        )
+        .unwrap(),
+        join_circuits_seq(
+            [
+                (
+                    Circuit::new(
+                        6,
+                        [
+                            Gate::new_and(0, 1),
+                            Gate::new_nimpl(2, 3),
+                            Gate::new_xor(4, 5),
+                        ],
+                        [
+                            (1, false),
+                            (3, true),
+                            (4, false),
+                            (5, false),
+                            (6, true),
+                            (7, false),
+                            (8, false)
+                        ]
+                    )
+                    .unwrap(),
+                    vec![Some((3, false)), Some((1, true)), Some((4, true)),]
+                ),
+                (
+                    Circuit::new(
+                        3,
+                        [
+                            Gate::new_and(0, 1),
+                            Gate::new_nimpl(3, 2),
+                            Gate::new_nor(1, 4),
+                        ],
+                        [(0, false), (2, true), (3, true), (4, false), (5, false),]
+                    )
+                    .unwrap(),
+                    vec![
+                        Some((5, true)),
+                        Some((6, true)),
+                        Some((8, true)),
+                        Some((10, false)),
+                    ]
+                ),
+                (
+                    Circuit::new(
+                        4,
+                        [
+                            Gate::new_nor(0, 1),
+                            Gate::new_nimpl(2, 4),
+                            Gate::new_xor(3, 5),
+                        ],
+                        [
+                            (0, false),
+                            (1, true),
+                            (2, false),
+                            (4, true),
+                            (5, false),
+                            (6, true),
+                        ]
+                    )
+                    .unwrap(),
+                    vec![
+                        Some((9, false)),
+                        None,
+                        Some((11, false)),
+                        Some((6, false)),
+                        Some((13, false))
+                    ]
+                ),
+                (
+                    Circuit::new(
+                        5,
+                        [
+                            Gate::new_xor(0, 1),
+                            Gate::new_nor(2, 3),
+                            Gate::new_and(6, 4),
+                        ],
+                        [
+                            (0, false),
+                            (2, false),
+                            (3, true),
+                            (4, false),
+                            (5, true),
+                            (7, true),
+                        ]
+                    )
+                    .unwrap(),
+                    vec![
+                        Some((15, false)),
+                        Some((16, true)),
+                        None,
+                        Some((2, false)),
+                        Some((18, false)),
+                        Some((20, true)),
+                        Some((12, false)),
+                        Some((23, true))
+                    ]
+                ),
+            ],
+            Circuit::new(
+                8,
+                [
+                    Gate::new_and(0, 4),
+                    Gate::new_nor(1, 5),
+                    Gate::new_nor(2, 6),
+                    Gate::new_nimpl(3, 7),
+                ],
+                [(8, false), (9, true), (10, false), (11, true)]
+            )
+            .unwrap()
+        )
+    );
 }
 
 #[test]
