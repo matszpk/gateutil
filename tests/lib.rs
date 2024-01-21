@@ -428,6 +428,14 @@ fn test_join_two_circuits() {
         )
     );
     assert_eq!(
+        Circuit::new(3, [Gate::new_and(0, 1), Gate::new_nor(3, 2),], [(4, false)]).unwrap(),
+        join_two_circuits(
+            Circuit::new(2, [Gate::new_and(0, 1)], [(2, true)]).unwrap(),
+            [Some((0, true)), None],
+            Circuit::new(2, [Gate::new_nor(0, 1)], [(2, false)]).unwrap()
+        )
+    );
+    assert_eq!(
         Circuit::new(
             3,
             [Gate::new_and(0, 1), Gate::new_nimpl(3, 2),],
