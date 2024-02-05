@@ -455,31 +455,100 @@ where
             }
         }
     }
-    ClauseCircuit::new(
-        T::try_from(input_len).unwrap(),
-        out_clauses
-            .into_iter()
-            .map(|DedupClause { clause, .. }| clause)
-            .filter(|c| c.len() != 0),
-        outputs.iter().map(|(l, n)| {
-            let mut out_l = *l;
-            while let Some(trans_l) = and_trans_map.get(&out_l) {
-                out_l = *trans_l;
-            }
-            if out_l == *l {
-                while let Some(trans_l) = xor_trans_map.get(&out_l) {
+    let circuit = unsafe {
+        ClauseCircuit::new_unchecked(
+            T::try_from(input_len).unwrap(),
+            out_clauses
+                .into_iter()
+                .map(|DedupClause { clause, .. }| clause)
+                .filter(|c| c.len() != 0),
+            outputs.iter().map(|(l, n)| {
+                let mut out_l = *l;
+                while let Some(trans_l) = and_trans_map.get(&out_l) {
                     out_l = *trans_l;
                 }
+                if out_l == *l {
+                    while let Some(trans_l) = xor_trans_map.get(&out_l) {
+                        out_l = *trans_l;
+                    }
+                }
+                let l_u = usize::try_from(out_l).unwrap();
+                if l_u >= input_len {
+                    (trans_table[l_u], *n)
+                } else {
+                    (*l, *n)
+                }
+            }),
+        )
+    };
+    {
+        // check inputs and gate outputs
+        // gate have input less than its output.
+        let input_len = usize::try_from(circuit.input_len()).unwrap();
+        let output_num = input_len + circuit.len();
+        let mut used_inputs = vec![false; output_num];
+        for (i, c) in circuit.clauses().iter().enumerate() {
+            let cur_index = input_len + i;
+            if c.len() < 2 {
+                panic!("Fail");
             }
-            let l_u = usize::try_from(out_l).unwrap();
-            if l_u >= input_len {
-                (trans_table[l_u], *n)
+            for (l, _) in &c.literals {
+                let l = usize::try_from(*l).unwrap();
+                if l >= cur_index {
+                    panic!("Fail");
+                }
+                used_inputs[l] = true;
+            }
+        }
+        // fill up outputs - ignore gate outputs - they can be unconnected
+        for (o, _) in circuit.outputs() {
+            let o = usize::try_from(*o).unwrap();
+            if o >= output_num {
+                panic!("Fail");
+            }
+            used_inputs[o] = true;
+        }
+        let mut trans_x = (0..output_num)
+            .map(|x| T::try_from(x).unwrap())
+            .collect::<Vec<_>>();
+        let mut count = 0;
+        for (i, x) in used_inputs.iter().enumerate() {
+            if !x {
+                println!("Failed unused output: {}", i);
             } else {
-                (*l, *n)
+                trans_x[i] = T::try_from(count).unwrap();
+                count += 1;
             }
-        }),
-    )
-    .unwrap()
+        }
+        if count != output_num {
+            println!("FIX After Dedup");
+            let mut new_clauses = vec![];
+            for (i, c) in circuit.clauses().iter().enumerate() {
+                if used_inputs[i + input_len] {
+                    new_clauses.push(Clause {
+                        kind: c.kind,
+                        literals: c
+                            .literals
+                            .iter()
+                            .map(|(x, n)| (trans_x[usize::try_from(*x).unwrap()], *n))
+                            .collect::<Vec<_>>(),
+                    });
+                }
+            }
+            let new_outputs = circuit
+                .outputs()
+                .into_iter()
+                .map(|(x, n)| (trans_x[usize::try_from(*x).unwrap()], *n))
+                .collect::<Vec<_>>();
+            //panic!("FAIL");
+            return ClauseCircuit::new(T::try_from(input_len).unwrap(), new_clauses, new_outputs)
+                .unwrap();
+        }
+    }
+    if !circuit.verify() {
+        panic!("Unverified!");
+    }
+    circuit
 }
 
 pub(crate) fn check_if_clauses_need_optimization_and_fix<T>(clauses: &mut [DedupClause<T>]) -> bool

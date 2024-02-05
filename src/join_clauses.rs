@@ -499,9 +499,18 @@ where
         if let OutputEntryN::NewIndex(idx, n) = output_map[o] {
             let idx_u = usize::try_from(idx).unwrap();
             if *input_len != 0 && idx_u < *input_len && !used_new_outputs[idx_u] {
-                output_map[o] = OutputEntryN::Value(false);
+                output_map[o] = OutputEntryN::Value(false ^ n);
             } else {
-                output_map[o] = OutputEntryN::NewIndex(trans_map[usize::try_from(idx).unwrap()], n);
+                let newidx = trans_map[usize::try_from(idx).unwrap()];
+                let newidx_u = usize::try_from(newidx).unwrap();
+                match output_map[oim[newidx_u]] {
+                    OutputEntryN::Value(v) => {
+                        output_map[o] = OutputEntryN::Value(v ^ n);
+                    }
+                    OutputEntryN::NewIndex(_, _) => {
+                        output_map[o] = OutputEntryN::NewIndex(newidx, n);
+                    }
+                }
             }
         }
     }
@@ -692,6 +701,58 @@ mod tests {
                     OutputEntryN::NewIndex(1, false),
                     OutputEntryN::Value(true),
                     OutputEntryN::NewIndex(2, false),
+                ],
+                output_map
+            );
+        }
+
+        // testcase
+        // process resolving empty clause (->true) in parent clause
+        for xor in [false, true] {
+            let mut input_len = 2;
+            let mut clauses = vec![
+                (
+                    if xor {
+                        Clause::new_xor([])
+                    } else {
+                        Clause::new_and([])
+                    },
+                    true ^ !xor,
+                ),
+                (Clause::new_and([(0, false), (1, false), (2, false)]), false),
+                (Clause::new_xor([(0, false), (3, false)]), false),
+            ];
+            let outputs = [(3, false), (4, false)];
+            let mut oim_opt = None;
+            let mut output_map = [
+                OutputEntryN::NewIndex(0, false),
+                OutputEntryN::NewIndex(1, false),
+                OutputEntryN::NewIndex(2, false),
+                OutputEntryN::NewIndex(3, false),
+                OutputEntryN::NewIndex(4, false),
+            ];
+            assert!(join_and_remove_clauses(
+                &mut input_len,
+                &mut clauses,
+                &outputs,
+                &mut output_map,
+                &mut oim_opt
+            ));
+            assert_eq!(2, input_len);
+            assert_eq!(
+                vec![
+                    (Clause::new_and([(0, false), (1, false)]), false),
+                    (Clause::new_xor([(0, false), (2, false)]), false)
+                ],
+                clauses
+            );
+            assert_eq!(
+                [
+                    OutputEntryN::NewIndex(0, false),
+                    OutputEntryN::NewIndex(1, false),
+                    OutputEntryN::Value(true),
+                    OutputEntryN::NewIndex(2, false),
+                    OutputEntryN::NewIndex(3, false),
                 ],
                 output_map
             );

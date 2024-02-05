@@ -695,10 +695,12 @@ where
 
     let mut oim_opt = None;
     let mut new_input_len = input_len;
+    let mut repeat = 0;
     loop {
         let mut do_next = reduce_clauses(&mut clauses);
         //println!("OptXPhase0: {:?}", clauses);
         // join clauses and remove unnecessary clauses
+        let old_clause_len = clauses.len();
         do_next |= join_and_remove_clauses(
             &mut new_input_len,
             &mut clauses,
@@ -706,6 +708,14 @@ where
             &mut output_map,
             &mut oim_opt,
         );
+        if old_clause_len == clauses.len() {
+            if repeat == 10 {
+                do_next = false;
+            }
+            repeat += 1;
+        } else {
+            repeat = 0;
+        }
         //println!("OptXPhase: {:?}", clauses);
         //println!("OptXPhaseMap: {:?}", output_map);
         if !do_next {
@@ -763,16 +773,41 @@ where
         }
     }
 
-    (
-        ClauseCircuit::new(
-            T::try_from(new_input_len).unwrap(),
-            new_clauses,
-            new_outputs,
+    let do_fix = new_clauses.iter().any(|x| x.len() == 1);
+    if do_fix {
+        println!("OptimizeFIX");
+        for c in new_clauses.iter_mut() {
+            if c.len() == 1 {
+                c.kind = ClauseKind::And;
+                c.literals.push(c.literals[0]);
+            }
+        }
+        let (c, ni, no) = (
+            ClauseCircuit::new(
+                T::try_from(new_input_len).unwrap(),
+                new_clauses,
+                new_outputs,
+            )
+            .unwrap(),
+            new_inputs,
+            new_outputs_map,
+        );
+        let (newc, newni, newno) = optimize_clause_circuit(c);
+        let out_input_map = join_input_map(&ni, &newni);
+        let out_output_map = join_output_entry_map(&no, &newno);
+        (newc, out_input_map, out_output_map)
+    } else {
+        (
+            ClauseCircuit::new(
+                T::try_from(new_input_len).unwrap(),
+                new_clauses,
+                new_outputs,
+            )
+            .unwrap(),
+            new_inputs,
+            new_outputs_map,
         )
-        .unwrap(),
-        new_inputs,
-        new_outputs_map,
-    )
+    }
 }
 
 /// Assigns and optimize clause circuit. See to optimize_clause_circuit and assign_to_circuit.
