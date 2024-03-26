@@ -1807,6 +1807,101 @@ fn test_join_circuits_seq() {
             .unwrap()
         )
     );
+    // with empty input join
+    assert_eq!(
+        Circuit::new(
+            6,
+            [
+                Gate::new_and(0, 1),
+                Gate::new_and(2, 3),
+                Gate::new_nor(7, 4),
+                Gate::new_xor(6, 2),
+                Gate::new_and(8, 6),
+                Gate::new_and(10, 7),
+                Gate::new_nor(5, 1),
+                Gate::new_nimpl(9, 12),
+                Gate::new_nimpl(11, 5),
+                Gate::new_and(0, 1),
+                Gate::new_nimpl(2, 3),
+                Gate::new_nimpl(16, 4),
+                Gate::new_nor(15, 2),
+                Gate::new_and(17, 15),
+                Gate::new_xor(19, 16),
+                Gate::new_nor(5, 1),
+                Gate::new_nimpl(18, 21),
+                Gate::new_nimpl(20, 5),
+                Gate::new_xor(10, 18),
+                Gate::new_xor(9, 19),
+                Gate::new_xor(13, 23),
+                Gate::new_xor(14, 22),
+                Gate::new_nor(24, 25),
+                Gate::new_and(26, 28),
+                Gate::new_and(27, 29),
+            ],
+            [(30, false)]
+        )
+        .unwrap(),
+        join_circuits_seq(
+            [
+                (
+                    Circuit::new(6, [], (0..6).map(|i| (i, false))).unwrap(),
+                    (0..6).map(|i| Some((i, i == 3))).collect::<Vec<_>>()
+                ),
+                (
+                    Circuit::new(
+                        6,
+                        [
+                            Gate::new_and(0, 1),
+                            Gate::new_nimpl(2, 3),
+                            Gate::new_nor(7, 4),
+                            Gate::new_xor(6, 2),
+                            Gate::new_and(8, 6),
+                            Gate::new_and(10, 7),
+                            Gate::new_nor(5, 1),
+                            Gate::new_nimpl(9, 12),
+                            Gate::new_nimpl(11, 5),
+                        ],
+                        [(10, false), (9, true), (13, false), (14, false)]
+                    )
+                    .unwrap(),
+                    (0..6).map(|i| Some((i, i == 4))).collect::<Vec<_>>()
+                ),
+                (
+                    Circuit::new(
+                        6,
+                        [
+                            Gate::new_and(0, 1),
+                            Gate::new_nimpl(2, 3),
+                            Gate::new_and(7, 4),
+                            Gate::new_nor(6, 2),
+                            Gate::new_and(8, 6),
+                            Gate::new_xor(10, 7),
+                            Gate::new_nor(5, 1),
+                            Gate::new_nimpl(9, 12),
+                            Gate::new_nimpl(11, 5),
+                        ],
+                        [(9, true), (10, false), (14, false), (13, false)]
+                    )
+                    .unwrap(),
+                    (6..6 + 4 * 2).map(|i| Some((i, false))).collect::<Vec<_>>()
+                ),
+            ],
+            Circuit::new(
+                8,
+                [
+                    Gate::new_xor(0, 4),
+                    Gate::new_xor(1, 5),
+                    Gate::new_xor(2, 6),
+                    Gate::new_xor(3, 7),
+                    Gate::new_and(8, 9),
+                    Gate::new_and(10, 12),
+                    Gate::new_and(11, 13),
+                ],
+                [(14, false)]
+            )
+            .unwrap()
+        )
+    );
 }
 
 #[test]
