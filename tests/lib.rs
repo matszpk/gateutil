@@ -106,6 +106,41 @@ fn test_translate_inputs() {
             &[2, 0, 1, 3]
         )
     );
+    assert_eq!(
+        Circuit::new(
+            4,
+            [
+                Gate::new_xor(2, 0),
+                Gate::new_xor(1, 3),
+                Gate::new_nor(2, 0),
+                Gate::new_nor(1, 3),
+                Gate::new_and(4, 5),
+                Gate::new_and(6, 7),
+                Gate::new_nimpl(8, 9),
+                Gate::new_nimpl(9, 10),
+            ],
+            [(11, true), (2, false), (1, true)],
+        )
+        .unwrap(),
+        translate_inputs(
+            Circuit::new(
+                4,
+                [
+                    Gate::new_xor(0, 1),
+                    Gate::new_xor(2, 3),
+                    Gate::new_nor(0, 1),
+                    Gate::new_nor(2, 3),
+                    Gate::new_and(4, 5),
+                    Gate::new_and(6, 7),
+                    Gate::new_nimpl(8, 9),
+                    Gate::new_nimpl(9, 10),
+                ],
+                [(11, true), (0, false), (2, true)],
+            )
+            .unwrap(),
+            &[2, 0, 1, 3]
+        )
+    );
 }
 
 #[test]

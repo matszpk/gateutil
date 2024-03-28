@@ -49,7 +49,19 @@ where
             }
         })
         .collect::<Vec<_>>();
-    Circuit::new(input_len_t, gates, circuit.outputs().into_iter().copied()).unwrap()
+    let outputs = circuit
+        .outputs()
+        .into_iter()
+        .map(|(i, n)| {
+            let t = if *i < input_len_t {
+                T::try_from(trans[usize::try_from(*i).unwrap()]).unwrap()
+            } else {
+                *i
+            };
+            (t, *n)
+        })
+        .collect::<Vec<_>>();
+    Circuit::new(input_len_t, gates, outputs).unwrap()
 }
 
 pub fn reverse_trans<T>(trans: impl IntoIterator<Item = T>) -> Vec<T>
