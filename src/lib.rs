@@ -680,6 +680,114 @@ where
     to_reduce_tree
 }
 
+// DEBUG
+fn dump_clauses<T>(input_len: usize, clauses: &[Clause<T>], outputs: &[(T, bool)])
+where
+    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Default + TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    println!("Dump ClauseCircuit data:");
+    println!("  InputLen: {}", input_len);
+    println!("  Clauses:");
+    for (i, c) in clauses.iter().enumerate() {
+        println!(
+            "    {}: {} {:?}",
+            input_len + i,
+            c.kind,
+            c.literals
+                .iter()
+                .map(|(l, n)| (usize::try_from(*l).unwrap(), *n))
+                .collect::<Vec<_>>()
+        );
+    }
+    println!(
+        "  Outputs: {:?}",
+        outputs
+            .iter()
+            .map(|(l, n)| (usize::try_from(*l).unwrap(), *n))
+            .collect::<Vec<_>>()
+    );
+}
+
+fn dump_join_and_remove_clauses_output<T>(
+    input_len: &usize,
+    clauses: &Vec<(Clause<T>, bool)>,
+    output_map: &[OutputEntryN<T>],
+    oim_opt: &Option<Vec<usize>>,
+) where
+    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Default + TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    println!("Dump JNR data:");
+    println!("  InputLen: {}", input_len);
+    println!("  Clauses:");
+    for (i, (c, n)) in clauses.iter().enumerate() {
+        println!(
+            "    {}: {} {:?} {}",
+            input_len + i,
+            c.kind,
+            c.literals
+                .iter()
+                .map(|(l, n)| (usize::try_from(*l).unwrap(), *n))
+                .collect::<Vec<_>>(),
+            *n
+        );
+    }
+    println!("  OutputMap:");
+    for (i, oe) in output_map
+        .iter()
+        .map(|oe| match oe {
+            OutputEntryN::NewIndex(v, n) => {
+                OutputEntryN::NewIndex(usize::try_from(*v).unwrap(), *n)
+            }
+            OutputEntryN::Value(v, on) => OutputEntryN::Value(*v, *on),
+        })
+        .enumerate()
+    {
+        println!("    {}: {:?}", i, oe);
+    }
+    println!("  OIMOpt:");
+    if let Some(oim_opt) = oim_opt.as_ref() {
+        for (i, idx) in oim_opt.iter().enumerate() {
+            println!("    {}: {}", i, idx);
+        }
+    }
+}
+
+fn dump_nclauses<T>(
+    input_len: &usize,
+    clauses: &Vec<(Clause<T>, bool)>,
+) where
+    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Default + TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    println!("Dump JNR data:");
+    println!("  InputLen: {}", input_len);
+    println!("  Clauses:");
+    for (i, (c, n)) in clauses.iter().enumerate() {
+        println!(
+            "    {}: {} {:?} {}",
+            input_len + i,
+            c.kind,
+            c.literals
+                .iter()
+                .map(|(l, n)| (usize::try_from(*l).unwrap(), *n))
+                .collect::<Vec<_>>(),
+            *n
+        );
+    }
+}
+// DEBUG
+
 /// Return optimized circuit, mapping to new inputs, mapping to new outputs.
 /// It optimize circuit by joining clauses with same type and resolving duplicates
 /// of literals in clauses and resolving values from that clauses.
@@ -693,7 +801,16 @@ where
     usize: TryFrom<T>,
     <usize as TryFrom<T>>::Error: Debug,
 {
-    //println!("OptStart");
+    // println!("OptStart");
+    // DEBUG
+    // dump_clauses(
+    //     usize::try_from(circuit.input_len()).unwrap(),
+    //     circuit.clauses(),
+    //     circuit.outputs(),
+    // );
+    // const JOIN_REDUCE_ITER_NUM: u32 = 100;
+    // let mut jnr_iter = 0;
+    // !DEBUG
     let mut clauses = circuit
         .clauses()
         .iter()
@@ -711,6 +828,10 @@ where
     loop {
         let mut do_next = reduce_clauses(&mut clauses);
         //println!("OptXPhase0: {:?}", clauses);
+        // DEBUG
+        // println!("join_iter: {}", jnr_iter);
+        // dump_nclauses(&new_input_len, &clauses);
+        // DEBUG
         // join clauses and remove unnecessary clauses
         let old_clause_len = clauses.len();
         do_next |= join_and_remove_clauses(
@@ -720,6 +841,9 @@ where
             &mut output_map,
             &mut oim_opt,
         );
+        // DEBUG
+        // dump_join_and_remove_clauses_output(&new_input_len, &clauses, &output_map, &oim_opt);
+        // DEBUG
         if old_clause_len == clauses.len() {
             if repeat == 10 {
                 do_next = false;
@@ -728,6 +852,12 @@ where
         } else {
             repeat = 0;
         }
+        // DEBUG
+        // jnr_iter += 1;
+        // if jnr_iter == JOIN_REDUCE_ITER_NUM {
+        //     do_next = false;
+        // }
+        // !DEBUG
         //println!("OptXPhase: {:?}", clauses);
         //println!("OptXPhaseMap: {:?}", output_map);
         if !do_next {
@@ -779,19 +909,36 @@ where
                     new_outputs.push((x, on ^ n));
                 }
             }
-            OutputEntryN::Value(v) => {
+            OutputEntryN::Value(v, _) => {
                 new_outputs_map[i] = OutputEntry::Value(v ^ on);
             }
         }
     }
 
-    let do_fix = new_clauses.iter().any(|x| x.len() == 1);
+    // let do_fix = new_clauses.iter().any(|x| x.len() == 1);
+    let do_fix = new_clauses.iter().any(|x| x.len() <= 1);
     if do_fix {
         println!("OptimizeFIX");
+        // for c in new_clauses.iter_mut() {
+        //     if c.len() == 1 {
+        //         c.kind = ClauseKind::And;
+        //         c.literals.push(c.literals[0]);
+        //     }
+        // }
+        // DEBUG
+        // dump_clauses(new_input_len, &new_clauses, &new_outputs);
+        // !DEBUG
         for c in new_clauses.iter_mut() {
             if c.len() == 1 {
                 c.kind = ClauseKind::And;
                 c.literals.push(c.literals[0]);
+            } else if c.len() == 0 {
+                c.literals = vec![(T::default(), false), (T::default(), true)];
+                if c.kind == ClauseKind::And {
+                    c.kind = ClauseKind::Xor;
+                } else {
+                    c.kind = ClauseKind::And;
+                }
             }
         }
         let (c, ni, no) = (
@@ -804,11 +951,14 @@ where
             new_inputs,
             new_outputs_map,
         );
+        // println!("OptEnd");
         let (newc, newni, newno) = optimize_clause_circuit(c);
         let out_input_map = join_input_map(&ni, &newni);
         let out_output_map = join_output_entry_map(&no, &newno);
         (newc, out_input_map, out_output_map)
+        // (c, ni, no)
     } else {
+        // println!("OptEnd");
         (
             ClauseCircuit::new(
                 T::try_from(new_input_len).unwrap(),

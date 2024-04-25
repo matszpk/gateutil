@@ -7,7 +7,8 @@ use std::fmt::Debug;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum OutputEntryN<T> {
     NewIndex(T, bool),
-    Value(bool),
+    // Value(v, n): v - calculated value, n - original negation from this output entry
+    Value(bool, bool),
 }
 
 // return true if further changes is needed.
@@ -29,11 +30,17 @@ where
     if clauses.len() + *input_len == 0 {
         return false;
     }
-    //println!("Start");
+    // println!("JoinAndRemove Start");
     let mut output_usages = vec![0; *input_len + clauses.len()];
     for (c, _) in clauses.iter() {
         for (l, _) in &c.literals {
             let l = usize::try_from(*l).unwrap();
+            // if l >= output_usages.len() {
+            //     println!("Failed xxx: {} {:?} {}", ci,
+            //              c.literals.iter().map(|(ll,ln)| (usize::try_from(*ll).unwrap(), *ln))
+            //              .collect::<Vec<_>>(),
+            //              l);
+            // }
             output_usages[l] += 1;
         }
     }
@@ -86,6 +93,9 @@ where
     //
     for (o, _) in outputs.iter() {
         let o = usize::try_from(*o).unwrap();
+        // DEBUG
+        // println!("Direct output: {}", o);
+        // DEBUG
         if o < *input_len {
             continue;
         }
@@ -97,9 +107,15 @@ where
                 }
                 o
             }
-            OutputEntryN::Value(_) => continue,
+            OutputEntryN::Value(_, _) => continue,
         };
         let mut stack = Vec::<StackEntry>::new();
+        // BUG: original output index can have different negation
+        // than destination index to reduce at end of traversal!!!!
+        // maybe bug in later parts of code! check!
+        // DEBUG
+        // println!("Converted output: {}", o);
+        // DEBUG
         stack.push(StackEntry {
             node: o - *input_len,
             way: 0,
@@ -232,6 +248,9 @@ where
                 top.way = 0;
                 top.clause_id = None;
             } else {
+                // DEBUG
+                // println!("ClauseToReduce: {}", *input_len + node_index);
+                // DEBUG
                 // resolve values and indexes for current clause
                 let cur_out_n1 = if let OutputEntryN::NewIndex(_, n) =
                     output_map[oim[*input_len + node_index]]
@@ -241,16 +260,33 @@ where
                     panic!("Unexpected");
                 };
                 if clause.literals.is_empty() {
+                    // DEBUG
+                    // println!("ClauseToReduce empty: {} {}", *input_len + node_index,
+                    //          oim[*input_len + node_index]);
+                    // DEBUG
                     // fill up by zero ^ neg (and additional negation for And clause)
                     output_map[oim[*input_len + node_index]] = OutputEntryN::Value(
                         *clause_neg ^ cur_out_n1 ^ (clause.kind == ClauseKind::And),
+                        cur_out_n1,
                     );
                     do_next_iter = true;
                 } else if clause.literals.len() == 1 {
                     // propagate to output_map
                     let l = usize::try_from(clause.literals[0].0).unwrap();
+                    // DEBUG
+                    // println!("ClauseToReduce 1lit-clause: {}: {} {}", *input_len + node_index,
+                    //          l, oim[l]);
+                    // DEBUG
                     match output_map[oim[l]] {
                         OutputEntryN::NewIndex(x, n1) => {
+                            // DEBUG
+                            // println!("Reduce 1lit-clause lit: {} {}: {} {} {}",
+                            //          *input_len + node_index,
+                            //          oim[*input_len + node_index],
+                            //          l,
+                            //          oim[l],
+                            //          usize::try_from(x).unwrap());
+                            // DEBUG
                             output_map[oim[*input_len + node_index]] = OutputEntryN::NewIndex(
                                 x,
                                 cur_out_n1 ^ n1 ^ clause.literals[0].1 ^ *clause_neg,
@@ -259,9 +295,19 @@ where
                             output_usages[usize::try_from(x).unwrap()] +=
                                 output_usages[*input_len + node_index] - 1;
                         }
-                        OutputEntryN::Value(v) => {
+                        OutputEntryN::Value(v, _) => {
+                            // DEBUG
+                            // println!("Reduce 1lit-clause v: {} {}: {} {} {} {}",
+                            //          *input_len + node_index,
+                            //          oim[*input_len + node_index],
+                            //          cur_out_n1,
+                            //          v,
+                            //          clause.literals[0].1,
+                            //          *clause_neg);
+                            // DEBUG
                             output_map[oim[*input_len + node_index]] = OutputEntryN::Value(
                                 cur_out_n1 ^ v ^ clause.literals[0].1 ^ *clause_neg,
+                                cur_out_n1
                             );
                         }
                     }
@@ -296,7 +342,7 @@ where
                                 }
                                 new_literals.push((*l, *n));
                             }
-                            OutputEntryN::Value(v1) => {
+                            OutputEntryN::Value(v1, _) => {
                                 let v = n ^ v1;
                                 match clause.kind {
                                     ClauseKind::And => {
@@ -356,9 +402,10 @@ where
                                     output_usages[usize::try_from(x).unwrap()] +=
                                         output_usages[*input_len + node_index] - 1;
                                 }
-                                OutputEntryN::Value(v) => {
+                                OutputEntryN::Value(v, _) => {
                                     output_map[oim[*input_len + node_index]] = OutputEntryN::Value(
                                         cur_out_n1 ^ v ^ clause.literals[0].1 ^ *clause_neg,
+                                        cur_out_n1
                                     );
                                 }
                             }
@@ -368,6 +415,7 @@ where
                             // fill up by zero ^ neg (and additional negation for And clause)
                             output_map[oim[*input_len + node_index]] = OutputEntryN::Value(
                                 *clause_neg ^ cur_out_n1 ^ (clause.kind == ClauseKind::And),
+                                cur_out_n1,
                             );
                             do_next_iter = true;
                         }
@@ -397,7 +445,7 @@ where
                 }
                 o
             }
-            OutputEntryN::Value(_) => continue,
+            OutputEntryN::Value(_, _) => continue,
         };
         let mut stack = Vec::<StackEntry>::new();
         stack.push(StackEntry {
@@ -477,7 +525,8 @@ where
         if !output_to_skip_set.contains(&oim_id) {
             if let OutputEntryN::NewIndex(idx, n) = output_map[oim_id] {
                 if *input_len != 0 && j < *input_len && !used_new_outputs[j] {
-                    output_map[oim_id] = OutputEntryN::Value(false);
+                    // CHECK
+                    output_map[oim_id] = OutputEntryN::Value(n, n);
                 } else {
                     output_map[oim_id] =
                         OutputEntryN::NewIndex(trans_map[usize::try_from(idx).unwrap()], n);
@@ -494,24 +543,41 @@ where
         .collect::<Vec<_>>();
 
     // translate outputs for circuit outputs
+    // DEBUG
+    let mut some_find = false;
+    // !DEBUG
     for (o, _) in outputs {
         let o = usize::try_from(*o).unwrap();
         if let OutputEntryN::NewIndex(idx, n) = output_map[o] {
             let idx_u = usize::try_from(idx).unwrap();
             if *input_len != 0 && idx_u < *input_len && !used_new_outputs[idx_u] {
-                output_map[o] = OutputEntryN::Value(false ^ n);
+                // DEBUG
+                // println!("JNR: Output: {} {}", idx_u, n);
+                // DEBUG
+                output_map[o] = OutputEntryN::Value(false ^ n, n);
             } else {
                 let newidx = trans_map[usize::try_from(idx).unwrap()];
                 let newidx_u = usize::try_from(newidx).unwrap();
+                // DEBUG
+                if !some_find {
+                    // println!("Some find: {} {}", usize::try_from(idx).unwrap(), newidx_u);
+                    some_find = true;
+                }
+                // !DEBUG
                 match output_map[oim[newidx_u]] {
-                    OutputEntryN::Value(v) => {
-                        output_map[o] = OutputEntryN::Value(v ^ n);
+                    OutputEntryN::Value(v, orig_n) => {
+                        output_map[o] = OutputEntryN::Value(v ^ n ^ orig_n, n);
                     }
                     OutputEntryN::NewIndex(_, _) => {
                         output_map[o] = OutputEntryN::NewIndex(newidx, n);
                     }
                 }
             }
+            // if *input_len != 0 && idx_u < *input_len && !used_new_outputs[idx_u] {
+            //     output_map[o] = OutputEntryN::Value(false);
+            // } else {
+            //     output_map[o] = OutputEntryN::NewIndex(trans_map[usize::try_from(idx).unwrap()], n);
+            // }
         }
     }
     *input_len = used_new_outputs[..*input_len]
@@ -611,7 +677,7 @@ mod tests {
             ));
             assert_eq!(0, input_len);
             assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
-            assert_eq!([OutputEntryN::Value(t ^ t1 ^ !xor),], output_map);
+            assert_eq!([OutputEntryN::Value(t ^ t1 ^ !xor, t1),], output_map);
         }
 
         // testcase
@@ -651,10 +717,10 @@ mod tests {
             assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
             assert_eq!(
                 [
-                    OutputEntryN::Value(false),
-                    OutputEntryN::Value(false),
-                    OutputEntryN::Value(false),
-                    OutputEntryN::Value(t ^ t1),
+                    OutputEntryN::Value(false, false),
+                    OutputEntryN::Value(false, false),
+                    OutputEntryN::Value(false, false),
+                    OutputEntryN::Value(t ^ t1, t1),
                 ],
                 output_map
             );
@@ -699,7 +765,7 @@ mod tests {
                 [
                     OutputEntryN::NewIndex(0, false),
                     OutputEntryN::NewIndex(1, false),
-                    OutputEntryN::Value(true),
+                    OutputEntryN::Value(true, false),
                     OutputEntryN::NewIndex(2, false),
                 ],
                 output_map
@@ -750,7 +816,7 @@ mod tests {
                 [
                     OutputEntryN::NewIndex(0, false),
                     OutputEntryN::NewIndex(1, false),
-                    OutputEntryN::Value(true),
+                    OutputEntryN::Value(true, false),
                     OutputEntryN::NewIndex(2, false),
                     OutputEntryN::NewIndex(3, false),
                 ],
@@ -801,11 +867,11 @@ mod tests {
             assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
             assert_eq!(
                 [
-                    OutputEntryN::Value(false),
-                    OutputEntryN::Value(false),
-                    OutputEntryN::Value(true),
-                    OutputEntryN::Value(true),
-                    OutputEntryN::Value(true),
+                    OutputEntryN::Value(false, false),
+                    OutputEntryN::Value(false, false),
+                    OutputEntryN::Value(true, false),
+                    OutputEntryN::Value(true, false),
+                    OutputEntryN::Value(true, false),
                 ],
                 output_map
             );
@@ -854,11 +920,11 @@ mod tests {
             assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
             assert_eq!(
                 [
-                    OutputEntryN::Value(false),
-                    OutputEntryN::Value(false),
-                    OutputEntryN::Value(true),
-                    OutputEntryN::Value(true),
-                    OutputEntryN::Value(false),
+                    OutputEntryN::Value(false, false),
+                    OutputEntryN::Value(false, false),
+                    OutputEntryN::Value(true, false),
+                    OutputEntryN::Value(true, false),
+                    OutputEntryN::Value(false, false),
                 ],
                 output_map
             );
@@ -907,7 +973,7 @@ mod tests {
                 [
                     OutputEntryN::NewIndex(0, false),
                     OutputEntryN::NewIndex(1, false),
-                    OutputEntryN::Value(t ^ t1),
+                    OutputEntryN::Value(t ^ t1, t1),
                     OutputEntryN::NewIndex(2, false),
                 ],
                 output_map
@@ -991,7 +1057,7 @@ mod tests {
             assert_eq!(
                 [
                     OutputEntryN::NewIndex(0, t2),
-                    OutputEntryN::Value(true),
+                    OutputEntryN::Value(true, false),
                     OutputEntryN::NewIndex(0, t0 ^ t1 ^ t2 ^ t3),
                 ],
                 output_map,
@@ -1043,7 +1109,7 @@ mod tests {
             assert_eq!(
                 [
                     OutputEntryN::NewIndex(0, t2),
-                    OutputEntryN::Value(t5 ^ t6),
+                    OutputEntryN::Value(t5 ^ t6, t6),
                     OutputEntryN::NewIndex(0, t0 ^ t1 ^ t2 ^ t3 ^ t4 ^ t5 ^ t6),
                 ],
                 output_map,
@@ -1087,8 +1153,8 @@ mod tests {
             assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses);
             assert_eq!(
                 [
-                    OutputEntryN::Value(t0 ^ t3),
-                    OutputEntryN::Value(t0 ^ t1 ^ t2 ^ t3 ^ t4),
+                    OutputEntryN::Value(t0 ^ t3, t3),
+                    OutputEntryN::Value(t0 ^ t1 ^ t2 ^ t3 ^ t4, t4),
                 ],
                 output_map,
                 "{}",
@@ -1473,12 +1539,12 @@ mod tests {
             assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses, "{}", tv);
             assert_eq!(
                 [
-                    OutputEntryN::Value(false),
-                    OutputEntryN::Value(false),
-                    OutputEntryN::Value(false),
+                    OutputEntryN::Value(false, false),
+                    OutputEntryN::Value(false, false),
+                    OutputEntryN::Value(false, false),
                     OutputEntryN::NewIndex(0, t1),
-                    OutputEntryN::Value(false),
-                    OutputEntryN::Value(false),
+                    OutputEntryN::Value(false, false),
+                    OutputEntryN::Value(false, false),
                 ],
                 output_map,
                 "{}",
@@ -1893,7 +1959,7 @@ mod tests {
                     OutputEntryN::NewIndex(1, false),
                     OutputEntryN::NewIndex(2, false),
                     OutputEntryN::NewIndex(3, t1),
-                    OutputEntryN::Value(false),
+                    OutputEntryN::Value(false, false),
                     OutputEntryN::NewIndex(3, t1 ^ t2 ^ t3),
                     OutputEntryN::NewIndex(4, false),
                     OutputEntryN::NewIndex(3, t1 ^ t2 ^ t3),
@@ -1941,13 +2007,13 @@ mod tests {
             assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses, "{}", tv);
             assert_eq!(
                 [
-                    OutputEntryN::Value(false),
-                    OutputEntryN::Value(false),
-                    OutputEntryN::Value(false),
+                    OutputEntryN::Value(false, false),
+                    OutputEntryN::Value(false, false),
+                    OutputEntryN::Value(false, false),
                     OutputEntryN::NewIndex(0, t1),
                     OutputEntryN::NewIndex(0, t1 ^ t2 ^ t3),
-                    OutputEntryN::Value(false),
-                    OutputEntryN::Value(false),
+                    OutputEntryN::Value(false, false),
+                    OutputEntryN::Value(false, false),
                 ],
                 output_map,
                 "{}",
@@ -1993,14 +2059,14 @@ mod tests {
             assert_eq!(Vec::<(Clause<usize>, bool)>::new(), clauses, "{}", tv);
             assert_eq!(
                 [
-                    OutputEntryN::Value(false),
-                    OutputEntryN::Value(false),
-                    OutputEntryN::Value(false),
+                    OutputEntryN::Value(false, false),
+                    OutputEntryN::Value(false, false),
+                    OutputEntryN::Value(false, false),
                     OutputEntryN::NewIndex(0, t1),
-                    OutputEntryN::Value(false),
+                    OutputEntryN::Value(false, false),
                     OutputEntryN::NewIndex(0, t1 ^ t2 ^ t3),
-                    OutputEntryN::Value(false),
-                    OutputEntryN::Value(false),
+                    OutputEntryN::Value(false, false),
+                    OutputEntryN::Value(false, false),
                 ],
                 output_map,
                 "{}",
@@ -2212,7 +2278,7 @@ mod tests {
                     OutputEntryN::NewIndex(2, false),
                     OutputEntryN::NewIndex(3, false),
                     OutputEntryN::NewIndex(4, false),
-                    OutputEntryN::Value(false),
+                    OutputEntryN::Value(false, false),
                     OutputEntryN::NewIndex(5, false),
                     OutputEntryN::NewIndex(6, false),
                     OutputEntryN::NewIndex(0, t1),
@@ -2429,7 +2495,7 @@ mod tests {
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
-                OutputEntryN::Value(false),
+                OutputEntryN::Value(false, false),
                 OutputEntryN::NewIndex(2, false),
                 OutputEntryN::NewIndex(3, t1),
                 OutputEntryN::NewIndex(0, false),
@@ -2456,7 +2522,7 @@ mod tests {
                 [
                     OutputEntryN::NewIndex(0, false),
                     OutputEntryN::NewIndex(1, false),
-                    OutputEntryN::Value(false),
+                    OutputEntryN::Value(false, false),
                     OutputEntryN::NewIndex(2, false),
                     OutputEntryN::NewIndex(0, t1),
                     OutputEntryN::NewIndex(0, false),
@@ -2498,7 +2564,7 @@ mod tests {
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
-                OutputEntryN::Value(false),
+                OutputEntryN::Value(false, false),
                 OutputEntryN::NewIndex(2, false),
                 OutputEntryN::NewIndex(3, t1),
                 OutputEntryN::NewIndex(0, false),
@@ -2539,7 +2605,7 @@ mod tests {
                 [
                     OutputEntryN::NewIndex(0, false),
                     OutputEntryN::NewIndex(1, false),
-                    OutputEntryN::Value(false),
+                    OutputEntryN::Value(false, false),
                     OutputEntryN::NewIndex(2, false),
                     OutputEntryN::NewIndex(3, t1),
                     OutputEntryN::NewIndex(0, false),
@@ -2579,7 +2645,7 @@ mod tests {
             let mut oim_opt = None;
             let mut output_map = [
                 OutputEntryN::NewIndex(0, false),
-                OutputEntryN::Value(false),
+                OutputEntryN::Value(false, false),
                 OutputEntryN::NewIndex(1, false),
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(2, t1),
@@ -2601,10 +2667,10 @@ mod tests {
             assert_eq!(
                 [
                     OutputEntryN::NewIndex(0, false),
-                    OutputEntryN::Value(false),
+                    OutputEntryN::Value(false, false),
                     OutputEntryN::NewIndex(1, false),
                     OutputEntryN::NewIndex(0, false),
-                    OutputEntryN::Value(t ^ t1),
+                    OutputEntryN::Value(t ^ t1, t1),
                     OutputEntryN::NewIndex(0, false),
                     OutputEntryN::NewIndex(2, false),
                 ],
@@ -2808,18 +2874,18 @@ mod tests {
         );
         assert_eq!(
             [
-                OutputEntryN::Value(false),
+                OutputEntryN::Value(false, false),
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
                 OutputEntryN::NewIndex(2, false),
-                OutputEntryN::Value(false),
+                OutputEntryN::Value(false, false),
                 OutputEntryN::NewIndex(3, false),
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(4, false),
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(0, false),
-                OutputEntryN::Value(false),
-                OutputEntryN::Value(false),
+                OutputEntryN::Value(false, false),
+                OutputEntryN::Value(false, false),
                 OutputEntryN::NewIndex(5, false),
                 OutputEntryN::NewIndex(5, false), // from one-literal clause
             ],
@@ -2843,18 +2909,18 @@ mod tests {
         );
         assert_eq!(
             [
-                OutputEntryN::Value(false),
+                OutputEntryN::Value(false, false),
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(1, false),
                 OutputEntryN::NewIndex(2, false),
-                OutputEntryN::Value(false),
+                OutputEntryN::Value(false, false),
                 OutputEntryN::NewIndex(3, false),
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(0, false),
-                OutputEntryN::Value(false),
-                OutputEntryN::Value(false),
+                OutputEntryN::Value(false, false),
+                OutputEntryN::Value(false, false),
                 OutputEntryN::NewIndex(4, false),
                 OutputEntryN::NewIndex(4, false),
             ],
@@ -3056,7 +3122,7 @@ mod tests {
                 OutputEntryN::NewIndex(2, false),
                 OutputEntryN::NewIndex(0, false),
                 OutputEntryN::NewIndex(0, false),
-                OutputEntryN::Value(false),
+                OutputEntryN::Value(false, false),
                 OutputEntryN::NewIndex(0, true),
                 OutputEntryN::NewIndex(3, false),
             ],
