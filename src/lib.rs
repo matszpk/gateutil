@@ -760,10 +760,8 @@ fn dump_join_and_remove_clauses_output<T>(
     }
 }
 
-fn dump_nclauses<T>(
-    input_len: &usize,
-    clauses: &Vec<(Clause<T>, bool)>,
-) where
+fn dump_nclauses<T>(input_len: &usize, clauses: &Vec<(Clause<T>, bool)>)
+where
     T: Clone + Copy + Ord + PartialEq + Eq,
     T: Default + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,

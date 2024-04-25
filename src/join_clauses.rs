@@ -31,7 +31,15 @@ where
         return false;
     }
     // println!("JoinAndRemove Start");
-    let mut output_usages = vec![0; *input_len + clauses.len()];
+    let mut maxl = 0;
+    for (c, _) in clauses.iter() {
+        for (l, _) in &c.literals {
+            maxl = std::cmp::max(usize::try_from(*l).unwrap(), maxl);
+        }
+    }
+    maxl = std::cmp::max(maxl + 1, *input_len + clauses.len());
+
+    let mut output_usages = vec![0; maxl];
     for (c, _) in clauses.iter() {
         for (l, _) in &c.literals {
             let l = usize::try_from(*l).unwrap();
@@ -307,7 +315,7 @@ where
                             // DEBUG
                             output_map[oim[*input_len + node_index]] = OutputEntryN::Value(
                                 cur_out_n1 ^ v ^ clause.literals[0].1 ^ *clause_neg,
-                                cur_out_n1
+                                cur_out_n1,
                             );
                         }
                     }
@@ -405,7 +413,7 @@ where
                                 OutputEntryN::Value(v, _) => {
                                     output_map[oim[*input_len + node_index]] = OutputEntryN::Value(
                                         cur_out_n1 ^ v ^ clause.literals[0].1 ^ *clause_neg,
-                                        cur_out_n1
+                                        cur_out_n1,
                                     );
                                 }
                             }
@@ -440,6 +448,7 @@ where
             OutputEntryN::NewIndex(o, _) => {
                 let o = usize::try_from(o).unwrap();
                 if o < *input_len {
+                    // println!("UsedNewOutputs1: {}", o);
                     used_new_outputs[o] = true;
                     continue;
                 }
@@ -460,6 +469,7 @@ where
             let (clause, _) = &clauses[node_index];
             if top.way == 0 {
                 if !used_new_outputs[*input_len + node_index] {
+                    // println!("UsedNewOutputs2: {}", *input_len + node_index);
                     used_new_outputs[*input_len + node_index] = true;
                 } else {
                     stack.pop();
@@ -479,6 +489,7 @@ where
                         negate_join: false,
                     });
                 } else {
+                    // println!("UsedNewOutputs3: {}", l);
                     used_new_outputs[l] = true;
                 }
             } else {
