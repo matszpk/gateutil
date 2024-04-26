@@ -118,9 +118,6 @@ where
             OutputEntryN::Value(_, _) => continue,
         };
         let mut stack = Vec::<StackEntry>::new();
-        // BUG: original output index can have different negation
-        // than destination index to reduce at end of traversal!!!!
-        // maybe bug in later parts of code! check!
         // DEBUG
         // println!("Converted output: {}", o);
         // DEBUG
