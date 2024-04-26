@@ -557,8 +557,13 @@ where
     // DEBUG
     let mut some_find = false;
     // !DEBUG
+    let mut outputs_processed = HashSet::new();
     for (o, _) in outputs {
         let o = usize::try_from(*o).unwrap();
+        if outputs_processed.contains(&o) {
+            continue;
+        }
+        outputs_processed.insert(o);
         if let OutputEntryN::NewIndex(idx, n) = output_map[o] {
             let idx_u = usize::try_from(idx).unwrap();
             if *input_len != 0 && idx_u < *input_len && !used_new_outputs[idx_u] {
@@ -574,6 +579,7 @@ where
                     // println!("Some find: {} {}", usize::try_from(idx).unwrap(), newidx_u);
                     some_find = true;
                 }
+                // println!("LastOutputMapNewIdx: {} {}", o, newidx_u);
                 // !DEBUG
                 match output_map[oim[newidx_u]] {
                     OutputEntryN::Value(v, orig_n) => {
@@ -591,6 +597,19 @@ where
             // }
         }
     }
+    // DEBUG
+    // for (i, om) in output_map
+    //     .iter()
+    //     .map(|oe| match oe {
+    //         OutputEntryN::NewIndex(v, n) => {
+    //             OutputEntryN::NewIndex(usize::try_from(*v).unwrap(), *n)
+    //         }
+    //         OutputEntryN::Value(v, on) => OutputEntryN::Value(*v, *on),
+    //     })
+    //     .enumerate() {
+    //     println!("OutputMap {} {:?}", i, om);
+    // }
+    // DEBUG
     *input_len = used_new_outputs[..*input_len]
         .iter()
         .enumerate()
