@@ -768,7 +768,7 @@ where
     usize: TryFrom<T>,
     <usize as TryFrom<T>>::Error: Debug,
 {
-    println!("Dump JNR data:");
+    println!("Dump NClauses:");
     println!("  InputLen: {}", input_len);
     println!("  Clauses:");
     for (i, (c, n)) in clauses.iter().enumerate() {
