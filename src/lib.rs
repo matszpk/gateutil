@@ -681,109 +681,109 @@ where
 }
 
 // DEBUG
-fn dump_clauses<T>(input_len: usize, clauses: &[Clause<T>], outputs: &[(T, bool)])
-where
-    T: Clone + Copy + Ord + PartialEq + Eq,
-    T: Default + TryFrom<usize>,
-    <T as TryFrom<usize>>::Error: Debug,
-    usize: TryFrom<T>,
-    <usize as TryFrom<T>>::Error: Debug,
-{
-    println!("Dump ClauseCircuit data:");
-    println!("  InputLen: {}", input_len);
-    println!("  Clauses:");
-    for (i, c) in clauses.iter().enumerate() {
-        println!(
-            "    {}: {} {:?}",
-            input_len + i,
-            c.kind,
-            c.literals
-                .iter()
-                .map(|(l, n)| (usize::try_from(*l).unwrap(), *n))
-                .collect::<Vec<_>>()
-        );
-    }
-    println!(
-        "  Outputs: {:?}",
-        outputs
-            .iter()
-            .map(|(l, n)| (usize::try_from(*l).unwrap(), *n))
-            .collect::<Vec<_>>()
-    );
-}
-
-fn dump_join_and_remove_clauses_output<T>(
-    input_len: &usize,
-    clauses: &Vec<(Clause<T>, bool)>,
-    output_map: &[OutputEntryN<T>],
-    oim_opt: &Option<Vec<usize>>,
-) where
-    T: Clone + Copy + Ord + PartialEq + Eq,
-    T: Default + TryFrom<usize>,
-    <T as TryFrom<usize>>::Error: Debug,
-    usize: TryFrom<T>,
-    <usize as TryFrom<T>>::Error: Debug,
-{
-    println!("Dump JNR data:");
-    println!("  InputLen: {}", input_len);
-    println!("  Clauses:");
-    for (i, (c, n)) in clauses.iter().enumerate() {
-        println!(
-            "    {}: {} {:?} {}",
-            input_len + i,
-            c.kind,
-            c.literals
-                .iter()
-                .map(|(l, n)| (usize::try_from(*l).unwrap(), *n))
-                .collect::<Vec<_>>(),
-            *n
-        );
-    }
-    println!("  OutputMap:");
-    for (i, oe) in output_map
-        .iter()
-        .map(|oe| match oe {
-            OutputEntryN::NewIndex(v, n) => {
-                OutputEntryN::NewIndex(usize::try_from(*v).unwrap(), *n)
-            }
-            OutputEntryN::Value(v, on) => OutputEntryN::Value(*v, *on),
-        })
-        .enumerate()
-    {
-        println!("    {}: {:?}", i, oe);
-    }
-    println!("  OIMOpt:");
-    if let Some(oim_opt) = oim_opt.as_ref() {
-        for (i, idx) in oim_opt.iter().enumerate() {
-            println!("    {}: {}", i, idx);
-        }
-    }
-}
-
-fn dump_nclauses<T>(input_len: &usize, clauses: &Vec<(Clause<T>, bool)>)
-where
-    T: Clone + Copy + Ord + PartialEq + Eq,
-    T: Default + TryFrom<usize>,
-    <T as TryFrom<usize>>::Error: Debug,
-    usize: TryFrom<T>,
-    <usize as TryFrom<T>>::Error: Debug,
-{
-    println!("Dump NClauses:");
-    println!("  InputLen: {}", input_len);
-    println!("  Clauses:");
-    for (i, (c, n)) in clauses.iter().enumerate() {
-        println!(
-            "    {}: {} {:?} {}",
-            input_len + i,
-            c.kind,
-            c.literals
-                .iter()
-                .map(|(l, n)| (usize::try_from(*l).unwrap(), *n))
-                .collect::<Vec<_>>(),
-            *n
-        );
-    }
-}
+// fn dump_clauses<T>(input_len: usize, clauses: &[Clause<T>], outputs: &[(T, bool)])
+// where
+//     T: Clone + Copy + Ord + PartialEq + Eq,
+//     T: Default + TryFrom<usize>,
+//     <T as TryFrom<usize>>::Error: Debug,
+//     usize: TryFrom<T>,
+//     <usize as TryFrom<T>>::Error: Debug,
+// {
+//     println!("Dump ClauseCircuit data:");
+//     println!("  InputLen: {}", input_len);
+//     println!("  Clauses:");
+//     for (i, c) in clauses.iter().enumerate() {
+//         println!(
+//             "    {}: {} {:?}",
+//             input_len + i,
+//             c.kind,
+//             c.literals
+//                 .iter()
+//                 .map(|(l, n)| (usize::try_from(*l).unwrap(), *n))
+//                 .collect::<Vec<_>>()
+//         );
+//     }
+//     println!(
+//         "  Outputs: {:?}",
+//         outputs
+//             .iter()
+//             .map(|(l, n)| (usize::try_from(*l).unwrap(), *n))
+//             .collect::<Vec<_>>()
+//     );
+// }
+// 
+// fn dump_join_and_remove_clauses_output<T>(
+//     input_len: &usize,
+//     clauses: &Vec<(Clause<T>, bool)>,
+//     output_map: &[OutputEntryN<T>],
+//     oim_opt: &Option<Vec<usize>>,
+// ) where
+//     T: Clone + Copy + Ord + PartialEq + Eq,
+//     T: Default + TryFrom<usize>,
+//     <T as TryFrom<usize>>::Error: Debug,
+//     usize: TryFrom<T>,
+//     <usize as TryFrom<T>>::Error: Debug,
+// {
+//     println!("Dump JNR data:");
+//     println!("  InputLen: {}", input_len);
+//     println!("  Clauses:");
+//     for (i, (c, n)) in clauses.iter().enumerate() {
+//         println!(
+//             "    {}: {} {:?} {}",
+//             input_len + i,
+//             c.kind,
+//             c.literals
+//                 .iter()
+//                 .map(|(l, n)| (usize::try_from(*l).unwrap(), *n))
+//                 .collect::<Vec<_>>(),
+//             *n
+//         );
+//     }
+//     println!("  OutputMap:");
+//     for (i, oe) in output_map
+//         .iter()
+//         .map(|oe| match oe {
+//             OutputEntryN::NewIndex(v, n) => {
+//                 OutputEntryN::NewIndex(usize::try_from(*v).unwrap(), *n)
+//             }
+//             OutputEntryN::Value(v, on) => OutputEntryN::Value(*v, *on),
+//         })
+//         .enumerate()
+//     {
+//         println!("    {}: {:?}", i, oe);
+//     }
+//     println!("  OIMOpt:");
+//     if let Some(oim_opt) = oim_opt.as_ref() {
+//         for (i, idx) in oim_opt.iter().enumerate() {
+//             println!("    {}: {}", i, idx);
+//         }
+//     }
+// }
+// 
+// fn dump_nclauses<T>(input_len: &usize, clauses: &Vec<(Clause<T>, bool)>)
+// where
+//     T: Clone + Copy + Ord + PartialEq + Eq,
+//     T: Default + TryFrom<usize>,
+//     <T as TryFrom<usize>>::Error: Debug,
+//     usize: TryFrom<T>,
+//     <usize as TryFrom<T>>::Error: Debug,
+// {
+//     println!("Dump NClauses:");
+//     println!("  InputLen: {}", input_len);
+//     println!("  Clauses:");
+//     for (i, (c, n)) in clauses.iter().enumerate() {
+//         println!(
+//             "    {}: {} {:?} {}",
+//             input_len + i,
+//             c.kind,
+//             c.literals
+//                 .iter()
+//                 .map(|(l, n)| (usize::try_from(*l).unwrap(), *n))
+//                 .collect::<Vec<_>>(),
+//             *n
+//         );
+//     }
+// }
 // DEBUG
 
 /// Return optimized circuit, mapping to new inputs, mapping to new outputs.
