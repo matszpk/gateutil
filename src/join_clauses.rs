@@ -1,7 +1,7 @@
 use gatesim::*;
 
 use std::cmp::Ord;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -94,6 +94,27 @@ where
     let mut visited_for_collect = vec![false; clauses.len()];
     // clauses length before second pass
     let mut clause_len_before_second = vec![0; clauses.len()];
+
+    // collect output duplicates recognized by comparing output map entries
+    let output_dups = {
+        let mut output_dups = HashMap::<usize, Vec<(usize, bool)>>::new();
+        for (o, n) in outputs.iter() {
+            let o = usize::try_from(*o).unwrap();
+            match output_map[o] {
+                OutputEntryN::NewIndex(ni, _) => {
+                    let ni = usize::try_from(ni).unwrap();
+                    if let Some(dups) = output_dups.get_mut(&ni) {
+                        dups.push((o, *n));
+                    } else {
+                        output_dups.insert(ni, vec![(o, *n)]);
+                    }
+                }
+                _ => (),
+            }
+        }
+        output_dups.retain(|_, d| d.len() >= 2);
+        output_dups
+    };
 
     let mut do_next_iter = false;
     //
@@ -427,6 +448,30 @@ where
                     }
                 }
                 stack.pop();
+            }
+        }
+    }
+
+    // before finding usages: just update output duplicate recognized by output_map entries
+    for (ni, dups) in output_dups {
+        if let Some((i2, _, on, ni2, nin2)) = dups
+            .iter()
+            .enumerate()
+            .filter_map(|(i, (o, n))| {
+                if let OutputEntryN::NewIndex(ni2, n2) = output_map[*o] {
+                    Some((i, *o, *n, usize::try_from(ni2).unwrap(), n2))
+                } else {
+                    None
+                }
+            })
+            .find(|(_, _, _, ni2, _)| *ni2 != ni)
+        {
+            // just update to other
+            for (i, (o, n)) in dups.iter().enumerate() {
+                if i != i2 {
+                    output_map[*o] =
+                        OutputEntryN::NewIndex(T::try_from(ni2).unwrap(), on ^ n ^ nin2);
+                }
             }
         }
     }
