@@ -98,15 +98,15 @@ where
     // collect output duplicates recognized by comparing output map entries
     let output_dups = {
         let mut output_dups = HashMap::<usize, Vec<(usize, bool)>>::new();
-        for (o, n) in outputs.iter() {
+        for (o, _) in outputs.iter() {
             let o = usize::try_from(*o).unwrap();
             match output_map[o] {
-                OutputEntryN::NewIndex(ni, _) => {
+                OutputEntryN::NewIndex(ni, omn) => {
                     let ni = usize::try_from(ni).unwrap();
                     if let Some(dups) = output_dups.get_mut(&ni) {
-                        dups.push((o, *n));
+                        dups.push((o, omn));
                     } else {
-                        output_dups.insert(ni, vec![(o, *n)]);
+                        output_dups.insert(ni, vec![(o, omn)]);
                     }
                 }
                 _ => (),
@@ -454,12 +454,12 @@ where
 
     // before finding usages: just update output duplicate recognized by output_map entries
     for (ni, dups) in output_dups {
-        if let Some((i2, _, on, ni2, nin2)) = dups
+        if let Some((i2, _, oomn, ni2, nin2)) = dups
             .iter()
             .enumerate()
-            .filter_map(|(i, (o, n))| {
+            .filter_map(|(i, (o, omn))| {
                 if let OutputEntryN::NewIndex(ni2, n2) = output_map[*o] {
-                    Some((i, *o, *n, usize::try_from(ni2).unwrap(), n2))
+                    Some((i, *o, *omn, usize::try_from(ni2).unwrap(), n2))
                 } else {
                     None
                 }
@@ -467,14 +467,16 @@ where
             .find(|(_, _, _, ni2, _)| *ni2 != ni)
         {
             // just update to other
-            for (i, (o, n)) in dups.iter().enumerate() {
+            for (i, (o, omn)) in dups.iter().enumerate() {
                 if i != i2 {
                     if let OutputEntryN::NewIndex(cni, _) = output_map[*o] {
                         let cni = usize::try_from(cni).unwrap();
                         if cni != ni2 {
                             // only if not updated
-                            output_map[*o] =
-                                OutputEntryN::NewIndex(T::try_from(ni2).unwrap(), on ^ n ^ nin2);
+                            output_map[*o] = OutputEntryN::NewIndex(
+                                T::try_from(ni2).unwrap(),
+                                oomn ^ omn ^ nin2,
+                            );
                         }
                     }
                 }
