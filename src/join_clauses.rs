@@ -469,8 +469,14 @@ where
             // just update to other
             for (i, (o, n)) in dups.iter().enumerate() {
                 if i != i2 {
-                    output_map[*o] =
-                        OutputEntryN::NewIndex(T::try_from(ni2).unwrap(), on ^ n ^ nin2);
+                    if let OutputEntryN::NewIndex(cni, _) = output_map[*o] {
+                        let cni = usize::try_from(cni).unwrap();
+                        if cni != ni2 {
+                            // only if not updated
+                            output_map[*o] =
+                                OutputEntryN::NewIndex(T::try_from(ni2).unwrap(), on ^ n ^ nin2);
+                        }
+                    }
                 }
             }
         }
