@@ -36,6 +36,8 @@ pub(crate) fn translate_clauses<T>(
     dedup: bool,
 ) where
     T: Clone + Copy + Ord + PartialEq + Eq + Hash,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
 {
     // translate literals and sort and deduplicate literals
     for DedupClause { clause, .. } in clauses.iter_mut() {
@@ -45,8 +47,36 @@ pub(crate) fn translate_clauses<T>(
             }
         }
         clause.literals.sort();
-        if dedup && clause.kind == ClauseKind::And {
-            clause.literals.dedup();
+        if dedup {
+            if clause.kind == ClauseKind::And {
+                clause.literals.dedup();
+            } else {
+                // CHECK EXHAUSTIVELY!!!
+                // for XOR
+                let mut new_lits = vec![];
+                let mut prev = None;
+                for l in &clause.literals {
+                    if let Some(prevl) = prev {
+                        if prevl != *l {
+                            new_lits.push(*l);
+                        } else {
+                            new_lits.pop();  // remove previous
+                            prev = new_lits.first().copied();
+                            continue;
+                        }
+                    } else {
+                        new_lits.push(*l);
+                    }
+                    prev = Some(*l);
+                }
+                // println!("XXOld: {:?}", clause.literals.iter().map(|(l, n)|
+                //     (usize::try_from(*l).unwrap(), n)).collect::<Vec<_>>());
+                // println!("XXNew: {:?}", new_lits.iter().map(|(l, n)|
+                //     (usize::try_from(*l).unwrap(), n)).collect::<Vec<_>>());
+                if !new_lits.is_empty() {
+                    clause.literals = new_lits;
+                }
+            }
         }
     }
 }
@@ -234,6 +264,10 @@ pub(crate) fn deduplicate_literal_clauses_0<T>(
     clauses.sort()
 }
 
+// DEBUG
+use crate::dump_dedup_clauses;
+// DEBUG
+
 pub(crate) fn deduplicate_literal_clauses<T>(
     extra_clause_start: &mut usize,
     clauses: &mut Vec<DedupClause<T>>,
@@ -402,6 +436,10 @@ pub(crate) fn deduplicate_literal_clauses<T>(
         translate_clauses(clauses, &trans_table, true);
         clauses.sort();
         //println!("Clauses: After: {:?}", clauses);
+        // DEBUG
+        // println!("Inside dedup_literal_clauses");
+        // dump_dedup_clauses(clauses);
+        // DEBUG
 
         if !have_changes {
             break;
@@ -847,10 +885,15 @@ mod tests {
                     None,
                     Clause::new_xor([(1, true), (3, false), (4, false)])
                 ),
+                // dedup_clause(
+                //     8,
+                //     None,
+                //     Clause::new_xor([(3, true), (5, false), (5, false)])
+                // )
                 dedup_clause(
                     8,
                     None,
-                    Clause::new_xor([(3, true), (5, false), (5, false)])
+                    Clause::new_xor([(3, true)])
                 )
             ],
             clauses

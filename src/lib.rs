@@ -681,36 +681,36 @@ where
 }
 
 // DEBUG
-// fn dump_clauses<T>(input_len: usize, clauses: &[Clause<T>], outputs: &[(T, bool)])
-// where
-//     T: Clone + Copy + Ord + PartialEq + Eq,
-//     T: Default + TryFrom<usize>,
-//     <T as TryFrom<usize>>::Error: Debug,
-//     usize: TryFrom<T>,
-//     <usize as TryFrom<T>>::Error: Debug,
-// {
-//     println!("Dump ClauseCircuit data:");
-//     println!("  InputLen: {}", input_len);
-//     println!("  Clauses:");
-//     for (i, c) in clauses.iter().enumerate() {
-//         println!(
-//             "    {}: {} {:?}",
-//             input_len + i,
-//             c.kind,
-//             c.literals
-//                 .iter()
-//                 .map(|(l, n)| (usize::try_from(*l).unwrap(), *n))
-//                 .collect::<Vec<_>>()
-//         );
-//     }
-//     println!(
-//         "  Outputs: {:?}",
-//         outputs
-//             .iter()
-//             .map(|(l, n)| (usize::try_from(*l).unwrap(), *n))
-//             .collect::<Vec<_>>()
-//     );
-// }
+fn dump_clauses<T>(input_len: usize, clauses: &[Clause<T>], outputs: &[(T, bool)])
+where
+    T: Clone + Copy + Ord + PartialEq + Eq,
+    T: Default + TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    println!("Dump ClauseCircuit data:");
+    println!("  InputLen: {}", input_len);
+    println!("  Clauses:");
+    for (i, c) in clauses.iter().enumerate() {
+        println!(
+            "    {}: {} {:?}",
+            input_len + i,
+            c.kind,
+            c.literals
+                .iter()
+                .map(|(l, n)| (usize::try_from(*l).unwrap(), *n))
+                .collect::<Vec<_>>()
+        );
+    }
+    println!(
+        "  Outputs: {:?}",
+        outputs
+            .iter()
+            .map(|(l, n)| (usize::try_from(*l).unwrap(), *n))
+            .collect::<Vec<_>>()
+    );
+}
 //
 // fn dump_join_and_remove_clauses_output<T>(
 //     input_len: &usize,
@@ -1060,6 +1060,30 @@ where
     out_map
 }
 
+// DEBUG
+pub(crate) fn dump_dedup_clauses<T>(clauses: &[DedupClause<T>])
+where
+    T: Clone + Copy + Ord + PartialEq + Eq + Hash,
+    T: Default + TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    println!("DedupClauses:");
+    for (i, dc) in clauses.iter().enumerate() {
+        println!("  {}: {} {:?} {} {:?}",
+                 i,
+                 usize::try_from(dc.orig_index).unwrap(),
+                 dc.extra_index.map(|x| usize::try_from(x).unwrap()),
+                 dc.clause.kind,
+                 dc.clause.literals
+                    .iter()
+                    .map(|(l, n)| (usize::try_from(*l).unwrap(), *n))
+                    .collect::<Vec<_>>());
+    }
+}
+// DEBUG
+
 /// Deduplicate clauses and clause literals. It deduplciates same clauses and literals and
 /// subclauses (part of clauses). Returns new circuit and boolean value.
 /// If some possible literal duplicates then returns true, otherwise return false.
@@ -1111,6 +1135,10 @@ where
     } else {
         false
     };
+    // DEBUG
+    // println!("AndClauses");
+    // dump_dedup_clauses(&and_clauses);
+    // DEBUG
 
     // return (clause_index, Option<extra_clause_index>, clause) vector
     let mut xor_clauses = circuit
@@ -1136,6 +1164,10 @@ where
     } else {
         false
     };
+    // DEBUG
+    // println!("XorClauses");
+    // dump_dedup_clauses(&xor_clauses);
+    // DEBUG
 
     if !and_clauses_need_optim {
         // because deduplicate_literal_clauses and deduplicate_literal_clauses_0
@@ -1146,12 +1178,20 @@ where
             &mut and_clauses,
             &mut and_trans_tbl,
         );
+        // DEBUG
+        // println!("AndClauses2");
+        // dump_dedup_clauses(&and_clauses);
+        // DEBUG
         deduplicate_literal_clauses(
             &mut extra_clause_index,
             &mut and_clauses,
             &mut and_trans_tbl,
         );
     }
+    // DEBUG
+    // println!("AndClauses3");
+    // dump_dedup_clauses(&and_clauses);
+    // DEBUG
 
     if !xor_clauses_need_optim {
         // because deduplicate_literal_clauses and deduplicate_literal_clauses_0
@@ -1162,12 +1202,21 @@ where
             &mut xor_clauses,
             &mut xor_trans_tbl,
         );
+        // DEBUG
+        // println!("XorClauses2");
+        // dump_dedup_clauses(&xor_clauses);
+        // DEBUG
+        // TODO: FIX: deduplicate_literal_clauses: some bug
         deduplicate_literal_clauses(
             &mut extra_clause_index,
             &mut xor_clauses,
             &mut xor_trans_tbl,
         );
     }
+    // DEBUG
+    // println!("XorClauses3");
+    // dump_dedup_clauses(&xor_clauses);
+    // DEBUG
 
     // println!("AndTransTbl: {:?}", and_trans_tbl);
     // println!("XorTransTbl: {:?}", xor_trans_tbl);
@@ -1202,7 +1251,17 @@ where
     let (mut new_circuit, mut input_map, mut output_map) = optimize_clause_circuit(circuit);
     let mut continue_dedup = true;
     while continue_dedup {
+        // DEBUG
+        // println!("After optimize");
+        // dump_clauses(usize::try_from(new_circuit.input_len()).unwrap(),
+        //              new_circuit.clauses(), new_circuit.outputs());
+        // DEBUG
         (new_circuit, continue_dedup) = deduplicate_clause_circuit(new_circuit);
+        // DEBUG
+        // println!("After dedup");
+        // dump_clauses(usize::try_from(new_circuit.input_len()).unwrap(),
+        //              new_circuit.clauses(), new_circuit.outputs());
+        // DEBUG
         let (next_circuit, next_input_map, next_output_map) = optimize_clause_circuit(new_circuit);
         input_map = join_input_map(&input_map, &next_input_map);
         output_map = join_output_entry_map(&output_map, &next_output_map);
