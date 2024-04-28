@@ -1210,6 +1210,7 @@ where
     }
     (new_circuit, input_map, output_map)
 }
+
 /// Assigns and optimize and deduplicate clause circuit.
 pub fn assign_to_circuit_optimize_and_dedup<T>(
     circuit: &Circuit<T>,
