@@ -294,6 +294,10 @@ pub(crate) fn deduplicate_literal_clauses<T>(
         let pairlit_clause_map = {
             let mut pairlit_clause_map = HashMap::<((T, bool), (T, bool)), Vec<usize>>::new();
             for (ci, DedupClause { clause, .. }) in clauses.iter().enumerate() {
+                if clause.len() == 2 && clause.literals[0] == clause.literals[1] {
+                    // skip for mainly for XOR with duplicates
+                    continue;
+                }
                 for (i, ls1) in clause.literals.iter().enumerate() {
                     for ls2 in clause.literals[i + 1..].iter().filter(|x| *x != ls1) {
                         let (ls1, ls2) = if ls1 < ls2 { (ls1, ls2) } else { (ls2, ls1) };
