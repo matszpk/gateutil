@@ -560,7 +560,14 @@ where
             out_clauses
                 .into_iter()
                 .map(|DedupClause { clause, .. }| clause)
-                .filter(|c| c.len() != 0),
+                .filter(|c| c.len() != 0)
+                .map(|c| {
+                    if c.len() == 1 {
+                        Clause::new_and([c.literals[0], c.literals[0]])
+                    } else {
+                        c
+                    }
+                }),
             outputs.iter().map(|(l, n)| {
                 let mut out_l = *l;
                 while let Some(trans_l) = and_trans_map.get(&out_l) {
@@ -579,18 +586,23 @@ where
                     if let Some(trli) = trans_table[l_u] {
                         (trli, *n)
                     } else {
-                        let old_l = out_l;
-                        while let Some(trans_l) = and_trans_map.get(&out_l) {
-                            out_l = *trans_l;
-                        }
-                        if out_l == old_l {
-                            while let Some(trans_l) = xor_trans_map.get(&out_l) {
-                                out_l = *trans_l;
-                            }
-                        }
-                        if out_l == old_l {
+                        loop {
+                            let old_l = out_l;
                             while let Some(trans_l) = and_trans_map.get(&out_l) {
                                 out_l = *trans_l;
+                            }
+                            if out_l == old_l {
+                                while let Some(trans_l) = xor_trans_map.get(&out_l) {
+                                    out_l = *trans_l;
+                                }
+                            }
+                            if out_l == old_l {
+                                while let Some(trans_l) = and_trans_map.get(&out_l) {
+                                    out_l = *trans_l;
+                                }
+                            }
+                            if trans_table[l_u].is_some() {
+                                break;
                             }
                         }
                         let l_u = usize::try_from(out_l).unwrap();
@@ -612,6 +624,8 @@ where
             let cur_index = input_len + i;
             if c.len() < 2 {
                 panic!("Fail");
+                // c.kind = ClauseKind::And;
+                // c.literals.push(c.literals[0]);
             }
             for (l, _) in &c.literals {
                 let l = usize::try_from(*l).unwrap();
