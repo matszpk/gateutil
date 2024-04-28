@@ -529,7 +529,7 @@ where
         extra_index: x.extra_index,
         clause: Clause::new_and([]),
     });
-    let mut trans_table = vec![T::default(); extra_clause_index];
+    let mut trans_table = vec![None; extra_clause_index];
     for (
         i,
         DedupClause {
@@ -541,16 +541,16 @@ where
     {
         let final_lit = T::try_from(i + input_len).unwrap();
         if let Some(ej) = extra_j {
-            trans_table[usize::try_from(*ej).unwrap()] = final_lit;
+            trans_table[usize::try_from(*ej).unwrap()] = Some(final_lit);
         } else {
-            trans_table[usize::try_from(*j).unwrap()] = final_lit;
+            trans_table[usize::try_from(*j).unwrap()] = Some(final_lit);
         }
     }
     for DedupClause { clause, .. } in &mut out_clauses {
         for (l, _) in &mut clause.literals {
             let l_u = usize::try_from(*l).unwrap();
             if l_u >= input_len {
-                *l = trans_table[l_u];
+                *l = trans_table[l_u].unwrap();
             }
         }
     }
@@ -572,8 +572,30 @@ where
                     }
                 }
                 let l_u = usize::try_from(out_l).unwrap();
+                // DEBUG
+                // println!("JoinOutputs: ({},{}) {}", usize::try_from(*l).unwrap(), *n, l_u);
+                // DEBUG
                 if l_u >= input_len {
-                    (trans_table[l_u], *n)
+                    if let Some(trli) = trans_table[l_u] {
+                        (trli, *n)
+                    } else {
+                        let old_l = out_l;
+                        while let Some(trans_l) = and_trans_map.get(&out_l) {
+                            out_l = *trans_l;
+                        }
+                        if out_l == old_l {
+                            while let Some(trans_l) = xor_trans_map.get(&out_l) {
+                                out_l = *trans_l;
+                            }
+                        }
+                        if out_l == old_l {
+                            while let Some(trans_l) = and_trans_map.get(&out_l) {
+                                out_l = *trans_l;
+                            }
+                        }
+                        let l_u = usize::try_from(out_l).unwrap();
+                        (trans_table[l_u].unwrap(), *n)
+                    }
                 } else {
                     (*l, *n)
                 }
