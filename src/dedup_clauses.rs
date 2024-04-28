@@ -7,6 +7,10 @@ use std::hash::Hash;
 
 use crate::utils::*;
 
+// DEBUG
+use crate::dump_dedup_clauses;
+// DEBUG
+
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub(crate) struct DedupClause<T> {
     pub(crate) orig_index: T,
@@ -30,14 +34,9 @@ impl<T: Ord> Ord for DedupClause<T> {
     }
 }
 
-pub(crate) fn translate_clauses<T>(
-    clauses: &mut [DedupClause<T>],
-    trans_table: &HashMap<T, T>,
-    dedup: bool,
-) where
+pub(crate) fn translate_clauses<T>(clauses: &mut Vec<DedupClause<T>>, trans_table: &HashMap<T, T>)
+where
     T: Clone + Copy + Ord + PartialEq + Eq + Hash,
-    usize: TryFrom<T>,
-    <usize as TryFrom<T>>::Error: Debug,
 {
     // translate literals and sort and deduplicate literals
     for DedupClause { clause, .. } in clauses.iter_mut() {
@@ -47,37 +46,68 @@ pub(crate) fn translate_clauses<T>(
             }
         }
         clause.literals.sort();
-        if dedup {
-            if clause.kind == ClauseKind::And {
-                clause.literals.dedup();
-            } else {
-                // CHECK EXHAUSTIVELY!!!
-                // for XOR
-                let mut new_lits = vec![];
-                let mut prev = None;
-                for l in &clause.literals {
-                    if let Some(prevl) = prev {
-                        if prevl != *l {
-                            new_lits.push(*l);
-                        } else {
-                            new_lits.pop();  // remove previous
-                            prev = new_lits.first().copied();
-                            continue;
-                        }
-                    } else {
+    }
+}
+
+pub(crate) fn translate_clauses_with_dedup<T>(
+    clauses: &mut Vec<DedupClause<T>>,
+    trans_table: &mut HashMap<T, T>,
+) where
+    T: Clone + Copy + Ord + PartialEq + Eq + Hash,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    let mut with_1lit_clauses = false;
+    // translate literals and sort and deduplicate literals
+    for DedupClause {
+        clause, orig_index, ..
+    } in clauses.iter_mut()
+    {
+        for (l, _) in &mut clause.literals {
+            while let Some(trans_l) = trans_table.get(l) {
+                *l = *trans_l;
+            }
+        }
+        clause.literals.sort();
+        if clause.kind == ClauseKind::And {
+            clause.literals.dedup();
+        } else {
+            // CHECK EXHAUSTIVELY!!!
+            // for XOR
+            let mut new_lits = vec![];
+            let mut prev = None;
+            for l in &clause.literals {
+                if let Some(prevl) = prev {
+                    if prevl != *l {
                         new_lits.push(*l);
+                    } else {
+                        new_lits.pop(); // remove previous
+                        prev = new_lits.first().copied();
+                        continue;
                     }
-                    prev = Some(*l);
+                } else {
+                    new_lits.push(*l);
                 }
-                // println!("XXOld: {:?}", clause.literals.iter().map(|(l, n)|
-                //     (usize::try_from(*l).unwrap(), n)).collect::<Vec<_>>());
-                // println!("XXNew: {:?}", new_lits.iter().map(|(l, n)|
-                //     (usize::try_from(*l).unwrap(), n)).collect::<Vec<_>>());
-                if !new_lits.is_empty() {
-                    clause.literals = new_lits;
+                prev = Some(*l);
+            }
+            // println!("XXOld: {:?}", clause.literals.iter().map(|(l, n)|
+            //     (usize::try_from(*l).unwrap(), n)).collect::<Vec<_>>());
+            // println!("XXNew: {:?}", new_lits.iter().map(|(l, n)|
+            //     (usize::try_from(*l).unwrap(), n)).collect::<Vec<_>>());
+            if !new_lits.is_empty() {
+                clause.literals = new_lits;
+                if clause.literals.len() == 1 {
+                    with_1lit_clauses = true;
+                    trans_table.insert(*orig_index, clause.literals.first().unwrap().0);
                 }
             }
         }
+    }
+    if with_1lit_clauses {
+        // fix if some XOR have 1-literal clause
+        clauses.retain(|x| x.clause.literals.len() != 1);
+        // translate literals and sort and deduplicate literals
+        translate_clauses_with_dedup(clauses, trans_table);
     }
 }
 
@@ -117,7 +147,7 @@ where
         }
     }
     clauses.dedup_by_key(|DedupClause { clause: c, .. }| (c.kind, c.literals.clone()));
-    translate_clauses(clauses, &mut trans_table, true);
+    translate_clauses_with_dedup(clauses, &mut trans_table);
     clauses.sort();
     trans_table
 }
@@ -257,16 +287,36 @@ pub(crate) fn deduplicate_literal_clauses_0<T>(
             *extra_clause_start += 1;
         }
     }
+
     clauses.retain(|x| x.clause.literals.len() != 1);
 
+    // DEBUG
+    // println!("Inside dedup_literal_clauses_0");
+    // dump_dedup_clauses(clauses);
+    // println!(
+    //     "TransTbl: {:?}",
+    //     trans_table
+    //         .iter()
+    //         .map(|(k, v)| (usize::try_from(*k).unwrap(), usize::try_from(*v).unwrap()))
+    //         .collect::<Vec<_>>()
+    // );
+    // DEBUG
+
     // translate literals and sort and deduplicate literals
-    translate_clauses(clauses, &trans_table, true);
+    translate_clauses_with_dedup(clauses, trans_table);
+    // DEBUG
+    // println!("Inside dedup_literal_clauses_0 2");
+    // dump_dedup_clauses(clauses);
+    // println!(
+    //     "TransTbl: {:?}",
+    //     trans_table
+    //         .iter()
+    //         .map(|(k, v)| (usize::try_from(*k).unwrap(), usize::try_from(*v).unwrap()))
+    //         .collect::<Vec<_>>()
+    // );
+    // DEBUG
     clauses.sort()
 }
-
-// DEBUG
-use crate::dump_dedup_clauses;
-// DEBUG
 
 pub(crate) fn deduplicate_literal_clauses<T>(
     extra_clause_start: &mut usize,
@@ -437,12 +487,19 @@ pub(crate) fn deduplicate_literal_clauses<T>(
 
         clauses.retain(|x| x.clause.literals.len() != 1);
         // translate literals and sort and deduplicate literals
-        translate_clauses(clauses, &trans_table, true);
+        translate_clauses_with_dedup(clauses, trans_table);
         clauses.sort();
         //println!("Clauses: After: {:?}", clauses);
         // DEBUG
         // println!("Inside dedup_literal_clauses");
         // dump_dedup_clauses(clauses);
+        // println!(
+        //     "TransTbl: {:?}",
+        //     trans_table
+        //         .iter()
+        //         .map(|(k, v)| (usize::try_from(*k).unwrap(), usize::try_from(*v).unwrap()))
+        //         .collect::<Vec<_>>()
+        // );
         // DEBUG
 
         if !have_changes {
@@ -649,10 +706,9 @@ mod tests {
                 Clause::new_and([(0, false), (0, false), (7, true), (8, false)]),
             ),
         ];
-        translate_clauses(
+        translate_clauses_with_dedup(
             &mut clauses,
-            &HashMap::from_iter([(7, 30), (8, 31), (9, 32), (31, 33)]),
-            true,
+            &mut HashMap::from_iter([(7, 30), (8, 31), (9, 32), (31, 33)]),
         );
         assert_eq!(
             vec![
@@ -685,7 +741,6 @@ mod tests {
         translate_clauses(
             &mut clauses,
             &HashMap::from_iter([(7, 30), (8, 31), (9, 32), (31, 33)]),
-            false,
         );
         assert_eq!(
             vec![
@@ -877,7 +932,7 @@ mod tests {
             dedup_clause(6, None, Clause::new_xor([(0, false), (2, true)])),
         ];
         assert_eq!(
-            HashMap::from_iter([(6, 5)]),
+            HashMap::from_iter([(6, 5), (8, 3)]),
             deduplicate_clauses(&mut clauses)
         );
         assert_eq!(
@@ -894,11 +949,11 @@ mod tests {
                 //     None,
                 //     Clause::new_xor([(3, true), (5, false), (5, false)])
                 // )
-                dedup_clause(
-                    8,
-                    None,
-                    Clause::new_xor([(3, true)])
-                )
+                // dedup_clause(
+                //     8,
+                //     None,
+                //     Clause::new_xor([(3, true)])
+                // )
             ],
             clauses
         );

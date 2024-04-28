@@ -1071,15 +1071,18 @@ where
 {
     println!("DedupClauses:");
     for (i, dc) in clauses.iter().enumerate() {
-        println!("  {}: {} {:?} {} {:?}",
-                 i,
-                 usize::try_from(dc.orig_index).unwrap(),
-                 dc.extra_index.map(|x| usize::try_from(x).unwrap()),
-                 dc.clause.kind,
-                 dc.clause.literals
-                    .iter()
-                    .map(|(l, n)| (usize::try_from(*l).unwrap(), *n))
-                    .collect::<Vec<_>>());
+        println!(
+            "  {}: {} {:?} {} {:?}",
+            i,
+            usize::try_from(dc.orig_index).unwrap(),
+            dc.extra_index.map(|x| usize::try_from(x).unwrap()),
+            dc.clause.kind,
+            dc.clause
+                .literals
+                .iter()
+                .map(|(l, n)| (usize::try_from(*l).unwrap(), *n))
+                .collect::<Vec<_>>()
+        );
     }
 }
 // DEBUG
@@ -1220,8 +1223,8 @@ where
 
     // println!("AndTransTbl: {:?}", and_trans_tbl);
     // println!("XorTransTbl: {:?}", xor_trans_tbl);
-    translate_clauses(&mut and_clauses, &xor_trans_tbl, false);
-    translate_clauses(&mut xor_clauses, &and_trans_tbl, false);
+    translate_clauses(&mut and_clauses, &xor_trans_tbl);
+    translate_clauses(&mut xor_clauses, &and_trans_tbl);
 
     (
         join_deduplicates_to_clause_circuit(
@@ -1253,14 +1256,20 @@ where
     while continue_dedup {
         // DEBUG
         // println!("After optimize");
-        // dump_clauses(usize::try_from(new_circuit.input_len()).unwrap(),
-        //              new_circuit.clauses(), new_circuit.outputs());
+        // dump_clauses(
+        //     usize::try_from(new_circuit.input_len()).unwrap(),
+        //     new_circuit.clauses(),
+        //     new_circuit.outputs(),
+        // );
         // DEBUG
         (new_circuit, continue_dedup) = deduplicate_clause_circuit(new_circuit);
         // DEBUG
         // println!("After dedup");
-        // dump_clauses(usize::try_from(new_circuit.input_len()).unwrap(),
-        //              new_circuit.clauses(), new_circuit.outputs());
+        // dump_clauses(
+        //     usize::try_from(new_circuit.input_len()).unwrap(),
+        //     new_circuit.clauses(),
+        //     new_circuit.outputs(),
+        // );
         // DEBUG
         let (next_circuit, next_input_map, next_output_map) = optimize_clause_circuit(new_circuit);
         input_map = join_input_map(&input_map, &next_input_map);
