@@ -681,36 +681,36 @@ where
 }
 
 // DEBUG
-fn dump_clauses<T>(input_len: usize, clauses: &[Clause<T>], outputs: &[(T, bool)])
-where
-    T: Clone + Copy + Ord + PartialEq + Eq,
-    T: Default + TryFrom<usize>,
-    <T as TryFrom<usize>>::Error: Debug,
-    usize: TryFrom<T>,
-    <usize as TryFrom<T>>::Error: Debug,
-{
-    println!("Dump ClauseCircuit data:");
-    println!("  InputLen: {}", input_len);
-    println!("  Clauses:");
-    for (i, c) in clauses.iter().enumerate() {
-        println!(
-            "    {}: {} {:?}",
-            input_len + i,
-            c.kind,
-            c.literals
-                .iter()
-                .map(|(l, n)| (usize::try_from(*l).unwrap(), *n))
-                .collect::<Vec<_>>()
-        );
-    }
-    println!(
-        "  Outputs: {:?}",
-        outputs
-            .iter()
-            .map(|(l, n)| (usize::try_from(*l).unwrap(), *n))
-            .collect::<Vec<_>>()
-    );
-}
+// fn dump_clauses<T>(input_len: usize, clauses: &[Clause<T>], outputs: &[(T, bool)])
+// where
+//     T: Clone + Copy + Ord + PartialEq + Eq,
+//     T: Default + TryFrom<usize>,
+//     <T as TryFrom<usize>>::Error: Debug,
+//     usize: TryFrom<T>,
+//     <usize as TryFrom<T>>::Error: Debug,
+// {
+//     println!("Dump ClauseCircuit data:");
+//     println!("  InputLen: {}", input_len);
+//     println!("  Clauses:");
+//     for (i, c) in clauses.iter().enumerate() {
+//         println!(
+//             "    {}: {} {:?}",
+//             input_len + i,
+//             c.kind,
+//             c.literals
+//                 .iter()
+//                 .map(|(l, n)| (usize::try_from(*l).unwrap(), *n))
+//                 .collect::<Vec<_>>()
+//         );
+//     }
+//     println!(
+//         "  Outputs: {:?}",
+//         outputs
+//             .iter()
+//             .map(|(l, n)| (usize::try_from(*l).unwrap(), *n))
+//             .collect::<Vec<_>>()
+//     );
+// }
 //
 // fn dump_join_and_remove_clauses_output<T>(
 //     input_len: &usize,
@@ -1061,30 +1061,30 @@ where
 }
 
 // DEBUG
-pub(crate) fn dump_dedup_clauses<T>(clauses: &[DedupClause<T>])
-where
-    T: Clone + Copy + Ord + PartialEq + Eq + Hash,
-    T: Default + TryFrom<usize>,
-    <T as TryFrom<usize>>::Error: Debug,
-    usize: TryFrom<T>,
-    <usize as TryFrom<T>>::Error: Debug,
-{
-    println!("DedupClauses:");
-    for (i, dc) in clauses.iter().enumerate() {
-        println!(
-            "  {}: {} {:?} {} {:?}",
-            i,
-            usize::try_from(dc.orig_index).unwrap(),
-            dc.extra_index.map(|x| usize::try_from(x).unwrap()),
-            dc.clause.kind,
-            dc.clause
-                .literals
-                .iter()
-                .map(|(l, n)| (usize::try_from(*l).unwrap(), *n))
-                .collect::<Vec<_>>()
-        );
-    }
-}
+// pub(crate) fn dump_dedup_clauses<T>(clauses: &[DedupClause<T>])
+// where
+//     T: Clone + Copy + Ord + PartialEq + Eq + Hash,
+//     T: Default + TryFrom<usize>,
+//     <T as TryFrom<usize>>::Error: Debug,
+//     usize: TryFrom<T>,
+//     <usize as TryFrom<T>>::Error: Debug,
+// {
+//     println!("DedupClauses:");
+//     for (i, dc) in clauses.iter().enumerate() {
+//         println!(
+//             "  {}: {} {:?} {} {:?}",
+//             i,
+//             usize::try_from(dc.orig_index).unwrap(),
+//             dc.extra_index.map(|x| usize::try_from(x).unwrap()),
+//             dc.clause.kind,
+//             dc.clause
+//                 .literals
+//                 .iter()
+//                 .map(|(l, n)| (usize::try_from(*l).unwrap(), *n))
+//                 .collect::<Vec<_>>()
+//         );
+//     }
+// }
 // DEBUG
 
 /// Deduplicate clauses and clause literals. It deduplciates same clauses and literals and

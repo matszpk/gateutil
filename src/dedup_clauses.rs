@@ -8,7 +8,7 @@ use std::hash::Hash;
 use crate::utils::*;
 
 // DEBUG
-use crate::dump_dedup_clauses;
+// use crate::dump_dedup_clauses;
 // DEBUG
 
 #[derive(Clone, PartialEq, Eq, Debug)]
