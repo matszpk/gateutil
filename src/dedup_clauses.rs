@@ -455,10 +455,22 @@ pub(crate) fn deduplicate_literal_clauses<T>(
                     clause.literals.push((extra_lit, false));
                     // only one 2-literal clause with ls1,ls2)
                     if clause.literals.len() == 1 {
-                        trans_table.insert(*orig_index, clause.literals.first().unwrap().0);
+                        if extra_index.is_some() {
+                            let real_orig_index =
+                                T::try_from(usize::try_from(*orig_index).unwrap() + 1).unwrap();
+                            // println!("ToTransTable:OrigIndex: {:?} {:?}",
+                            //             real_orig_index, clause.literals.first().unwrap().0);
+                            trans_table.insert(real_orig_index, clause.literals.first().unwrap().0);
+                        } else {
+                            // println!("ToTransTable:OrigIndex: {:?} {:?}",
+                            //             *orig_index, clause.literals.first().unwrap().0);
+                            trans_table.insert(*orig_index, clause.literals.first().unwrap().0);
+                        }
                     }
                     if let Some(extra_index) = extra_index {
                         if !trans_table.contains_key(extra_index) {
+                            // println!("ToTransTable:ExtraIndex: {:?} {:?}",
+                            //          *extra_index, extra_lit);
                             trans_table.insert(*extra_index, extra_lit);
                         }
                     }
@@ -488,6 +500,13 @@ pub(crate) fn deduplicate_literal_clauses<T>(
         // DEBUG
         // println!("Inside dedup_literal_clauses before trans");
         // dump_dedup_clauses(clauses);
+        // println!(
+        //     "TransTbl: {:?}",
+        //     trans_table
+        //         .iter()
+        //         .map(|(k, v)| (usize::try_from(*k).unwrap(), usize::try_from(*v).unwrap()))
+        //         .collect::<Vec<_>>()
+        // );
         // DEBUG
         clauses.retain(|x| x.clause.literals.len() != 1 || x.clause.literals[0].1);
         // translate literals and sort and deduplicate literals
