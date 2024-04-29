@@ -1209,7 +1209,6 @@ where
         // println!("XorClauses2");
         // dump_dedup_clauses(&xor_clauses);
         // DEBUG
-        // TODO: FIX: deduplicate_literal_clauses: some bug
         deduplicate_literal_clauses(
             &mut extra_clause_index,
             &mut xor_clauses,
