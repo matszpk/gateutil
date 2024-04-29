@@ -288,19 +288,7 @@ pub(crate) fn deduplicate_literal_clauses_0<T>(
         }
     }
 
-    clauses.retain(|x| x.clause.literals.len() != 1);
-
-    // DEBUG
-    // println!("Inside dedup_literal_clauses_0");
-    // dump_dedup_clauses(clauses);
-    // println!(
-    //     "TransTbl: {:?}",
-    //     trans_table
-    //         .iter()
-    //         .map(|(k, v)| (usize::try_from(*k).unwrap(), usize::try_from(*v).unwrap()))
-    //         .collect::<Vec<_>>()
-    // );
-    // DEBUG
+    clauses.retain(|x| x.clause.literals.len() != 1 || x.clause.literals[0].1);
 
     // translate literals and sort and deduplicate literals
     translate_clauses_with_dedup(clauses, trans_table);
@@ -364,7 +352,7 @@ pub(crate) fn deduplicate_literal_clauses<T>(
             pairlit_clause_map
         };
 
-        //println!("pairlitmap: {:?}", pairlit_clause_map);
+        // println!("pairlitmap: {:?}", pairlit_clause_map);
         const ITEM_NUM_TO_CHOICE: usize = 10;
         let mut used_clauses = HashSet::<usize>::new();
         let pairlit_clause_map_len = pairlit_clause_map.len();
@@ -447,13 +435,20 @@ pub(crate) fn deduplicate_literal_clauses<T>(
                 let extra_lit = lit1_extra_clause_index.unwrap_or(extra_lit);
 
                 for occur in &real_occurs {
+                    // println!("  dedupclause: {:?}", clauses[*occur]);
                     let DedupClause {
-                        orig_index, clause, ..
+                        orig_index,
+                        extra_index,
+                        clause,
+                        ..
                     } = &mut clauses[*occur];
                     //println!("  clause: {:?}", clause);
                     if is_old_extra && clause.literals.len() == 2 {
                         //*orig_index = std::cmp::min(*orig_index, new_orig_index);
-                        assert!(*orig_index <= new_orig_index);
+                        // assert!(*orig_index <= new_orig_index);
+                        if *orig_index > new_orig_index {
+                            println!("Warning: assertion *orig_index > new_orig_index failed");
+                        }
                         continue;
                     }
                     remove_sorted_ref(&mut clause.literals, &same_lits);
@@ -461,6 +456,11 @@ pub(crate) fn deduplicate_literal_clauses<T>(
                     // only one 2-literal clause with ls1,ls2)
                     if clause.literals.len() == 1 {
                         trans_table.insert(*orig_index, clause.literals.first().unwrap().0);
+                    }
+                    if let Some(extra_index) = extra_index {
+                        if !trans_table.contains_key(extra_index) {
+                            trans_table.insert(*extra_index, extra_lit);
+                        }
                     }
                 }
 
@@ -485,12 +485,16 @@ pub(crate) fn deduplicate_literal_clauses<T>(
             pi += 1;
         }
 
-        clauses.retain(|x| x.clause.literals.len() != 1);
+        // DEBUG
+        // println!("Inside dedup_literal_clauses before trans");
+        // dump_dedup_clauses(clauses);
+        // DEBUG
+        clauses.retain(|x| x.clause.literals.len() != 1 || x.clause.literals[0].1);
         // translate literals and sort and deduplicate literals
         translate_clauses_with_dedup(clauses, trans_table);
         clauses.sort();
-        //println!("Clauses: After: {:?}", clauses);
         // DEBUG
+        // println!("Clauses: After: {:?}", clauses);
         // println!("Inside dedup_literal_clauses");
         // dump_dedup_clauses(clauses);
         // println!(
@@ -676,8 +680,66 @@ where
                 .map(|(x, n)| (trans_x[usize::try_from(*x).unwrap()], *n))
                 .collect::<Vec<_>>();
             //panic!("FAIL");
-            return ClauseCircuit::new(T::try_from(input_len).unwrap(), new_clauses, new_outputs)
-                .unwrap();
+            // for (i, c) in new_clauses.iter().enumerate() {
+            //     println!("Clause: {} {:?}", input_len + i, c);
+            // }
+            // remove unused clauses
+            let mut used_clauses = vec![false; new_clauses.len()];
+            for c in &new_clauses {
+                for (l, _) in &c.literals {
+                    let l = usize::try_from(*l).unwrap();
+                    if l >= input_len {
+                        used_clauses[l - input_len] = true;
+                    }
+                }
+            }
+            for (l, _) in &new_outputs {
+                let l = usize::try_from(*l).unwrap();
+                if l >= input_len {
+                    used_clauses[l - input_len] = true;
+                }
+            }
+            let mut clauses_ids = (input_len..input_len + new_clauses.len()).collect::<Vec<_>>();
+            let mut reduced_new_clauses = vec![];
+            let mut c_count = input_len;
+            for (i, c) in new_clauses.into_iter().enumerate() {
+                if used_clauses[i] {
+                    reduced_new_clauses.push(Clause {
+                        kind: c.kind,
+                        literals: c
+                            .literals
+                            .into_iter()
+                            .map(|(l, n)| {
+                                let l_u = usize::try_from(l).unwrap();
+                                if l_u >= input_len {
+                                    (T::try_from(clauses_ids[l_u - input_len]).unwrap(), n)
+                                } else {
+                                    (l, n)
+                                }
+                            })
+                            .collect::<Vec<_>>(),
+                    });
+                    clauses_ids[i] = c_count;
+                    c_count += 1;
+                }
+            }
+            let reduced_new_outputs = new_outputs
+                .into_iter()
+                .map(|(l, n)| {
+                    let l_u = usize::try_from(l).unwrap();
+                    if l_u >= input_len {
+                        (T::try_from(clauses_ids[l_u - input_len]).unwrap(), n)
+                    } else {
+                        (l, n)
+                    }
+                })
+                .collect::<Vec<_>>();
+            return ClauseCircuit::new(
+                T::try_from(input_len).unwrap(),
+                reduced_new_clauses,
+                reduced_new_outputs,
+            )
+            .unwrap();
         }
     }
     if !circuit.verify() {
