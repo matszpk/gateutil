@@ -624,6 +624,7 @@ where
                                     out_l = *trans_l;
                                 }
                             }
+                            let l_u = usize::try_from(out_l).unwrap();
                             if trans_table[l_u].is_some() {
                                 break;
                             }
