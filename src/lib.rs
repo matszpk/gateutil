@@ -129,6 +129,24 @@ where
     .unwrap()
 }
 
+pub fn translate_outputs_rev<T, U>(
+    circuit: Circuit<T>,
+    trans: impl IntoIterator<Item = U>,
+) -> Circuit<T>
+where
+    T: Clone + Copy + Ord + PartialEq + Eq + Default,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+    U: Clone + Copy + Default,
+    usize: TryFrom<U>,
+    <usize as TryFrom<U>>::Error: Debug,
+    U: TryFrom<usize>,
+    <U as TryFrom<usize>>::Error: Debug,
+{
+    let out = reverse_trans(trans);
+    translate_outputs(circuit, &out)
+}
+
 // TODO: add routines to join, split and separate subcircuit
 
 pub fn negate_inputs<T>(circuit: Circuit<T>, to_neg: impl IntoIterator<Item = T>) -> Circuit<T>

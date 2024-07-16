@@ -222,6 +222,39 @@ fn test_translate_outputs() {
 }
 
 #[test]
+fn test_translate_outputs_rev() {
+    assert_eq!(
+        Circuit::new(
+            3,
+            [
+                Gate::new_xor(0, 1),
+                Gate::new_xor(2, 3),
+                Gate::new_and(2, 3),
+                Gate::new_and(0, 1),
+                Gate::new_nor(5, 6),
+            ],
+            [(7, true), (1, true), (5, false), (4, false), (2, false)],
+        )
+        .unwrap(),
+        translate_outputs_rev(
+            Circuit::new(
+                3,
+                [
+                    Gate::new_xor(0, 1),
+                    Gate::new_xor(2, 3),
+                    Gate::new_and(2, 3),
+                    Gate::new_and(0, 1),
+                    Gate::new_nor(5, 6),
+                ],
+                [(4, false), (5, false), (2, false), (7, true), (1, true)],
+            )
+            .unwrap(),
+            [3, 2, 4, 0, 1]
+        )
+    );
+}
+
+#[test]
 fn test_negate_inputs() {
     assert_eq!(
         Circuit::new(0, [], [],).unwrap(),
