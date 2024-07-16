@@ -105,6 +105,30 @@ where
     translate_inputs(circuit, &out)
 }
 
+pub fn translate_outputs<T, U>(circuit: Circuit<T>, trans: &[U]) -> Circuit<T>
+where
+    T: Clone + Copy + Ord + PartialEq + Eq + Default,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+    U: Clone + Copy,
+    usize: TryFrom<U>,
+    <usize as TryFrom<U>>::Error: Debug,
+{
+    let output_len = circuit.outputs().len();
+    assert_eq!(output_len, trans.len());
+    let outputs = circuit.outputs();
+    let new_outputs = trans
+        .into_iter()
+        .map(|x| outputs[usize::try_from(*x).unwrap()])
+        .collect::<Vec<_>>();
+    Circuit::<T>::new(
+        circuit.input_len(),
+        circuit.gates().into_iter().cloned(),
+        new_outputs,
+    )
+    .unwrap()
+}
+
 // TODO: add routines to join, split and separate subcircuit
 
 pub fn negate_inputs<T>(circuit: Circuit<T>, to_neg: impl IntoIterator<Item = T>) -> Circuit<T>
