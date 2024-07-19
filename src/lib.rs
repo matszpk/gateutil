@@ -1350,7 +1350,7 @@ where
 
 // min and max depth of circuit
 
-pub fn min_and_max_depth<T>(circuit: &Circuit<T>) -> (usize, usize)
+pub fn min_and_max_depth_list<T>(circuit: &Circuit<T>) -> (Vec<(T, T)>, T, T)
 where
     T: Clone + Copy + PartialEq + PartialOrd + Ord + Eq + Debug,
     T: Default + TryFrom<usize>,
@@ -1361,14 +1361,14 @@ where
     let input_len_t = circuit.input_len();
     let input_len = usize::try_from(input_len_t).unwrap();
     let outputs = circuit.outputs();
-    let mut global_min_depth = usize::MAX;
-    let mut global_max_depth = 0;
+    let gates = circuit.gates();
+    let gate_num = gates.len();
+    let mut global_min_depth = T::try_from(gate_num + 1).unwrap();
+    let mut global_max_depth = T::default();
     struct StackEntry {
         node: usize,
         way: usize,
     }
-    let gates = circuit.gates();
-    let gate_num = gates.len();
     let mut visited = vec![false; input_len + gate_num];
     let mut depths = vec![(T::default(), T::default()); input_len + gate_num];
     let mut stack = vec![];
@@ -1420,12 +1420,22 @@ where
             }
         }
         let (min_depth, max_depth) = depths[oi];
-        global_min_depth = std::cmp::min(global_min_depth, usize::try_from(min_depth).unwrap());
-        global_max_depth = std::cmp::max(global_max_depth, usize::try_from(max_depth).unwrap());
+        global_min_depth = std::cmp::min(global_min_depth, min_depth);
+        global_max_depth = std::cmp::max(global_max_depth, max_depth);
     }
-    // println!("{:?}", depths.iter().map(|(x1, x2)| 
-    //     (usize::try_from(*x1).unwrap(), usize::try_from(*x2).unwrap())).collect::<Vec<_>>());
-    (global_min_depth, global_max_depth)
+    (depths, global_min_depth, global_max_depth)
+}
+
+pub fn min_and_max_depth<T>(circuit: &Circuit<T>) -> (T, T)
+where
+    T: Clone + Copy + PartialEq + PartialOrd + Ord + Eq + Debug,
+    T: Default + TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    let (_, min_depth, max_depth) = min_and_max_depth_list(circuit);
+    (min_depth, max_depth)
 }
 
 #[cfg(test)]
