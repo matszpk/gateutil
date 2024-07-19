@@ -1496,7 +1496,7 @@ where
     let mut all_holds: Vec<Vec<T>> = vec![];
     // all_cur_wires: set for stage: set hold all wires that in current stage
     let mut all_cur_wires = vec![];
-    let mut stage_pos_tbl = vec![0];
+    let mut stage_pos_tbl = vec![];
     {
         // find position for first stage in gate_entries
         let mut stage_pos = match gate_entries.binary_search(&GateEntry {
@@ -1557,6 +1557,33 @@ where
     let new_output_len = total_state_num + output_len;
     let new_input_start = total_state_num;
     let new_output_start = total_state_num;
+    let mut cur_wires_tbl = vec![T::default(); input_len + gate_num];
+    // set cur_wires_tbl - table to convert old wires to new wires
+    // first stage
+    for (i, ge) in gate_entries[0..stage_pos_tbl[0]].iter().enumerate() {
+        cur_wires_tbl[usize::try_from(ge.wire_index).unwrap()] =
+            T::try_from(new_input_len + i).unwrap();
+    }
+    // next stages
+    for i in 1..stage_num {
+        let start = stage_pos_tbl[i - 1];
+        let end = if i + 1 < stage_num {
+            stage_pos_tbl[i]
+        } else {
+            gate_entries.len()
+        };
+        for (j, ge) in gate_entries
+            .iter()
+            .enumerate()
+            .skip(start)
+            .take(end - start)
+        {
+            if all_cur_wires[i - 1].binary_search(&ge.wire_index).is_ok() {
+                cur_wires_tbl[usize::try_from(ge.wire_index).unwrap()] =
+                    T::try_from(new_input_len + j).unwrap();
+            }
+        }
+    }
     Circuit::new(T::default(), [], []).unwrap()
 }
 
