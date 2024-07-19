@@ -1556,7 +1556,6 @@ where
     let new_input_len = total_state_num + input_len;
     let new_output_len = total_state_num + output_len;
     let new_input_start = total_state_num;
-    let new_output_start = total_state_num;
     let mut cur_wires_tbl = vec![T::default(); input_len + gate_num];
     // set cur_wires_tbl - table to convert old wires to new wires
     for i in 0..input_len {
@@ -1567,6 +1566,8 @@ where
             T::try_from(new_input_len + i).unwrap();
     }
     let mut new_gates = vec![Gate::new_and(T::default(), T::default()); gate_num];
+    let mut new_outputs = vec![(T::default(), false); new_output_len];
+    let mut old_state_start = 0;
     let mut state_start = 0;
     for i in 0..stage_num {
         let start = if i >= 1 { stage_pos_tbl[i - 1] } else { 0 };
@@ -1575,6 +1576,7 @@ where
         } else {
             gate_entries.len()
         };
+        // resolve new gates
         for (j, ge) in gate_entries[start..end].iter().enumerate() {
             let wire_index = usize::try_from(ge.wire_index).unwrap();
             let g = gates[wire_index - input_len];
@@ -1583,7 +1585,7 @@ where
             new_gates[start + j] = Gate::<T> {
                 i0: if i > 0 {
                     if let Ok(p) = all_cur_wires[i - 1].binary_search(&g.i0) {
-                        T::try_from(state_start + p).unwrap()
+                        T::try_from(old_state_start + p).unwrap()
                     } else {
                         cur_wires_tbl[gi0]
                     }
@@ -1592,7 +1594,7 @@ where
                 },
                 i1: if i > 0 {
                     if let Ok(p) = all_cur_wires[i - 1].binary_search(&g.i1) {
-                        T::try_from(state_start + p).unwrap()
+                        T::try_from(old_state_start + p).unwrap()
                     } else {
                         cur_wires_tbl[gi1]
                     }
@@ -1602,9 +1604,41 @@ where
                 func: g.func,
             };
         }
+        // resove outputs
+        if i + 1 < stage_num {
+            for (j, owi) in all_cur_wires[i].iter().enumerate() {
+                let owi_u = usize::try_from(*owi).unwrap();
+                let final_wi = if i > 0 {
+                    if let Ok(p) = all_cur_wires[i - 1].binary_search(&owi) {
+                        T::try_from(old_state_start + p).unwrap()
+                    } else {
+                        cur_wires_tbl[owi_u]
+                    }
+                } else {
+                    cur_wires_tbl[owi_u]
+                };
+                new_outputs[state_start + j] = (final_wi, false);
+            }
+        } else {
+            // resolve final circuit outputs at after final stage (stage = n-1).
+            for (j, (owi, n)) in outputs.iter().enumerate() {
+                let owi_u = usize::try_from(*owi).unwrap();
+                let final_wi = if i > 0 {
+                    if let Ok(p) = all_cur_wires[i - 1].binary_search(&owi) {
+                        T::try_from(old_state_start + p).unwrap()
+                    } else {
+                        cur_wires_tbl[owi_u]
+                    }
+                } else {
+                    cur_wires_tbl[owi_u]
+                };
+                new_outputs[old_state_start + j] = (final_wi, *n)
+            }
+        }
+        old_state_start = state_start;
         state_start += if i > 0 { all_cur_wires[i - 1].len() } else { 0 };
     }
-    Circuit::new(T::default(), [], []).unwrap()
+    Circuit::new(T::default(), new_gates, new_outputs).unwrap()
 }
 
 #[cfg(test)]
