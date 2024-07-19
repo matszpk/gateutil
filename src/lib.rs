@@ -1447,6 +1447,10 @@ where
     <usize as TryFrom<T>>::Error: Debug,
 {
     let (min_max_list, _, max_depth) = min_and_max_depth_list(&circuit);
+    if max_depth == T::default() {
+        // return this circuit if max depth is 0
+        return circuit;
+    }
     let input_len_t = circuit.input_len();
     let input_len = usize::try_from(input_len_t).unwrap();
     let outputs = circuit.outputs();
@@ -1463,18 +1467,18 @@ where
     //         original gate wire index, max depth to hold)
     #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
     struct GateEntry<T> {
-        stage: usize,
-        stage_depth: usize,
-        wire_index: usize,
+        stage: T,
+        stage_depth: T,
+        wire_index: T,
         depth_to_hold: T,
     }
     let mut gate_entries = (input_len..input_len + gate_num)
         .map(|i| {
             let gate_depth = usize::try_from(min_max_list[i].1).unwrap();
             GateEntry {
-                stage: gate_depth / depth_in_stage,
-                stage_depth: gate_depth % depth_in_stage,
-                wire_index: i,
+                stage: T::try_from(gate_depth / depth_in_stage).unwrap(),
+                stage_depth: T::try_from(gate_depth % depth_in_stage).unwrap(),
+                wire_index: T::try_from(i).unwrap(),
                 depth_to_hold: depths_to_hold[i],
             }
         })
@@ -1483,9 +1487,12 @@ where
     gate_entries.sort();
     // calculate state length
     for (i, ge) in gate_entries.iter().enumerate() {
-        let cur_depth = ge.stage * depth_in_stage + ge.stage_depth;
-        let next_stage_depth = ge.stage * (depth_in_stage + 1);
-        // let
+        let stage = usize::try_from(ge.stage).unwrap();
+        let stage_depth = usize::try_from(ge.stage_depth).unwrap();
+        let wire_index = usize::try_from(ge.wire_index).unwrap();
+        let cur_depth = stage * depth_in_stage + stage_depth;
+        let next_stage_depth = stage * (depth_in_stage + 1);
+        let g = gates[wire_index - input_len];
     }
     Circuit::new(T::default(), [], []).unwrap()
 }
