@@ -1,7 +1,7 @@
 use gatesim::*;
 
 use std::cmp::Ord;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::iter;
@@ -1440,14 +1440,15 @@ where
 
 pub fn simple_pipeliner<T>(circuit: Circuit<T>, depth_in_stage: usize) -> Circuit<T>
 where
-    T: Clone + Copy + PartialEq + PartialOrd + Ord + Eq + Debug,
+    T: Clone + Copy + PartialEq + PartialOrd + Ord + Eq + Debug + Hash,
     T: Default + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
     usize: TryFrom<T>,
     <usize as TryFrom<T>>::Error: Debug,
 {
     let (min_max_list, _, max_depth) = min_and_max_depth_list(&circuit);
-    if max_depth == T::default() {
+    let max_depth_u = usize::try_from(max_depth).unwrap();
+    if max_depth_u <= depth_in_stage {
         // return this circuit if max depth is 0
         return circuit;
     }
@@ -1486,13 +1487,58 @@ where
     // sort gate entries
     gate_entries.sort();
     // calculate state length
-    for (i, ge) in gate_entries.iter().enumerate() {
-        let stage = usize::try_from(ge.stage).unwrap();
-        let stage_depth = usize::try_from(ge.stage_depth).unwrap();
-        let wire_index = usize::try_from(ge.wire_index).unwrap();
-        let cur_depth = stage * depth_in_stage + stage_depth;
-        let next_stage_depth = stage * (depth_in_stage + 1);
-        let g = gates[wire_index - input_len];
+    let stage_num = (max_depth_u + depth_in_stage - 1) / depth_in_stage;
+    let mut current_hold: Vec<T> = vec![];
+    let mut all_holds: Vec<Vec<T>> = vec![];
+    let mut stage_pos_tbl = vec![0];
+    {
+        let mut stage_pos = match gate_entries.binary_search(&GateEntry {
+            stage: T::try_from(1).unwrap(),
+            stage_depth: T::default(),
+            wire_index: T::default(),
+            depth_to_hold: T::default(),
+        }) {
+            Ok(p) => p,
+            Err(p) => p,
+        };
+        for i in 1..stage_num {
+            stage_pos_tbl.push(stage_pos);
+            let next_stage_pos = match gate_entries.binary_search(&GateEntry {
+                stage: T::try_from(1).unwrap(),
+                stage_depth: T::default(),
+                wire_index: T::default(),
+                depth_to_hold: T::default(),
+            }) {
+                Ok(p) => p,
+                Err(p) => p,
+            };
+            let cur_wires = HashSet::<T>::from_iter(
+                gate_entries[stage_pos..next_stage_pos]
+                    .iter()
+                    .map(|ge| ge.wire_index),
+            );
+            for ge in &gate_entries[stage_pos..next_stage_pos] {
+                let wire_index = usize::try_from(ge.wire_index).unwrap();
+                let g = gates[wire_index];
+                if !cur_wires.contains(&g.i0) {
+                    // if earlier wires
+                    current_hold.push(g.i0);
+                }
+                if !cur_wires.contains(&g.i1) {
+                    // if earlier wires
+                    current_hold.push(g.i1);
+                }
+            }
+            current_hold.sort();
+            current_hold.dedup();
+            // remove expired wires: depth_to_hold < i * depth_in_stage
+            current_hold.retain(|wi| {
+                let wi = usize::try_from(*wi).unwrap();
+                usize::try_from(depths_to_hold[wi]).unwrap() >= i * depth_in_stage
+            });
+            all_holds.push(current_hold.clone());
+            stage_pos = next_stage_pos;
+        }
     }
     Circuit::new(T::default(), [], []).unwrap()
 }
