@@ -1459,25 +1459,34 @@ where
         depths_to_hold[usize::try_from(g.i1).unwrap()] = *maxd;
     }
     // generate gate entries - holds original gate indices
-    // entry: (stage in pipeline, depth in stage in pipeline, original gate wire index)
+    // entry: (stage in pipeline, depth in stage in pipeline,
+    //         original gate wire index, max depth to hold)
+    #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+    struct GateEntry<T> {
+        stage: usize,
+        stage_depth: usize,
+        wire_index: usize,
+        depth_to_hold: T,
+    }
     let mut gate_entries = (input_len..input_len + gate_num)
         .map(|i| {
-            let gate_depth = usize::try_from(depths_to_hold[i]).unwrap();
-            (
-                gate_depth / depth_in_stage,
-                gate_depth % depth_in_stage,
-                i,
-            )
+            let gate_depth = usize::try_from(min_max_list[i].1).unwrap();
+            GateEntry {
+                stage: gate_depth / depth_in_stage,
+                stage_depth: gate_depth % depth_in_stage,
+                wire_index: i,
+                depth_to_hold: depths_to_hold[i],
+            }
         })
         .collect::<Vec<_>>();
     // sort gate entries
     gate_entries.sort();
     // calculate state length
-    // for (i, (stage, stage_depth, gi)) in gate_entries.iter().enumerate() {
-    //     let cur_depth = stage * depth_in_stage + stage_depth;
-    //     let next_stage_depth = stage * (depth_in_stage + 1);
-    //     let 
-    // }
+    for (i, ge) in gate_entries.iter().enumerate() {
+        let cur_depth = ge.stage * depth_in_stage + ge.stage_depth;
+        let next_stage_depth = ge.stage * (depth_in_stage + 1);
+        // let
+    }
     Circuit::new(T::default(), [], []).unwrap()
 }
 
