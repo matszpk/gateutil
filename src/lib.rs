@@ -1348,6 +1348,83 @@ where
     (opt_circuit, out_input_map, out_output_map)
 }
 
+// min and max depth of circuit
+
+pub fn min_and_max_depth<T>(circuit: &Circuit<T>) -> (usize, usize)
+where
+    T: Clone + Copy + PartialEq + PartialOrd + Ord + Eq + Debug,
+    T: Default + TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    let input_len_t = circuit.input_len();
+    let input_len = usize::try_from(input_len_t).unwrap();
+    let outputs = circuit.outputs();
+    let mut global_min_depth = usize::MAX;
+    let mut global_max_depth = 0;
+    struct StackEntry {
+        node: usize,
+        way: usize,
+    }
+    let gates = circuit.gates();
+    let gate_num = gates.len();
+    let mut visited = vec![false; input_len + gate_num];
+    let mut depths = vec![(T::default(), T::default()); input_len + gate_num];
+    let mut stack = vec![];
+    for (o, _) in outputs {
+        let oi = usize::try_from(*o).unwrap();
+        stack.push(StackEntry { node: oi, way: 0 });
+        while !stack.is_empty() {
+            let top = stack.last_mut().unwrap();
+            let way = top.way;
+            if way == 0 {
+                if !visited[top.node] {
+                    visited[top.node] = true;
+                } else {
+                    stack.pop();
+                    break;
+                }
+                top.way += 1;
+                let gate = gates[top.node - input_len];
+                if gate.i0 >= input_len_t {
+                    stack.push(StackEntry {
+                        node: usize::try_from(gate.i0).unwrap(),
+                        way: 0,
+                    });
+                }
+            } else if way == 1 {
+                top.way += 1;
+                let gate = gates[top.node - input_len];
+                if gate.i1 >= input_len_t {
+                    stack.push(StackEntry {
+                        node: usize::try_from(gate.i1).unwrap(),
+                        way: 0,
+                    });
+                }
+            } else {
+                let gate = gates[top.node - input_len];
+                let (min_depth0, max_depth0) = depths[usize::try_from(gate.i0).unwrap()];
+                let (min_depth1, max_depth1) = depths[usize::try_from(gate.i1).unwrap()];
+                depths[top.node] = (
+                    T::try_from(
+                        1 + usize::try_from(std::cmp::min(min_depth0, min_depth1)).unwrap(),
+                    )
+                    .unwrap(),
+                    T::try_from(
+                        1 + usize::try_from(std::cmp::max(max_depth0, max_depth1)).unwrap(),
+                    )
+                    .unwrap(),
+                );
+            }
+        }
+        let (min_depth, max_depth) = depths[oi];
+        global_min_depth = std::cmp::min(global_min_depth, usize::try_from(min_depth).unwrap());
+        global_max_depth = std::cmp::max(global_min_depth, usize::try_from(max_depth).unwrap());
+    }
+    (global_min_depth, global_max_depth)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
