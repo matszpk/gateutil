@@ -1559,9 +1559,50 @@ where
     let new_output_start = total_state_num;
     let mut cur_wires_tbl = vec![T::default(); input_len + gate_num];
     // set cur_wires_tbl - table to convert old wires to new wires
+    for i in 0..input_len {
+        cur_wires_tbl[i] = T::try_from(new_input_start + i).unwrap();
+    }
     for (i, ge) in gate_entries.iter().enumerate() {
         cur_wires_tbl[usize::try_from(ge.wire_index).unwrap()] =
             T::try_from(new_input_len + i).unwrap();
+    }
+    let mut new_gates = vec![Gate::new_and(T::default(), T::default()); gate_num];
+    let mut state_start = 0;
+    for i in 0..stage_num {
+        let start = if i >= 1 { stage_pos_tbl[i - 1] } else { 0 };
+        let end = if i + 1 < stage_num {
+            stage_pos_tbl[i - 1]
+        } else {
+            gate_entries.len()
+        };
+        for (j, ge) in gate_entries[start..end].iter().enumerate() {
+            let wire_index = usize::try_from(ge.wire_index).unwrap();
+            let g = gates[wire_index - input_len];
+            let gi0 = usize::try_from(g.i0).unwrap();
+            let gi1 = usize::try_from(g.i1).unwrap();
+            new_gates[start + j] = Gate::<T> {
+                i0: if i > 0 {
+                    if let Ok(p) = all_cur_wires[i - 1].binary_search(&g.i0) {
+                        T::try_from(state_start + p).unwrap()
+                    } else {
+                        cur_wires_tbl[gi0]
+                    }
+                } else {
+                    cur_wires_tbl[gi0]
+                },
+                i1: if i > 0 {
+                    if let Ok(p) = all_cur_wires[i - 1].binary_search(&g.i1) {
+                        T::try_from(state_start + p).unwrap()
+                    } else {
+                        cur_wires_tbl[gi1]
+                    }
+                } else {
+                    cur_wires_tbl[gi1]
+                },
+                func: g.func,
+            };
+        }
+        state_start += if i > 0 { all_cur_wires[i - 1].len() } else { 0 };
     }
     Circuit::new(T::default(), [], []).unwrap()
 }
