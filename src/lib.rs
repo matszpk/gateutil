@@ -1438,6 +1438,49 @@ where
     (min_depth, max_depth)
 }
 
+pub fn simple_pipeliner<T>(circuit: Circuit<T>, depth_in_stage: usize) -> Circuit<T>
+where
+    T: Clone + Copy + PartialEq + PartialOrd + Ord + Eq + Debug,
+    T: Default + TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    let (min_max_list, _, max_depth) = min_and_max_depth_list(&circuit);
+    let input_len_t = circuit.input_len();
+    let input_len = usize::try_from(input_len_t).unwrap();
+    let outputs = circuit.outputs();
+    let gates = circuit.gates();
+    let gate_num = gates.len();
+    // depths where wire must be hold
+    let mut depths_to_hold = vec![max_depth; input_len + gate_num];
+    for ((_, maxd), g) in min_max_list[input_len..].iter().zip(gates.iter()) {
+        depths_to_hold[usize::try_from(g.i0).unwrap()] = *maxd;
+        depths_to_hold[usize::try_from(g.i1).unwrap()] = *maxd;
+    }
+    // generate gate entries - holds original gate indices
+    // entry: (stage in pipeline, depth in stage in pipeline, original gate wire index)
+    let mut gate_entries = (input_len..input_len + gate_num)
+        .map(|i| {
+            let gate_depth = usize::try_from(depths_to_hold[i]).unwrap();
+            (
+                gate_depth / depth_in_stage,
+                gate_depth % depth_in_stage,
+                i,
+            )
+        })
+        .collect::<Vec<_>>();
+    // sort gate entries
+    gate_entries.sort();
+    // calculate state length
+    // for (i, (stage, stage_depth, gi)) in gate_entries.iter().enumerate() {
+    //     let cur_depth = stage * depth_in_stage + stage_depth;
+    //     let next_stage_depth = stage * (depth_in_stage + 1);
+    //     let 
+    // }
+    Circuit::new(T::default(), [], []).unwrap()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
