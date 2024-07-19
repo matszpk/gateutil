@@ -1383,7 +1383,7 @@ where
                     visited[top.node] = true;
                 } else {
                     stack.pop();
-                    break;
+                    continue;
                 }
                 top.way += 1;
                 let gate = gates[top.node - input_len];
@@ -1416,12 +1416,15 @@ where
                     )
                     .unwrap(),
                 );
+                stack.pop();
             }
         }
         let (min_depth, max_depth) = depths[oi];
         global_min_depth = std::cmp::min(global_min_depth, usize::try_from(min_depth).unwrap());
-        global_max_depth = std::cmp::max(global_min_depth, usize::try_from(max_depth).unwrap());
+        global_max_depth = std::cmp::max(global_max_depth, usize::try_from(max_depth).unwrap());
     }
+    // println!("{:?}", depths.iter().map(|(x1, x2)| 
+    //     (usize::try_from(*x1).unwrap(), usize::try_from(*x2).unwrap())).collect::<Vec<_>>());
     (global_min_depth, global_max_depth)
 }
 
