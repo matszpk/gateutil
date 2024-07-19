@@ -1438,6 +1438,9 @@ where
     (min_depth, max_depth)
 }
 
+// form of pipeline for circuit:
+// new circuit input: [stage1_state,stage2_state,..,stage(n-1)_state,original_inputs]
+// new circuit output: [stage1_state,stage2_state,..,stage(n-1)_state,original_outputs]
 pub fn simple_pipeliner<T>(circuit: Circuit<T>, depth_in_stage: usize) -> Circuit<T>
 where
     T: Clone + Copy + PartialEq + PartialOrd + Ord + Eq + Debug + Hash,
