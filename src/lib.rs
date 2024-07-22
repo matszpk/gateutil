@@ -1516,6 +1516,8 @@ where
             Ok(p) => p,
             Err(p) => p,
         };
+        let mut old_stage_pos = 0;
+        // next stages
         for i in 1..stage_num {
             stage_pos_tbl.push(stage_pos);
             // find position for next stage in gate_entries
@@ -1549,15 +1551,24 @@ where
                     current_hold.push(g.i1);
                 }
             }
+            for ge in &gate_entries[old_stage_pos..stage_pos] {
+                let wire_index = usize::try_from(ge.wire_index).unwrap();
+                if usize::try_from(depths_to_hold[wire_index]).unwrap() >= i * depth_in_stage {
+                    current_hold.push(ge.wire_index);
+                }
+            }
             current_hold.sort();
             current_hold.dedup();
             // remove expired wires: depth_to_hold < i * depth_in_stage
+            println!("CurHoldB: {:?}", current_hold);
             current_hold.retain(|wi| {
                 let wi = usize::try_from(*wi).unwrap();
                 usize::try_from(depths_to_hold[wi]).unwrap() >= i * depth_in_stage
             });
+            println!("CurHoldR: {:?}", current_hold);
             all_cur_wires.push(cur_wires);
             all_holds.push(current_hold.clone());
+            old_stage_pos = stage_pos;
             stage_pos = next_stage_pos;
         }
     }
@@ -1574,6 +1585,8 @@ where
     let new_input_len = total_state_num + input_len;
     let new_output_len = total_state_num + output_len;
     let new_input_start = total_state_num;
+    println!("NewInputLen: {}, TotalStateNum: {}", new_input_len, total_state_num);
+    println!("NewOutputLen: {}", new_output_len);
     let mut cur_wires_tbl = vec![T::default(); input_len + gate_num];
     // set cur_wires_tbl - table to convert old wires to new wires
     for i in 0..input_len {
@@ -1585,6 +1598,7 @@ where
     }
     // DEBUG
     println!("CurWiresTbl: {:?}", cur_wires_tbl);
+    println!("AllHoldsLens: {:?}", all_holds.iter().map(|h| h.len()).collect::<Vec<_>>());
     // DEBUG
     let mut new_gates = vec![Gate::new_and(T::default(), T::default()); gate_num];
     let mut new_outputs = vec![(T::default(), false); new_output_len];
@@ -1643,16 +1657,17 @@ where
                 let final_wi = if i > 0 {
                     if all_cur_wires[i - 1].binary_search(&owi).is_err() {
                         if let Ok(p) = all_holds[i - 1].binary_search(&owi) {
+                            println!("OWIHP0:{} {} {:?}", j, owi_u, p);
                             T::try_from(old_state_start + p).unwrap()
                         } else {
-                            panic!("Unexpected!");
+                            panic!("Unexpected! {} {} {}", i, j, owi_u);
                         }
                     } else {
-                        println!("OWIF {} {:?}", owi_u, cur_wires_tbl[owi_u]);
+                        println!("OWIF:{} {} {:?}", j, owi_u, cur_wires_tbl[owi_u]);
                         cur_wires_tbl[owi_u]
                     }
                 } else {
-                    println!("OWIF {} {:?}", owi_u, cur_wires_tbl[owi_u]);
+                    println!("OWIF:{} {} {:?}", j, owi_u, cur_wires_tbl[owi_u]);
                     cur_wires_tbl[owi_u]
                 };
                 println!("XX: {} {:?}", state_start + j, final_wi);
@@ -1667,7 +1682,7 @@ where
                         if let Ok(p) = all_holds[i - 1].binary_search(&owi) {
                             T::try_from(old_state_start + p).unwrap()
                         } else {
-                            panic!("Unexpected!");
+                            panic!("Unexpected! {} {} {}", i, j, owi_u);
                         }
                     } else {
                         cur_wires_tbl[owi_u]
