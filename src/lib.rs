@@ -1585,7 +1585,10 @@ where
     let new_input_len = total_state_num + input_len;
     let new_output_len = total_state_num + output_len;
     let new_input_start = total_state_num;
-    println!("NewInputLen: {}, TotalStateNum: {}", new_input_len, total_state_num);
+    println!(
+        "NewInputLen: {}, TotalStateNum: {}",
+        new_input_len, total_state_num
+    );
     println!("NewOutputLen: {}", new_output_len);
     let mut cur_wires_tbl = vec![T::default(); input_len + gate_num];
     // set cur_wires_tbl - table to convert old wires to new wires
@@ -1598,7 +1601,10 @@ where
     }
     // DEBUG
     println!("CurWiresTbl: {:?}", cur_wires_tbl);
-    println!("AllHoldsLens: {:?}", all_holds.iter().map(|h| h.len()).collect::<Vec<_>>());
+    println!(
+        "AllHoldsLens: {:?}",
+        all_holds.iter().map(|h| h.len()).collect::<Vec<_>>()
+    );
     // DEBUG
     let mut new_gates = vec![Gate::new_and(T::default(), T::default()); gate_num];
     let mut new_outputs = vec![(T::default(), false); new_output_len];
