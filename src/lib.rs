@@ -1462,15 +1462,18 @@ where
     let gates = circuit.gates();
     let gate_num = gates.len();
     // depths where wire must be hold
-    let mut depths_to_hold = vec![max_depth; input_len + gate_num];
+    let mut depths_to_hold = vec![T::try_from(max_depth_u - 1).unwrap(); input_len + gate_num];
     for ((_, maxd), g) in min_max_list[input_len..].iter().zip(gates.iter()) {
-        depths_to_hold[usize::try_from(g.i0).unwrap()] = *maxd;
-        depths_to_hold[usize::try_from(g.i1).unwrap()] = *maxd;
+        let maxd = usize::try_from(*maxd).unwrap() - 1;
+        let maxd = T::try_from(maxd).unwrap();
+        depths_to_hold[usize::try_from(g.i0).unwrap()] = maxd;
+        depths_to_hold[usize::try_from(g.i1).unwrap()] = maxd;
     }
+    println!("DepthsToHold: {:?}", depths_to_hold);
     // generate gate entries - holds original gate indices
     // entry: (stage in pipeline, depth in stage in pipeline,
     //         original gate wire index, max depth to hold)
-    #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+    #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
     struct GateEntry<T> {
         stage: T,
         stage_depth: T,
@@ -1479,7 +1482,7 @@ where
     }
     let mut gate_entries = (input_len..input_len + gate_num)
         .map(|i| {
-            let gate_depth = usize::try_from(min_max_list[i].1).unwrap();
+            let gate_depth = usize::try_from(min_max_list[i].1).unwrap() - 1;
             GateEntry {
                 stage: T::try_from(gate_depth / depth_in_stage).unwrap(),
                 stage_depth: T::try_from(gate_depth % depth_in_stage).unwrap(),
@@ -1490,6 +1493,11 @@ where
         .collect::<Vec<_>>();
     // sort gate entries
     gate_entries.sort();
+    // DEBUF
+    for (i, ge) in gate_entries.iter().enumerate() {
+        println!("GateEntry {}: {:?}", i, ge);
+    }
+    // DEBUG
     // calculate state length
     let stage_num = (max_depth_u + depth_in_stage - 1) / depth_in_stage;
     let mut current_hold: Vec<T> = vec![];
@@ -1530,7 +1538,7 @@ where
             };
             for ge in &gate_entries[stage_pos..next_stage_pos] {
                 let wire_index = usize::try_from(ge.wire_index).unwrap();
-                let g = gates[wire_index];
+                let g = gates[wire_index - input_len];
                 if cur_wires.binary_search(&g.i0).is_err() {
                     // if earlier wires
                     current_hold.push(g.i0);
@@ -1572,7 +1580,11 @@ where
     for i in 0..stage_num {
         let start = if i >= 1 { stage_pos_tbl[i - 1] } else { 0 };
         let end = if i + 1 < stage_num {
-            stage_pos_tbl[i - 1]
+            if i != 0 {
+                stage_pos_tbl[i - 1]
+            } else {
+                0
+            }
         } else {
             gate_entries.len()
         };
@@ -1638,6 +1650,14 @@ where
         old_state_start = state_start;
         state_start += if i > 0 { all_cur_wires[i - 1].len() } else { 0 };
     }
+    // DEBUG
+    for (i, g) in new_gates.iter().enumerate() {
+        println!("NewGate {}: {:?}", i + new_input_len, g);
+    }
+    for (i, o) in new_outputs.iter().enumerate() {
+        println!("NewOutput {}: {:?}", i, o);
+    }
+    // DEBUG
     Circuit::new(T::default(), new_gates, new_outputs).unwrap()
 }
 
