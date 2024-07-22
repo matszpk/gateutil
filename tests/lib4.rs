@@ -122,18 +122,18 @@ fn test_simple_pipeliner() {
     );
     assert_eq!(
         Circuit::new(
-            4,
+            6,
             [
-                Gate::new_xor(1, 2),
-                Gate::new_xor(0, 3),
-                Gate::new_nor(1, 2),
-                Gate::new_nor(0, 3),
-                Gate::new_and(4, 5),
+                Gate::new_xor(3, 4),
+                Gate::new_xor(2, 5),
+                Gate::new_nor(3, 4),
+                Gate::new_nor(2, 5),
                 Gate::new_and(6, 7),
-                Gate::new_nimpl(8, 9),
-                Gate::new_nimpl(9, 10),
+                Gate::new_and(8, 9),
+                Gate::new_nimpl(0, 1),
+                Gate::new_nimpl(1, 12),
             ],
-            [(11, true)],
+            [(10, false), (11, false), (13, true)],
         )
         .unwrap(),
         simple_pipeliner(

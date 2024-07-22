@@ -1528,6 +1528,7 @@ where
                 Ok(p) => p,
                 Err(p) => p,
             };
+            println!("StagePos: {} {}", stage_pos, next_stage_pos);
             let cur_wires = {
                 let mut cur_wires = gate_entries[stage_pos..next_stage_pos]
                     .iter()
@@ -1560,6 +1561,15 @@ where
             stage_pos = next_stage_pos;
         }
     }
+    // DEBUG
+    println!("StagePosTbl: {:?}", stage_pos_tbl);
+    for (i, hold) in all_holds.iter().enumerate() {
+        println!("Hold {}: {:?}", i, hold);
+    }
+    for (i, cur_wires) in all_cur_wires.iter().enumerate() {
+        println!("CurWires {}: {:?}", i, cur_wires);
+    }
+    // DEBUG
     let total_state_num = all_holds.iter().map(|x| x.len()).sum::<usize>();
     let new_input_len = total_state_num + input_len;
     let new_output_len = total_state_num + output_len;
@@ -1573,6 +1583,9 @@ where
         cur_wires_tbl[usize::try_from(ge.wire_index).unwrap()] =
             T::try_from(new_input_len + i).unwrap();
     }
+    // DEBUG
+    println!("CurWiresTbl: {:?}", cur_wires_tbl);
+    // DEBUG
     let mut new_gates = vec![Gate::new_and(T::default(), T::default()); gate_num];
     let mut new_outputs = vec![(T::default(), false); new_output_len];
     let mut old_state_start = 0;
@@ -1580,14 +1593,12 @@ where
     for i in 0..stage_num {
         let start = if i >= 1 { stage_pos_tbl[i - 1] } else { 0 };
         let end = if i + 1 < stage_num {
-            if i != 0 {
-                stage_pos_tbl[i - 1]
-            } else {
-                0
-            }
+            stage_pos_tbl[i]
         } else {
             gate_entries.len()
         };
+        println!("StartEnd: {} {}", start, end);
+        println!("StateStart: {} {}", old_state_start, state_start);
         // resolve new gates
         for (j, ge) in gate_entries[start..end].iter().enumerate() {
             let wire_index = usize::try_from(ge.wire_index).unwrap();
@@ -1596,8 +1607,12 @@ where
             let gi1 = usize::try_from(g.i1).unwrap();
             new_gates[start + j] = Gate::<T> {
                 i0: if i > 0 {
-                    if let Ok(p) = all_cur_wires[i - 1].binary_search(&g.i0) {
-                        T::try_from(old_state_start + p).unwrap()
+                    if all_cur_wires[i - 1].binary_search(&g.i0).is_err() {
+                        if let Ok(p) = all_holds[i - 1].binary_search(&g.i0) {
+                            T::try_from(old_state_start + p).unwrap()
+                        } else {
+                            panic!("Unexpected!");
+                        }
                     } else {
                         cur_wires_tbl[gi0]
                     }
@@ -1605,8 +1620,12 @@ where
                     cur_wires_tbl[gi0]
                 },
                 i1: if i > 0 {
-                    if let Ok(p) = all_cur_wires[i - 1].binary_search(&g.i1) {
-                        T::try_from(old_state_start + p).unwrap()
+                    if all_cur_wires[i - 1].binary_search(&g.i1).is_err() {
+                        if let Ok(p) = all_holds[i - 1].binary_search(&g.i1) {
+                            T::try_from(old_state_start + p).unwrap()
+                        } else {
+                            panic!("Unexpected!");
+                        }
                     } else {
                         cur_wires_tbl[gi1]
                     }
@@ -1616,19 +1635,27 @@ where
                 func: g.func,
             };
         }
-        // resove outputs
+        // resolve outputs
         if i + 1 < stage_num {
-            for (j, owi) in all_cur_wires[i].iter().enumerate() {
+            for (j, owi) in all_holds[i].iter().enumerate() {
                 let owi_u = usize::try_from(*owi).unwrap();
+                println!("OWI {}: {}", i, owi_u);
                 let final_wi = if i > 0 {
-                    if let Ok(p) = all_cur_wires[i - 1].binary_search(&owi) {
-                        T::try_from(old_state_start + p).unwrap()
+                    if all_cur_wires[i - 1].binary_search(&owi).is_err() {
+                        if let Ok(p) = all_holds[i - 1].binary_search(&owi) {
+                            T::try_from(old_state_start + p).unwrap()
+                        } else {
+                            panic!("Unexpected!");
+                        }
                     } else {
+                        println!("OWIF {} {:?}", owi_u, cur_wires_tbl[owi_u]);
                         cur_wires_tbl[owi_u]
                     }
                 } else {
+                    println!("OWIF {} {:?}", owi_u, cur_wires_tbl[owi_u]);
                     cur_wires_tbl[owi_u]
                 };
+                println!("XX: {} {:?}", state_start + j, final_wi);
                 new_outputs[state_start + j] = (final_wi, false);
             }
         } else {
@@ -1636,19 +1663,28 @@ where
             for (j, (owi, n)) in outputs.iter().enumerate() {
                 let owi_u = usize::try_from(*owi).unwrap();
                 let final_wi = if i > 0 {
-                    if let Ok(p) = all_cur_wires[i - 1].binary_search(&owi) {
-                        T::try_from(old_state_start + p).unwrap()
+                    if all_cur_wires[i - 1].binary_search(&owi).is_err() {
+                        if let Ok(p) = all_holds[i - 1].binary_search(&owi) {
+                            T::try_from(old_state_start + p).unwrap()
+                        } else {
+                            panic!("Unexpected!");
+                        }
                     } else {
                         cur_wires_tbl[owi_u]
                     }
                 } else {
                     cur_wires_tbl[owi_u]
                 };
-                new_outputs[old_state_start + j] = (final_wi, *n)
+                println!("XX2: {} {:?}", state_start + j, final_wi);
+                new_outputs[state_start + j] = (final_wi, *n)
             }
         }
         old_state_start = state_start;
-        state_start += if i > 0 { all_cur_wires[i - 1].len() } else { 0 };
+        state_start += if i + 1 < stage_num {
+            all_holds[i].len()
+        } else {
+            0
+        };
     }
     // DEBUG
     for (i, g) in new_gates.iter().enumerate() {
@@ -1658,7 +1694,7 @@ where
         println!("NewOutput {}: {:?}", i, o);
     }
     // DEBUG
-    Circuit::new(T::default(), new_gates, new_outputs).unwrap()
+    Circuit::new(T::try_from(new_input_len).unwrap(), new_gates, new_outputs).unwrap()
 }
 
 #[cfg(test)]
