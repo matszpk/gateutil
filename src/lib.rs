@@ -1469,7 +1469,6 @@ where
         depths_to_hold[usize::try_from(g.i0).unwrap()] = maxd;
         depths_to_hold[usize::try_from(g.i1).unwrap()] = maxd;
     }
-    println!("DepthsToHold: {:?}", depths_to_hold);
     // generate gate entries - holds original gate indices
     // entry: (stage in pipeline, depth in stage in pipeline,
     //         original gate wire index, max depth to hold)
@@ -1493,11 +1492,6 @@ where
         .collect::<Vec<_>>();
     // sort gate entries
     gate_entries.sort();
-    // DEBUF
-    for (i, ge) in gate_entries.iter().enumerate() {
-        println!("GateEntry {}: {:?}", i, ge);
-    }
-    // DEBUG
     // calculate state length
     let stage_num = (max_depth_u + depth_in_stage - 1) / depth_in_stage;
     let mut current_hold: Vec<T> = vec![];
@@ -1530,7 +1524,6 @@ where
                 Ok(p) => p,
                 Err(p) => p,
             };
-            println!("StagePos: {} {}", stage_pos, next_stage_pos);
             let cur_wires = {
                 let mut cur_wires = gate_entries[stage_pos..next_stage_pos]
                     .iter()
@@ -1560,36 +1553,20 @@ where
             current_hold.sort();
             current_hold.dedup();
             // remove expired wires: depth_to_hold < i * depth_in_stage
-            println!("CurHoldB: {:?}", current_hold);
             current_hold.retain(|wi| {
                 let wi = usize::try_from(*wi).unwrap();
                 usize::try_from(depths_to_hold[wi]).unwrap() >= i * depth_in_stage
             });
-            println!("CurHoldR: {:?}", current_hold);
             all_cur_wires.push(cur_wires);
             all_holds.push(current_hold.clone());
             old_stage_pos = stage_pos;
             stage_pos = next_stage_pos;
         }
     }
-    // DEBUG
-    println!("StagePosTbl: {:?}", stage_pos_tbl);
-    for (i, hold) in all_holds.iter().enumerate() {
-        println!("Hold {}: {:?}", i, hold);
-    }
-    for (i, cur_wires) in all_cur_wires.iter().enumerate() {
-        println!("CurWires {}: {:?}", i, cur_wires);
-    }
-    // DEBUG
     let total_state_num = all_holds.iter().map(|x| x.len()).sum::<usize>();
     let new_input_len = total_state_num + input_len;
     let new_output_len = total_state_num + output_len;
     let new_input_start = total_state_num;
-    println!(
-        "NewInputLen: {}, TotalStateNum: {}",
-        new_input_len, total_state_num
-    );
-    println!("NewOutputLen: {}", new_output_len);
     let mut cur_wires_tbl = vec![T::default(); input_len + gate_num];
     // set cur_wires_tbl - table to convert old wires to new wires
     for i in 0..input_len {
@@ -1599,13 +1576,6 @@ where
         cur_wires_tbl[usize::try_from(ge.wire_index).unwrap()] =
             T::try_from(new_input_len + i).unwrap();
     }
-    // DEBUG
-    println!("CurWiresTbl: {:?}", cur_wires_tbl);
-    println!(
-        "AllHoldsLens: {:?}",
-        all_holds.iter().map(|h| h.len()).collect::<Vec<_>>()
-    );
-    // DEBUG
     let mut new_gates = vec![Gate::new_and(T::default(), T::default()); gate_num];
     let mut new_outputs = vec![(T::default(), false); new_output_len];
     let mut old_state_start = 0;
@@ -1617,8 +1587,6 @@ where
         } else {
             gate_entries.len()
         };
-        println!("StartEnd: {} {}", start, end);
-        println!("StateStart: {} {}", old_state_start, state_start);
         // resolve new gates
         for (j, ge) in gate_entries[start..end].iter().enumerate() {
             let wire_index = usize::try_from(ge.wire_index).unwrap();
@@ -1659,24 +1627,19 @@ where
         if i + 1 < stage_num {
             for (j, owi) in all_holds[i].iter().enumerate() {
                 let owi_u = usize::try_from(*owi).unwrap();
-                println!("OWI {}: {}", i, owi_u);
                 let final_wi = if i > 0 {
                     if all_cur_wires[i - 1].binary_search(&owi).is_err() {
                         if let Ok(p) = all_holds[i - 1].binary_search(&owi) {
-                            println!("OWIHP0:{} {} {:?}", j, owi_u, p);
                             T::try_from(old_state_start + p).unwrap()
                         } else {
                             panic!("Unexpected! {} {} {}", i, j, owi_u);
                         }
                     } else {
-                        println!("OWIF:{} {} {:?}", j, owi_u, cur_wires_tbl[owi_u]);
                         cur_wires_tbl[owi_u]
                     }
                 } else {
-                    println!("OWIF:{} {} {:?}", j, owi_u, cur_wires_tbl[owi_u]);
                     cur_wires_tbl[owi_u]
                 };
-                println!("XX: {} {:?}", state_start + j, final_wi);
                 new_outputs[state_start + j] = (final_wi, false);
             }
         } else {
@@ -1696,7 +1659,6 @@ where
                 } else {
                     cur_wires_tbl[owi_u]
                 };
-                println!("XX2: {} {:?}", state_start + j, final_wi);
                 new_outputs[state_start + j] = (final_wi, *n)
             }
         }
@@ -1707,14 +1669,6 @@ where
             0
         };
     }
-    // DEBUG
-    for (i, g) in new_gates.iter().enumerate() {
-        println!("NewGate {}: {:?}", i + new_input_len, g);
-    }
-    for (i, o) in new_outputs.iter().enumerate() {
-        println!("NewOutput {}: {:?}", i, o);
-    }
-    // DEBUG
     Circuit::new(T::try_from(new_input_len).unwrap(), new_gates, new_outputs).unwrap()
 }
 
