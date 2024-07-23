@@ -1633,7 +1633,7 @@ where
                         if let Ok(p) = all_holds[i - 1].binary_search(&owi) {
                             T::try_from(old_state_start + p).unwrap()
                         } else {
-                            panic!("Unexpected! {} {} {}", i, j, owi_u);
+                            panic!("Unexpected!");
                         }
                     } else {
                         cur_wires_tbl[owi_u]
@@ -1652,7 +1652,7 @@ where
                         if let Ok(p) = all_holds[i - 1].binary_search(&owi) {
                             T::try_from(old_state_start + p).unwrap()
                         } else {
-                            panic!("Unexpected! {} {} {}", i, j, owi_u);
+                            panic!("Unexpected!");
                         }
                     } else {
                         cur_wires_tbl[owi_u]
