@@ -1441,7 +1441,7 @@ where
 // form of pipeline for circuit:
 // new circuit input: [stage1_state,stage2_state,..,stage(n-1)_state,original_inputs]
 // new circuit output: [stage1_state,stage2_state,..,stage(n-1)_state,original_outputs]
-pub fn simple_pipeliner<T>(circuit: Circuit<T>, depth_in_stage: usize) -> Circuit<T>
+pub fn simple_pipeliner<T>(circuit: Circuit<T>, depth_in_stage: usize) -> (Circuit<T>, usize)
 where
     T: Clone + Copy + PartialEq + PartialOrd + Ord + Eq + Debug,
     T: Default + TryFrom<usize>,
@@ -1453,7 +1453,7 @@ where
     let max_depth_u = usize::try_from(max_depth).unwrap();
     if max_depth_u <= depth_in_stage {
         // return this circuit if max depth is 0
-        return circuit;
+        return (circuit, 1);
     }
     let input_len_t = circuit.input_len();
     let input_len = usize::try_from(input_len_t).unwrap();
@@ -1669,7 +1669,10 @@ where
             0
         };
     }
-    Circuit::new(T::try_from(new_input_len).unwrap(), new_gates, new_outputs).unwrap()
+    (
+        Circuit::new(T::try_from(new_input_len).unwrap(), new_gates, new_outputs).unwrap(),
+        stage_num,
+    )
 }
 
 #[cfg(test)]

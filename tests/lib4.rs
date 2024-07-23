@@ -88,21 +88,24 @@ fn test_min_and_max_depth_list() {
 #[test]
 fn test_simple_pipeliner() {
     assert_eq!(
-        Circuit::new(
-            4,
-            [
-                Gate::new_xor(1, 2),
-                Gate::new_xor(0, 3),
-                Gate::new_nor(1, 2),
-                Gate::new_nor(0, 3),
-                Gate::new_and(4, 5),
-                Gate::new_and(6, 7),
-                Gate::new_nimpl(8, 9),
-                Gate::new_nimpl(9, 10),
-            ],
-            [(11, true)],
-        )
-        .unwrap(),
+        (
+            Circuit::new(
+                4,
+                [
+                    Gate::new_xor(1, 2),
+                    Gate::new_xor(0, 3),
+                    Gate::new_nor(1, 2),
+                    Gate::new_nor(0, 3),
+                    Gate::new_and(4, 5),
+                    Gate::new_and(6, 7),
+                    Gate::new_nimpl(8, 9),
+                    Gate::new_nimpl(9, 10),
+                ],
+                [(11, true)],
+            )
+            .unwrap(),
+            1
+        ),
         simple_pipeliner(
             Circuit::new(
                 4,
@@ -123,21 +126,24 @@ fn test_simple_pipeliner() {
         )
     );
     assert_eq!(
-        Circuit::new(
-            6,
-            [
-                Gate::new_xor(3, 4),
-                Gate::new_xor(2, 5),
-                Gate::new_nor(3, 4),
-                Gate::new_nor(2, 5),
-                Gate::new_and(6, 7),
-                Gate::new_and(8, 9),
-                Gate::new_nimpl(0, 1),
-                Gate::new_nimpl(1, 12),
-            ],
-            [(10, false), (11, false), (13, true)],
-        )
-        .unwrap(),
+        (
+            Circuit::new(
+                6,
+                [
+                    Gate::new_xor(3, 4),
+                    Gate::new_xor(2, 5),
+                    Gate::new_nor(3, 4),
+                    Gate::new_nor(2, 5),
+                    Gate::new_and(6, 7),
+                    Gate::new_and(8, 9),
+                    Gate::new_nimpl(0, 1),
+                    Gate::new_nimpl(1, 12),
+                ],
+                [(10, false), (11, false), (13, true)],
+            )
+            .unwrap(),
+            2
+        ),
         simple_pipeliner(
             Circuit::new(
                 4,
@@ -158,8 +164,9 @@ fn test_simple_pipeliner() {
         )
     );
     assert_eq!(
-        Circuit::from_str(
-            r##"    {
+        (
+            Circuit::from_str(
+                r##"    {
         0:30
         1:31
         2:32
@@ -436,8 +443,10 @@ fn test_simple_pipeliner() {
         xor(165,272):183n
     }(200)
 "##
-        )
-        .unwrap(),
+            )
+            .unwrap(),
+            8
+        ),
         simple_pipeliner(
             Circuit::<usize>::from_str(
                 r##"    {
@@ -556,8 +565,9 @@ fn test_simple_pipeliner() {
     );
     // next testcase
     assert_eq!(
-        Circuit::from_str(
-            r##"{
+        (
+            Circuit::from_str(
+                r##"{
         0
         1
         2
@@ -633,8 +643,10 @@ fn test_simple_pipeliner() {
         and(8,9):10
     }(42)
 "##
-        )
-        .unwrap(),
+            )
+            .unwrap(),
+            3
+        ),
         simple_pipeliner(
             Circuit::<usize>::from_str(
                 r##"    {
@@ -680,8 +692,9 @@ fn test_simple_pipeliner() {
     );
     // fullmul 4x4
     assert_eq!(
-        Circuit::from_str(
-            r##"    {
+        (
+            Circuit::from_str(
+                r##"    {
         0:16
         1:17
         2
@@ -803,8 +816,10 @@ fn test_simple_pipeliner() {
         nor(45,46):54n
     }(55)
 "##
-        )
-        .unwrap(),
+            )
+            .unwrap(),
+            5
+        ),
         simple_pipeliner(
             Circuit::<usize>::from_str(
                 r##"
