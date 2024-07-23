@@ -1588,79 +1588,41 @@ where
         } else {
             gate_entries.len()
         };
+        let find_wire = |xwi| {
+            let xwi_u = usize::try_from(xwi).unwrap();
+            if i > 0 {
+                if all_cur_wires[i - 1].binary_search(&xwi).is_err() {
+                    if let Ok(p) = all_holds[i - 1].binary_search(&xwi) {
+                        T::try_from(old_state_start + p).unwrap()
+                    } else {
+                        panic!("Unexpected!");
+                    }
+                } else {
+                    cur_wires_tbl[xwi_u]
+                }
+            } else {
+                cur_wires_tbl[xwi_u]
+            }
+        };
         // resolve new gates
         for (j, ge) in gate_entries[start..end].iter().enumerate() {
             let wire_index = usize::try_from(ge.wire_index).unwrap();
             let g = gates[wire_index - input_len];
-            let gi0 = usize::try_from(g.i0).unwrap();
-            let gi1 = usize::try_from(g.i1).unwrap();
             new_gates[start + j] = Gate::<T> {
-                i0: if i > 0 {
-                    if all_cur_wires[i - 1].binary_search(&g.i0).is_err() {
-                        if let Ok(p) = all_holds[i - 1].binary_search(&g.i0) {
-                            T::try_from(old_state_start + p).unwrap()
-                        } else {
-                            panic!("Unexpected!");
-                        }
-                    } else {
-                        cur_wires_tbl[gi0]
-                    }
-                } else {
-                    cur_wires_tbl[gi0]
-                },
-                i1: if i > 0 {
-                    if all_cur_wires[i - 1].binary_search(&g.i1).is_err() {
-                        if let Ok(p) = all_holds[i - 1].binary_search(&g.i1) {
-                            T::try_from(old_state_start + p).unwrap()
-                        } else {
-                            panic!("Unexpected!");
-                        }
-                    } else {
-                        cur_wires_tbl[gi1]
-                    }
-                } else {
-                    cur_wires_tbl[gi1]
-                },
+                i0: find_wire(g.i0),
+                i1: find_wire(g.i1),
                 func: g.func,
             };
         }
         // resolve outputs
         if i + 1 < stage_num {
             for (j, owi) in all_holds[i].iter().enumerate() {
-                let owi_u = usize::try_from(*owi).unwrap();
-                let final_wi = if i > 0 {
-                    if all_cur_wires[i - 1].binary_search(&owi).is_err() {
-                        if let Ok(p) = all_holds[i - 1].binary_search(&owi) {
-                            T::try_from(old_state_start + p).unwrap()
-                        } else {
-                            panic!("Unexpected!");
-                        }
-                    } else {
-                        cur_wires_tbl[owi_u]
-                    }
-                } else {
-                    cur_wires_tbl[owi_u]
-                };
-                new_outputs[state_start + j] = (final_wi, false);
+                new_outputs[state_start + j] = (find_wire(*owi), false);
             }
         } else {
             // resolve final circuit outputs at after final stage (stage = n-1).
             for (j, (owi, n)) in outputs.iter().enumerate() {
-                let owi_u = usize::try_from(*owi).unwrap();
-                let final_wi = if i > 0 {
-                    if all_cur_wires[i - 1].binary_search(&owi).is_err() {
-                        if let Ok(p) = all_holds[i - 1].binary_search(&owi) {
-                            T::try_from(old_state_start + p).unwrap()
-                        } else {
-                            panic!("Unexpected!");
-                        }
-                    } else {
-                        cur_wires_tbl[owi_u]
-                    }
-                } else {
-                    cur_wires_tbl[owi_u]
-                };
-                new_outputs[state_start + j] = (final_wi, *n)
+                new_outputs[state_start + j] = (find_wire(*owi), *n)
             }
         }
         old_state_start = state_start;
