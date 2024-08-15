@@ -507,6 +507,7 @@ pub enum OutputEntry<T> {
     Value(bool),
 }
 
+/// Fill circuit's outputs by zero or one wire based on output map given by assign_to_circuit.
 pub fn fill_outputs<T>(circuit: Circuit<T>, out_map: Vec<OutputEntry<T>>) -> Circuit<T>
 where
     T: Default + Clone + Copy + PartialEq + Eq + PartialOrd + Ord,
