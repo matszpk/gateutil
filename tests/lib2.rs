@@ -646,6 +646,98 @@ fn test_assign_to_circuit_2() {
 }
 
 #[test]
+fn test_fill_outputs() {
+    assert_eq!(
+        Circuit::new(
+            2,
+            [
+                // Gate::new_and(0, 2), -> false
+                // Gate::new_xor(0, 2), -> true
+                Gate::new_nimpl(0, 0), // Gate::new_nor(1, 2),
+                Gate::new_nimpl(1, 1), // Gate::new_nor(2, 3),
+                // Gate::new_and(4, 5), -> false
+                // Gate::new_nimpl(4, 5), -> false
+                Gate::new_xor(2, 3),
+                Gate::new_nor(2, 3),
+                // Gate::new_and(8, 9), -> false
+                Gate::new_and(4, 5),
+                Gate::new_nimpl(6, 6),
+                // gate added fill outputs: zero
+                Gate::new_nimpl(0, 0),
+            ],
+            [(8, true), (8, false), (7, false)],
+        )
+        .unwrap(),
+        fill_outputs(
+            Circuit::new(
+                2,
+                [
+                    // Gate::new_and(0, 2), -> false
+                    // Gate::new_xor(0, 2), -> true
+                    Gate::new_nimpl(0, 0), // Gate::new_nor(1, 2),
+                    Gate::new_nimpl(1, 1), // Gate::new_nor(2, 3),
+                    // Gate::new_and(4, 5), -> false
+                    // Gate::new_nimpl(4, 5), -> false
+                    Gate::new_xor(2, 3),
+                    Gate::new_nor(2, 3),
+                    // Gate::new_and(8, 9), -> false
+                    Gate::new_and(4, 5),
+                    Gate::new_nimpl(6, 6),
+                ],
+                [(7, false)],
+            )
+            .unwrap(),
+            vec![
+                OutputEntry::Value(true),
+                OutputEntry::Value(false),
+                OutputEntry::NewIndex(0)
+            ]
+        )
+    );
+    assert_eq!(
+        Circuit::new(
+            2,
+            [
+                // Gate::new_and(0, 2), -> false
+                // Gate::new_xor(0, 2), -> true
+                Gate::new_nimpl(0, 0), // Gate::new_nor(1, 2),
+                Gate::new_nimpl(1, 1), // Gate::new_nor(2, 3),
+                // Gate::new_and(4, 5), -> false
+                // Gate::new_nimpl(4, 5), -> false
+                Gate::new_xor(2, 3),
+                Gate::new_nor(2, 3),
+                // Gate::new_and(8, 9), -> false
+                Gate::new_and(4, 5),
+                Gate::new_nimpl(6, 6),
+            ],
+            [(7, false)],
+        )
+        .unwrap(),
+        fill_outputs(
+            Circuit::new(
+                2,
+                [
+                    // Gate::new_and(0, 2), -> false
+                    // Gate::new_xor(0, 2), -> true
+                    Gate::new_nimpl(0, 0), // Gate::new_nor(1, 2),
+                    Gate::new_nimpl(1, 1), // Gate::new_nor(2, 3),
+                    // Gate::new_and(4, 5), -> false
+                    // Gate::new_nimpl(4, 5), -> false
+                    Gate::new_xor(2, 3),
+                    Gate::new_nor(2, 3),
+                    // Gate::new_and(8, 9), -> false
+                    Gate::new_and(4, 5),
+                    Gate::new_nimpl(6, 6),
+                ],
+                [(7, false)],
+            )
+            .unwrap(),
+            vec![OutputEntry::NewIndex(0)]
+        )
+    );
+}
+
+#[test]
 fn test_optimize_clause_circuit() {
     assert_eq!(
         (ClauseCircuit::new(0, [], []).unwrap(), vec![], vec![]),

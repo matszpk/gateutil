@@ -507,6 +507,39 @@ pub enum OutputEntry<T> {
     Value(bool),
 }
 
+pub fn fill_outputs<T>(circuit: Circuit<T>, out_map: Vec<OutputEntry<T>>) -> Circuit<T>
+where
+    T: Default + Clone + Copy + PartialEq + Eq + PartialOrd + Ord,
+    T: TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    if out_map
+        .iter()
+        .all(|e| matches!(e, OutputEntry::NewIndex(_)))
+    {
+        return circuit;
+    }
+    let input_len = usize::try_from(circuit.input_len()).unwrap();
+    let wire_len = T::try_from(input_len + circuit.gates().len()).unwrap();
+    let new_gates = circuit
+        .gates()
+        .into_iter()
+        .copied()
+        .chain(std::iter::once(Gate::new_nimpl(T::default(), T::default())))
+        .collect::<Vec<_>>();
+    let outputs = circuit.outputs();
+    let new_outputs = out_map
+        .into_iter()
+        .map(|e| match e {
+            OutputEntry::NewIndex(ni) => outputs[usize::try_from(ni).unwrap()],
+            OutputEntry::Value(v) => (wire_len, v),
+        })
+        .collect::<Vec<_>>();
+    Circuit::new(circuit.input_len(), new_gates, new_outputs).unwrap()
+}
+
 /// Returns circuit with assignment and mapping from older input to new input
 /// and output mapping from older output index to new output index or value.
 pub fn assign_to_circuit<T>(
