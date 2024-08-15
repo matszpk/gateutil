@@ -1,5 +1,5 @@
-use gatesim::*;
 pub use gatesim;
+use gatesim::*;
 
 use std::cmp::Ord;
 use std::collections::HashMap;
