@@ -296,6 +296,94 @@ where
 //               and negation for this input
 // index of output from some previous circuit - just index of output from list of
 // all outputs from all circuits ordered from first to last circuit.
+
+/// Join multiple circuits sequentially.
+///
+/// The `seq` is iterator of entries of structure with fields:
+/// 1. The circuit to join.
+/// 2. List of connections between current circuit's outputs and next (from next entry or last)
+///    circuit's inputs. List entry index is next circuit input index.
+///    Value is option of tuple of index of output from some previous circuit and negation of
+///    that output. This index of output is index of all list circuit's output from first
+///    circuit to current circuit (from current entry). This index starts from 0.
+///
+/// If any circuit'a input is connected then will be used as input in output circuit.
+///
+/// Example with description of structure data:
+/// ```text
+///     join_circuits_seq(
+///         [
+///             (
+///                 // first circuit with 6 inputs and 7 outputs
+///                 first_circuit,
+///                 // connect first circuit's output 3 to second circuit's input 0.
+///                 // connect negated first circuit's output 1 to second circuit's input 1.
+///                 // connect negated first circuit's output 4 to second circuit's input 2.
+///                 vec![Some((3, false)), Some((1, true)), Some((4, true)),]
+///             ),
+///             (
+///                 // second circuit with 3 inputs and 5 outputs
+///                 second_circuit,
+///                 vec![
+///                     // connect negated first circuit's output 5 to third circuit's input 0.
+///                     Some((5, true)),
+///                     // connect negated first circuit's output 6 to third circuit's input 1.
+///                     Some((6, true)),
+///                     // connect negated second circuit's output 1 (8-7)
+///                     //to third circuit's input 2.
+///                     Some((8, true)),
+///                     // connect second circuit's output 3 (10-7)
+///                     //to third circuit's input 3.
+///                     Some((10, false)),
+///                 ]
+///             ),
+///             (
+///                 // third circuit with 4 inputs and 6 outputs
+///                 third_circuit,
+///                 vec![
+///                     // connect second circuit's output 2 (9-7) to fourth circuit's input 0.
+///                     Some((9, false)),
+///                     // fourth circuit's input 1 will be next input of final circuit.
+///                     None,
+///                     // connect second circuit's output 4 (11-7) to fourth circuit's input 2.
+///                     Some((11, false)),
+///                     // connect first circuit's output 6 to fourth circuit's input 3.
+///                     Some((6, false)),
+///                     // connect third circuit's output 1 (13-7-5) to fourth circuit's input 4.
+///                     Some((13, false))
+///                 ]
+///             ),
+///             (
+///                 // fourth circuit with 5 inputs and 6 outputs
+///                 fourth_circuit,
+///                 vec![
+///                     // connect third circuit's output 3 (15-7-5) to fifth circuit's input 0.
+///                     Some((15, false)),
+///                     // connect negated third circuit's output 4 (16-7-5) to
+///                     // fifth circuit's input 1.
+///                     Some((16, true)),
+///                     // fifth circuit's input 2 will be next input of final circuit.
+///                     None,
+///                     // connect first circuit's output 2 to fifth circuit's input 3.
+///                     Some((2, false)),
+///                     // connect fourth circuit's output 0 (18-7-5-6) to fifth circuit's input 4.
+///                     Some((18, false)),
+///                     // connect negated fourth circuit's output 2 (20-7-5-6) to
+///                     // fifth circuit's input 5.
+///                     Some((20, true)),
+///                     // connect third circuit's output 0 (12-7-5) to fifth circuit's input 6.
+///                     Some((12, false)),
+///                     // connect negated fourth circuit's output 5 (23-7-5-6) to
+///                     // fifth circuit's input 6.
+///                     Some((23, true))
+///                 ]
+///             ),
+///         ],
+///         // fifth circuit with 8 inputs and 4 outputs
+///         fifth_circuit
+///     )
+/// );
+/// ```
 pub fn join_circuits_seq<T>(
     seq: impl IntoIterator<Item = (Circuit<T>, impl IntoIterator<Item = Option<(T, bool)>>)>,
     last: Circuit<T>,
