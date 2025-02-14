@@ -19,6 +19,10 @@
 //! * calculate minimal and maximal depth and depths for any gate of circuit.
 //! * generate pipelined circuit.
 //! * join input or output maps.
+//!
+//! Some WARNINGS about using some routines. A optimization and deduplication routines
+//! are not completely tested and they can get wrong results in some specific input.
+//! They shouldn't be used in deployed software.
 
 pub use gatesim;
 use gatesim::*;
@@ -308,6 +312,7 @@ where
 ///    circuit to current circuit (from current entry). This index starts from 0.
 ///
 /// If any circuit'a input is connected then will be used as input in output circuit.
+/// Function returns join of all circuits.
 ///
 /// Example with description of structure data:
 /// ```text
@@ -574,6 +579,27 @@ where
 
 // INFO: from_first - index - input index for circuit2,
 //                    value - option of output index for circuit1
+
+/// Join two circuits sequentially.
+///
+/// The `circuit1` is first circuit to join. The `from_list` is list of connections
+/// between first circuit's outputs and second circuit's inputs. The `circuit2` is second
+/// circuit to join.
+///
+/// List of connections between first circuit's outputs and second
+/// circuit's inputs. List entry index is next circuit input index.
+/// Value is option of tuple of index of output from first circuit and negation of
+/// that output. Example of `from_first` list:
+///
+/// ```text
+/// // connect first circuit's output 3 to second circuit's input 0.
+/// // connect negated first circuit's output 1 to second circuit's input 1.
+/// // connect negated first circuit's output 4 to second circuit's input 2.
+/// vec![Some((3, false)), Some((1, true)), Some((4, true)),]
+/// ```
+///
+/// If any circuit'a input is connected then will be used as input in output circuit.
+/// Function returns join of all circuits.
 pub fn join_two_circuits<T>(
     circuit1: Circuit<T>,
     from_first: impl IntoIterator<Item = Option<(T, bool)>>,
@@ -590,6 +616,9 @@ where
 }
 
 /// Deduplicates gates in circuit. It finds duplicates by comparing gate and its inputs.
+///
+/// This function returns circuit without duplicated gates. It is simple deduplication
+/// routine that duplicates only single gates. It can used safely.
 pub fn deduplicate<T: Clone + Copy + Ord + PartialEq + Eq>(circuit: Circuit<T>) -> Circuit<T>
 where
     T: Default + TryFrom<usize>,
@@ -648,11 +677,18 @@ where
 /// Output entry to store assignment of value (for output and input).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OutputEntry<T> {
+    /// New index of output.
     NewIndex(T),
+    /// Value of output (if assigned).
     Value(bool),
 }
 
 /// Fill circuit's outputs by zero or one wire based on output map given by assign_to_circuit.
+///
+/// The `out_map` is map of new outputs. If `out_map` doesn't have entries with new index
+/// then this routine do nothing. Otherwise it adds new gate that returns correct value
+/// for particular circuit output and remap rest of circuit's output.
+/// The final circuit have all circuit's outputs given in `out_map` including assigned outputs.
 pub fn fill_outputs<T>(circuit: Circuit<T>, out_map: Vec<OutputEntry<T>>) -> Circuit<T>
 where
     T: Default + Clone + Copy + PartialEq + Eq + PartialOrd + Ord,
@@ -685,6 +721,8 @@ where
         .collect::<Vec<_>>();
     Circuit::new(circuit.input_len(), new_gates, new_outputs).unwrap()
 }
+
+// DOCUMENTED TO THIS POINT
 
 /// Returns circuit with assignment and mapping from older input to new input
 /// and output mapping from older output index to new output index or value.
