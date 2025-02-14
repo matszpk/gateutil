@@ -311,7 +311,8 @@ where
 ///    that output. This index of output is index of all list circuit's output from first
 ///    circuit to current circuit (from current entry). This index starts from 0.
 ///
-/// If any circuit'a input is connected then will be used as input in output circuit.
+/// Any not connected circuit's input will be added as input to final circuit.
+/// Any not connected circuit's output will be added as output to final circuit.
 /// Function returns join of all circuits.
 ///
 /// Example with description of structure data:
@@ -585,6 +586,10 @@ where
 /// The `circuit1` is first circuit to join. The `from_list` is list of connections
 /// between first circuit's outputs and second circuit's inputs. The `circuit2` is second
 /// circuit to join.
+///
+/// Any not connected circuit's input will be added as input to final circuit.
+/// Any not connected circuit's output will be added as output to final circuit.
+/// Function returns join of two circuits.
 ///
 /// List of connections between first circuit's outputs and second
 /// circuit's inputs. List entry index is next circuit input index.
