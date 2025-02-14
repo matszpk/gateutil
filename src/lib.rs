@@ -1065,8 +1065,8 @@ where
 ///
 /// WARNING: This function is not completely tested. It should be used enough carefully.
 ///
-/// Returned circuit will be optimized: reduce any clause that can be replaced by single wire and
-/// evaluate trees of clauses to single value including same outputs. 
+/// Returned circuit is optimized: reduce any clause that can be replaced by single wire and
+/// evaluate trees of clauses to single value including same outputs.
 /// It optimize circuit by joining clauses with same type and resolving duplicates
 /// of literals in clauses and resolving values from that clauses.
 ///
@@ -1272,7 +1272,7 @@ where
 /// The `seq` argument choose type of conversion from clause circuit to Gate circuit -
 /// choose between sequential or parallel conversion from clause to gates.
 ///
-/// Returned circuit will be optimized: reduce any gate that can be replaced by single wire and
+/// Returned circuit is optimized: reduce any gate that can be replaced by single wire and
 /// evaluate trees of gates to single value including same outputs. Function converts
 /// circuit into `ClauseCircuit` and call `optimize_clause_circuit`.
 ///
@@ -1307,7 +1307,9 @@ where
     (opt_circuit, out_input_map, out_output_map)
 }
 
-/// Joins input/output maps from previous and next operation and returns joined in/out map.
+/// Joins input/output maps from previous and next operation and returns joined input/output map.
+///
+/// The `input_map` is first input map and `opt_input_map` is second map.
 pub fn join_input_entry_and_input_map<T>(
     input_map: &[OutputEntry<T>],
     opt_input_map: &[Option<T>],
@@ -1333,7 +1335,9 @@ where
     out_input_map
 }
 
-/// Joins input/output maps from previous and next operation and returns joined in/out map.
+/// Joins input/output maps from previous and next operation and returns joined input/output map.
+///
+/// The `map` is first input map and `next_map` is second map.
 pub fn join_input_map<T>(map: &[Option<T>], next_map: &[Option<T>]) -> Vec<Option<T>>
 where
     T: Clone + Copy,
@@ -1350,7 +1354,9 @@ where
     out_map
 }
 
-/// Joins input/output maps from previous and next operation and returns joined in/out map.
+/// Joins input/output maps from previous and next operation and returns joined input/output map.
+///
+/// The `map` is first input map and `next_map` is second map.
 pub fn join_output_entry_map<T>(
     map: &[OutputEntry<T>],
     next_map: &[OutputEntry<T>],
@@ -1557,7 +1563,7 @@ where
 ///
 /// WARNING: This function is not completely tested. It should be used enough carefully.
 ///
-/// Returned circuit will be optimized and deduplicated: reduce any clause that can be replaced
+/// Returned circuit is optimized and deduplicated: reduce any clause that can be replaced
 /// by single wire and evaluate trees of clauses to single value including same outputs and
 /// find duplicates of clauses and tree of clauses and remove them.
 ///
@@ -1621,7 +1627,7 @@ where
 /// The `seq` argument choose type of conversion from clause circuit to Gate circuit -
 /// choose between sequential or parallel conversion from clause to gates.
 ///
-/// Returned circuit will be optimized and deduplicated: reduce any gate that can be replaced
+/// Returned circuit is optimized and deduplicated: reduce any gate that can be replaced
 /// by single wire and evaluate trees of gates to single value including same outputs and
 /// find duplicates of gates and tree of gates and reduce them.
 /// Function converts circuit into `ClauseCircuit` and call `optimize_and_dedup_clause_circuit`.
@@ -1660,6 +1666,15 @@ where
 
 // min and max depth of circuit
 
+/// Calculates minimal and maximal depth of circuit and depth for all circuit wires.
+///
+/// Function calculates minimal and maximal depth of circuit. A depth is length between
+/// circuit's input to circuit's output. Function additionally returns minimal and maximal
+/// depth for all circuit wires (inputs and gate outputs). It returns tuple with elements:
+/// * list of minimal and maximal depths for all circuit wires. Entry index is circuit wire
+///   index, entry value is pair of minimal and maximal depth.
+/// * minimal depth of circuit.
+/// * maximal depth of circuit.
 pub fn min_and_max_depth_list<T>(circuit: &Circuit<T>) -> (Vec<(T, T)>, T, T)
 where
     T: Clone + Copy + PartialEq + PartialOrd + Ord + Eq + Debug,
@@ -1736,8 +1751,10 @@ where
     (depths, global_min_depth, global_max_depth)
 }
 
-// DOCUMENTED TO THIS POINT
-
+/// Calculates minimal and maximal depth of circuit and depth for all circuit wires.
+///
+/// It returns minimal and maximal depth of circuit. A depth is length between
+/// circuit's input to circuit's output.
 pub fn min_and_max_depth<T>(circuit: &Circuit<T>) -> (T, T)
 where
     T: Clone + Copy + PartialEq + PartialOrd + Ord + Eq + Debug,
@@ -1754,6 +1771,26 @@ where
 // new circuit input: [stage1_state,stage2_state,..,stage(n-1)_state,original_inputs]
 // new circuit output: [stage1_state,stage2_state,..,stage(n-1)_state,original_outputs]
 // returns circuit and number of stages.
+
+/// Generates pipelined version of circuit.
+///
+/// Function generates pipelined version of circuit including depth of any stage of
+/// circuit evaluation. The `depth_in_stage` determines maximal depth of any stage.
+/// It returns pipelined circuit and number of stages (N).
+///
+/// Pipelined circuit have inputs in form:
+/// [stage1_state,stage2_state,..,stage(n-1)_state,original_inputs].
+/// The `stageX_state` is state for Xth stage (Xth execution of pipelined circuit).
+/// The `original_inputs` are original inputs.
+///
+/// Pipelined circuit have outputs in form:
+/// [stage1_state,stage2_state,..,stage(n-1)_state,original_outputs].
+/// The `stageX_state` is state for Xth stage (Xth execution of pipelined circuit).
+/// The `original_outputs` are original outputs.
+///
+/// The execution of pipelined circuit is simple. For every execution put to `original_inputs`
+/// next input data and after Nth execution before first execution get results
+/// from `original_outputs`.
 pub fn simple_pipeliner<T>(circuit: Circuit<T>, depth_in_stage: usize) -> (Circuit<T>, usize)
 where
     T: Clone + Copy + PartialEq + PartialOrd + Ord + Eq + Debug,
