@@ -732,7 +732,7 @@ where
 /// Generates circuit that calculates outputs as original circuit with assigned inputs
 /// (if assume circuit input have specified value). The `inputs` iterator is list of
 /// circuit's input (input indices) to assign. The entry of list is pair of
-/// circit input index and its value to assign. Function while asigning values to inputs
+/// circit input index and its value to assign. Function while assigning values to inputs
 /// reduces circuit and their inputs and outputs if needed. A function doesn't optimize
 /// circuit.
 ///
@@ -740,7 +740,7 @@ where
 /// list of mapping original circuit's outputs. Both lists contains `OutputEntry`
 /// that it is `NewIndex` if circuit's input or circuit's output is stored in new index or
 /// have Value if circuit's input is assigned or circuit's outputs are calculated to value.
-/// An entry Index from list is original index of circuit's input or circuit's output.
+/// An entry index from list is original index of circuit's input or circuit's output.
 pub fn assign_to_circuit<T>(
     circuit: &Circuit<T>,
     inputs: impl IntoIterator<Item = (T, bool)>,
@@ -1061,13 +1061,23 @@ where
 // }
 // DEBUG
 
-// DOCUMENTED TO THIS POINT
-
 /// Optimize clause circuit.
 ///
-/// It returns optimized circuit, mapping to new inputs, mapping to new outputs.
+/// WARNING: This function is not completely tested. It should be used enough carefully.
+///
+/// Returned circuit will be optimized: reduce any clause that can be replaced by single wire and
+/// evaluate trees of clauses to single value including same outputs. 
 /// It optimize circuit by joining clauses with same type and resolving duplicates
 /// of literals in clauses and resolving values from that clauses.
+///
+/// Function returns an optimized circuit, list of mapping of original circuit inputs and
+/// list of mapping original circuit's outputs.
+/// First list contains entries as options of index `Option<T>`. If entry is None then
+/// original circuit input is not used, if entry is `Some(...)` then value is new circuit's
+/// input index. Second list contains `OutputEntry`
+/// that it is `NewIndex` if circuit's output is stored in new index or
+/// have Value if circuit's outputs are calculated to value.
+/// An entry index from list is original index of circuit's input or circuit's output.
 pub fn optimize_clause_circuit<T>(
     circuit: ClauseCircuit<T>,
 ) -> (ClauseCircuit<T>, Vec<Option<T>>, Vec<OutputEntry<T>>)
@@ -1256,9 +1266,11 @@ where
 /// Generates circuit that calculates outputs as original circuit with assigned inputs
 /// (if assume circuit input have specified value). The `inputs` iterator is list of
 /// circuit's input (input indices) to assign. The entry of list is pair of
-/// circit input index and its value to assign. Function while asigning values to inputs
-/// reduces circuit and their inputs and outputs if needed. A function doesn't optimize
-/// circuit.
+/// circit input index and its value to assign. Function while assigning values to inputs
+/// reduces circuit and their inputs and outputs if needed.
+///
+/// The `seq` argument choose type of conversion from clause circuit to Gate circuit -
+/// choose between sequential or parallel conversion from clause to gates.
 ///
 /// Returned circuit will be optimized: reduce any gate that can be replaced by single wire and
 /// evaluate trees of gates to single value including same outputs. Function converts
@@ -1268,7 +1280,7 @@ where
 /// list of mapping original circuit's outputs. Both lists contains `OutputEntry`
 /// that it is `NewIndex` if circuit's input or circuit's output is stored in new index or
 /// have Value if circuit's input is assigned or circuit's outputs are calculated to value.
-/// An entry Index from list is original index of circuit's input or circuit's output.
+/// An entry index from list is original index of circuit's input or circuit's output.
 pub fn assign_to_circuit_and_optimize<T>(
     circuit: &Circuit<T>,
     inputs: impl IntoIterator<Item = (T, bool)>,
@@ -1541,7 +1553,22 @@ where
     )
 }
 
-/// Returns optimized circuit, mapping to new inputs, mapping to new outputs.
+/// Optimize and deduplicate clause circuit.
+///
+/// WARNING: This function is not completely tested. It should be used enough carefully.
+///
+/// Returned circuit will be optimized and deduplicated: reduce any clause that can be replaced
+/// by single wire and evaluate trees of clauses to single value including same outputs and
+/// find duplicates of clauses and tree of clauses and remove them.
+///
+/// Function returns an optimized circuit, list of mapping of original circuit inputs and
+/// list of mapping original circuit's outputs.
+/// First list contains entries as options of index `Option<T>`. If entry is None then
+/// original circuit input is not used, if entry is `Some(...)` then value is new circuit's
+/// input index. Second list contains `OutputEntry`
+/// that it is `NewIndex` if circuit's output is stored in new index or
+/// have Value if circuit's outputs are calculated to value.
+/// An entry index from list is original index of circuit's input or circuit's output.
 pub fn optimize_and_dedup_clause_circuit<T>(
     circuit: ClauseCircuit<T>,
 ) -> (ClauseCircuit<T>, Vec<Option<T>>, Vec<OutputEntry<T>>)
@@ -1591,9 +1618,12 @@ where
 /// reduces circuit and their inputs and outputs if needed. A function doesn't optimize
 /// circuit.
 ///
+/// The `seq` argument choose type of conversion from clause circuit to Gate circuit -
+/// choose between sequential or parallel conversion from clause to gates.
+///
 /// Returned circuit will be optimized and deduplicated: reduce any gate that can be replaced
 /// by single wire and evaluate trees of gates to single value including same outputs and
-/// find deduplicates of gates and tree of gates and reduce them.
+/// find duplicates of gates and tree of gates and reduce them.
 /// Function converts circuit into `ClauseCircuit` and call `optimize_and_dedup_clause_circuit`.
 ///
 /// Function returns assigned circuit, list of mapping of original circuit inputs and
@@ -1705,6 +1735,8 @@ where
     }
     (depths, global_min_depth, global_max_depth)
 }
+
+// DOCUMENTED TO THIS POINT
 
 pub fn min_and_max_depth<T>(circuit: &Circuit<T>) -> (T, T)
 where
