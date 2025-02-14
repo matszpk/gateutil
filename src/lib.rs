@@ -722,10 +722,20 @@ where
     Circuit::new(circuit.input_len(), new_gates, new_outputs).unwrap()
 }
 
-// DOCUMENTED TO THIS POINT
-
-/// Returns circuit with assignment and mapping from older input to new input
-/// and output mapping from older output index to new output index or value.
+/// Assigns inputs to circuit.
+///
+/// Generates circuit that calculates outputs as original circuit with assigned inputs
+/// (if assume circuit input have specified value). The `inputs` iterator is list of
+/// circuit's input (input indices) to assign. The entry of list is pair of
+/// circit input index and its value to assign. Function while asigning values to inputs
+/// reduces circuit and their inputs and outputs if needed. A function doesn't optimize
+/// circuit.
+///
+/// Function returns assigned circuit, list of mapping of original circuit inputs and
+/// list of mapping original circuit's outputs. Both lists contains `OutputEntry`
+/// that it is `NewIndex` if circuit's input or circuit's output is stored in new index or
+/// have Value if circuit's input is assigned or circuit's outputs are calculated to value.
+/// An entry Index from list is original index of circuit's input or circuit's output.
 pub fn assign_to_circuit<T>(
     circuit: &Circuit<T>,
     inputs: impl IntoIterator<Item = (T, bool)>,
@@ -1046,7 +1056,11 @@ where
 // }
 // DEBUG
 
-/// Return optimized circuit, mapping to new inputs, mapping to new outputs.
+// DOCUMENTED TO THIS POINT
+
+/// Optimize clause circuit.
+///
+/// It returns optimized circuit, mapping to new inputs, mapping to new outputs.
 /// It optimize circuit by joining clauses with same type and resolving duplicates
 /// of literals in clauses and resolving values from that clauses.
 pub fn optimize_clause_circuit<T>(
@@ -1230,7 +1244,26 @@ where
     }
 }
 
-/// Assigns and optimize clause circuit. See to optimize_clause_circuit and assign_to_circuit.
+/// Assigns inputs to circuit and optimize circuit.
+///
+/// WARNING: This function is not completely tested. It should be used enough carefully.
+///
+/// Generates circuit that calculates outputs as original circuit with assigned inputs
+/// (if assume circuit input have specified value). The `inputs` iterator is list of
+/// circuit's input (input indices) to assign. The entry of list is pair of
+/// circit input index and its value to assign. Function while asigning values to inputs
+/// reduces circuit and their inputs and outputs if needed. A function doesn't optimize
+/// circuit.
+///
+/// Returned circuit will be optimized: reduce any gate that can be replaced by single wire and
+/// evaluate trees of gates to single value including same outputs. Function converts
+/// circuit into `ClauseCircuit` and call `optimize_clause_circuit`.
+///
+/// Function returns assigned circuit, list of mapping of original circuit inputs and
+/// list of mapping original circuit's outputs. Both lists contains `OutputEntry`
+/// that it is `NewIndex` if circuit's input or circuit's output is stored in new index or
+/// have Value if circuit's input is assigned or circuit's outputs are calculated to value.
+/// An entry Index from list is original index of circuit's input or circuit's output.
 pub fn assign_to_circuit_and_optimize<T>(
     circuit: &Circuit<T>,
     inputs: impl IntoIterator<Item = (T, bool)>,
@@ -1347,6 +1380,10 @@ where
 // }
 // DEBUG
 
+/// Deduplicate clauses and clause literals.
+///
+/// WARNING: This function is not completely tested. It should be used enough carefully.
+///
 /// Deduplicate clauses and clause literals. It deduplciates same clauses and literals and
 /// subclauses (part of clauses). Returns new circuit and boolean value.
 /// If some possible literal duplicates then returns true, otherwise return false.
@@ -1538,7 +1575,27 @@ where
     (new_circuit, input_map, output_map)
 }
 
-/// Assigns and optimize and deduplicate clause circuit.
+/// Assigns inputs to circuit, deduplicate and optimize circuit.
+///
+/// WARNING: This function is not completely tested. It should be used enough carefully.
+///
+/// Generates circuit that calculates outputs as original circuit with assigned inputs
+/// (if assume circuit input have specified value). The `inputs` iterator is list of
+/// circuit's input (input indices) to assign. The entry of list is pair of
+/// circit input index and its value to assign. Function while asigning values to inputs
+/// reduces circuit and their inputs and outputs if needed. A function doesn't optimize
+/// circuit.
+///
+/// Returned circuit will be optimized and deduplicated: reduce any gate that can be replaced
+/// by single wire and evaluate trees of gates to single value including same outputs and
+/// find deduplicates of gates and tree of gates and reduce them.
+/// Function converts circuit into `ClauseCircuit` and call `optimize_and_dedup_clause_circuit`.
+///
+/// Function returns assigned circuit, list of mapping of original circuit inputs and
+/// list of mapping original circuit's outputs. Both lists contains `OutputEntry`
+/// that it is `NewIndex` if circuit's input or circuit's output is stored in new index or
+/// have Value if circuit's input is assigned or circuit's outputs are calculated to value.
+/// An entry Index from list is original index of circuit's input or circuit's output.
 pub fn assign_to_circuit_optimize_and_dedup<T>(
     circuit: &Circuit<T>,
     inputs: impl IntoIterator<Item = (T, bool)>,
