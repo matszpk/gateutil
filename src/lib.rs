@@ -1,3 +1,25 @@
+// lib.rs - main library source code.
+
+#![cfg_attr(docsrs, feature(doc_cfg))]
+//! The library of basic functions that operates on circuits provided by gatesim.
+//! This library provide set of functions that doing some operations on circuits.
+//! Routines provided to make following operations:
+//! * translate circuits inputs and circuit outputs.
+//! * fill outputs defined in output map.
+//! * generate circuits that have assigned values to original inputs.
+//! * generate optimized circuits that have assigned values to original inputs.
+//! * generate optimized and deduplicated circuits that have assigned values to original inputs.
+//! * optimize clause circuit.
+//! * deduplicate circuit or clause circuit.
+//! * optimize and deduplicate clause circuit.
+//! * generate circuit with negated inputs.
+//! * generate join of two circuits sequentially.
+//! * generate join of many circuits sequentially.
+//! * calculate minimal and maximal depth of circuit.
+//! * calculate minimal and maximal depth and depths for any gate of circuit.
+//! * generate pipelined circuit.
+//! * join input or output maps.
+
 pub use gatesim;
 use gatesim::*;
 
@@ -15,6 +37,11 @@ mod utils;
 
 // TODO: add optimization that uses database of circuits (firstly with 1 output).
 
+/// Translates circuit's inputs using translation table.
+///
+/// The `trans` is translation table. In this table entry index is original circuit's input
+/// index and table entry value is destination circuit's input index.
+/// Function returns circuit with translated inputs.
 pub fn translate_inputs<T, U>(circuit: Circuit<T>, trans: &[U]) -> Circuit<T>
 where
     T: Clone + Copy + Ord + PartialEq + Eq,
@@ -65,6 +92,15 @@ where
     Circuit::new(input_len_t, gates, outputs).unwrap()
 }
 
+/// Reverses translation table.
+///
+/// It returns reverse translation in direction. A reversed translation table have entry
+/// with index equal to value from original translation table's entry at index
+/// of value this entry (from reversed translation table).
+/// Empty entries in reversed translation table are filled by default value.
+//  It returns reversed translation table.
+///
+/// Example: [4, 1, 0, 3, 2] -> [2, 1, 4, 3, 0].
 pub fn reverse_trans<T>(trans: impl IntoIterator<Item = T>) -> Vec<T>
 where
     T: Clone + Copy,
@@ -84,6 +120,12 @@ where
     out
 }
 
+/// Translates circuit's inputs using reversed translation table.
+///
+/// The `trans` is reversed translation
+/// table. In this table entry index is destinaltion circuit's input index and
+/// table entry value is original circuit's input index.
+/// Function returns circuit with translated inputs.
 pub fn translate_inputs_rev<T, U>(
     circuit: Circuit<T>,
     trans: impl IntoIterator<Item = U>,
@@ -106,6 +148,11 @@ where
     translate_inputs(circuit, &out)
 }
 
+/// Translates circuit's outputs using translation table.
+///
+/// The `trans` is translation table. In this table entry index is destination circuit's output
+/// index and table entry value is original circuit's output index.
+/// Function returns circuit with translated outputs.
 pub fn translate_outputs<T, U>(circuit: Circuit<T>, trans: &[U]) -> Circuit<T>
 where
     T: Clone + Copy + Ord + PartialEq + Eq + Default,
@@ -130,6 +177,11 @@ where
     .unwrap()
 }
 
+/// Translates circuit's outputs using reversed translation table.
+///
+/// The `trans` is translation table. In this table entry index is original circuit's output
+/// index and table entry value is destination circuit's output index.
+/// Function returns circuit with translated outputs.
 pub fn translate_outputs_rev<T, U>(
     circuit: Circuit<T>,
     trans: impl IntoIterator<Item = U>,
@@ -150,6 +202,11 @@ where
 
 // TODO: add routines to join, split and separate subcircuit
 
+/// Generates circuit with negated original circuit's inputs from original circuit.
+///
+/// The `to_neg` is iterator (list) of circuit's inputs to negate. Function returns
+/// new circuit that behaves same as original circuit if all circuit's inputs will have
+/// negated values.
 pub fn negate_inputs<T>(circuit: Circuit<T>, to_neg: impl IntoIterator<Item = T>) -> Circuit<T>
 where
     T: Clone + Copy + Ord + PartialEq + Eq,
