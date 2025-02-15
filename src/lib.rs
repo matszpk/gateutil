@@ -43,7 +43,7 @@ mod utils;
 
 /// Translates circuit's inputs using translation table.
 ///
-/// The `trans` is translation table. In this table entry index is original circuit's input
+/// A `trans` is translation table. In this table entry index is original circuit's input
 /// index and table entry value is destination circuit's input index.
 /// Function returns circuit with translated inputs.
 pub fn translate_inputs<T, U>(circuit: Circuit<T>, trans: &[U]) -> Circuit<T>
@@ -126,7 +126,7 @@ where
 
 /// Translates circuit's inputs using reversed translation table.
 ///
-/// The `trans` is reversed translation
+/// An `trans` is reversed translation
 /// table. In this table entry index is destinaltion circuit's input index and
 /// table entry value is original circuit's input index.
 /// Function returns circuit with translated inputs.
@@ -154,7 +154,7 @@ where
 
 /// Translates circuit's outputs using translation table.
 ///
-/// The `trans` is translation table. In this table entry index is destination circuit's output
+/// A `trans` is translation table. In this table entry index is destination circuit's output
 /// index and table entry value is original circuit's output index.
 /// Function returns circuit with translated outputs.
 pub fn translate_outputs<T, U>(circuit: Circuit<T>, trans: &[U]) -> Circuit<T>
@@ -183,7 +183,7 @@ where
 
 /// Translates circuit's outputs using reversed translation table.
 ///
-/// The `trans` is translation table. In this table entry index is original circuit's output
+/// A `trans` is translation table. In this table entry index is original circuit's output
 /// index and table entry value is destination circuit's output index.
 /// Function returns circuit with translated outputs.
 pub fn translate_outputs_rev<T, U>(
@@ -208,7 +208,7 @@ where
 
 /// Generates circuit with negated original circuit's inputs from original circuit.
 ///
-/// The `to_neg` is iterator (list) of circuit's inputs to negate. Function returns
+/// A `to_neg` is iterator (list) of circuit's inputs to negate. Function returns
 /// new circuit that behaves same as original circuit if all circuit's inputs will have
 /// negated values.
 pub fn negate_inputs<T>(circuit: Circuit<T>, to_neg: impl IntoIterator<Item = T>) -> Circuit<T>
@@ -303,7 +303,7 @@ where
 
 /// Join multiple circuits sequentially.
 ///
-/// The `seq` is iterator of entries of structure with fields:
+/// A `seq` is iterator of entries of structure with fields:
 /// 1. The circuit to join.
 /// 2. List of connections between current circuit's outputs and next (from next entry or last)
 ///    circuit's inputs. List entry index is next circuit input index.
@@ -583,8 +583,8 @@ where
 
 /// Join two circuits sequentially.
 ///
-/// The `circuit1` is first circuit to join. The `from_list` is list of connections
-/// between first circuit's outputs and second circuit's inputs. The `circuit2` is second
+/// A `circuit1` is first circuit to join. A `from_list` is list of connections
+/// between first circuit's outputs and second circuit's inputs. A `circuit2` is second
 /// circuit to join.
 ///
 /// Any not connected circuit's input will be added as input to final circuit.
@@ -690,7 +690,7 @@ pub enum OutputEntry<T> {
 
 /// Fill circuit's outputs by zero or one wire based on output map given by assign_to_circuit.
 ///
-/// The `out_map` is map of new outputs. If `out_map` doesn't have entries with new index
+/// An `out_map` is map of new outputs. If `out_map` doesn't have entries with new index
 /// then this routine do nothing. Otherwise it adds new gate that returns correct value
 /// for particular circuit output and remap rest of circuit's output.
 /// The final circuit have all circuit's outputs given in `out_map` including assigned outputs.
@@ -730,7 +730,7 @@ where
 /// Assigns inputs to circuit.
 ///
 /// Generates circuit that calculates outputs as original circuit with assigned inputs
-/// (if assume circuit input have specified value). The `inputs` iterator is list of
+/// (if assume circuit input have specified value). An `inputs` iterator is list of
 /// circuit's input (input indices) to assign. The entry of list is pair of
 /// circit input index and its value to assign. Function while assigning values to inputs
 /// reduces circuit and their inputs and outputs if needed. A function doesn't optimize
@@ -1264,12 +1264,12 @@ where
 /// WARNING: This function is not completely tested. It should be used enough carefully.
 ///
 /// Generates circuit that calculates outputs as original circuit with assigned inputs
-/// (if assume circuit input have specified value). The `inputs` iterator is list of
+/// (if assume circuit input have specified value). An `inputs` iterator is list of
 /// circuit's input (input indices) to assign. The entry of list is pair of
 /// circit input index and its value to assign. Function while assigning values to inputs
 /// reduces circuit and their inputs and outputs if needed.
 ///
-/// The `seq` argument choose type of conversion from clause circuit to Gate circuit -
+/// A `seq` argument choose type of conversion from clause circuit to Gate circuit -
 /// choose between sequential or parallel conversion from clause to gates.
 ///
 /// Returned circuit is optimized: reduce any gate that can be replaced by single wire and
@@ -1309,7 +1309,7 @@ where
 
 /// Joins input/output maps from previous and next operation and returns joined input/output map.
 ///
-/// The `input_map` is first input map and `opt_input_map` is second map.
+/// An `input_map` is first input map and `opt_input_map` is second map.
 pub fn join_input_entry_and_input_map<T>(
     input_map: &[OutputEntry<T>],
     opt_input_map: &[Option<T>],
@@ -1337,7 +1337,7 @@ where
 
 /// Joins input/output maps from previous and next operation and returns joined input/output map.
 ///
-/// The `map` is first input map and `next_map` is second map.
+/// A `map` is first input map and `next_map` is second map.
 pub fn join_input_map<T>(map: &[Option<T>], next_map: &[Option<T>]) -> Vec<Option<T>>
 where
     T: Clone + Copy,
@@ -1356,7 +1356,7 @@ where
 
 /// Joins input/output maps from previous and next operation and returns joined input/output map.
 ///
-/// The `map` is first input map and `next_map` is second map.
+/// A `map` is first input map and `next_map` is second map.
 pub fn join_output_entry_map<T>(
     map: &[OutputEntry<T>],
     next_map: &[OutputEntry<T>],
@@ -1618,13 +1618,13 @@ where
 /// WARNING: This function is not completely tested. It should be used enough carefully.
 ///
 /// Generates circuit that calculates outputs as original circuit with assigned inputs
-/// (if assume circuit input have specified value). The `inputs` iterator is list of
+/// (if assume circuit input have specified value). An `inputs` iterator is list of
 /// circuit's input (input indices) to assign. The entry of list is pair of
 /// circit input index and its value to assign. Function while asigning values to inputs
 /// reduces circuit and their inputs and outputs if needed. A function doesn't optimize
 /// circuit.
 ///
-/// The `seq` argument choose type of conversion from clause circuit to Gate circuit -
+/// A `seq` argument choose type of conversion from clause circuit to Gate circuit -
 /// choose between sequential or parallel conversion from clause to gates.
 ///
 /// Returned circuit is optimized and deduplicated: reduce any gate that can be replaced
@@ -1775,18 +1775,18 @@ where
 /// Generates pipelined version of circuit.
 ///
 /// Function generates pipelined version of circuit including depth of any stage of
-/// circuit evaluation. The `depth_in_stage` determines maximal depth of any stage.
+/// circuit evaluation. A `depth_in_stage` determines maximal depth of any stage.
 /// It returns pipelined circuit and number of stages (N).
 ///
 /// Pipelined circuit have inputs in form:
 /// [stage1_state,stage2_state,..,stage(n-1)_state,original_inputs].
-/// The `stageX_state` is state for Xth stage (Xth execution of pipelined circuit).
-/// The `original_inputs` are original inputs.
+/// A `stageX_state` is state for Xth stage (Xth execution of pipelined circuit).
+/// An `original_inputs` are original inputs.
 ///
 /// Pipelined circuit have outputs in form:
 /// [stage1_state,stage2_state,..,stage(n-1)_state,original_outputs].
-/// The `stageX_state` is state for Xth stage (Xth execution of pipelined circuit).
-/// The `original_outputs` are original outputs.
+/// A `stageX_state` is state for Xth stage (Xth execution of pipelined circuit).
+/// An `original_outputs` are original outputs.
 ///
 /// The execution of pipelined circuit is simple. For every execution put to `original_inputs`
 /// next input data and after Nth execution before first execution get results
