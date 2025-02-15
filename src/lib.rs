@@ -126,7 +126,7 @@ where
 
 /// Translates circuit's inputs using reversed translation table.
 ///
-/// An `trans` is reversed translation
+/// `trans` is reversed translation
 /// table. In this table entry index is destinaltion circuit's input index and
 /// table entry value is original circuit's input index.
 /// Function returns circuit with translated inputs.
@@ -690,7 +690,7 @@ pub enum OutputEntry<T> {
 
 /// Fill circuit's outputs by zero or one wire based on output map given by assign_to_circuit.
 ///
-/// An `out_map` is map of new outputs. If `out_map` doesn't have entries with new index
+/// `out_map` is map of new outputs. If `out_map` doesn't have entries with new index
 /// then this routine do nothing. Otherwise it adds new gate that returns correct value
 /// for particular circuit output and remap rest of circuit's output.
 /// The final circuit have all circuit's outputs given in `out_map` including assigned outputs.
@@ -730,7 +730,7 @@ where
 /// Assigns inputs to circuit.
 ///
 /// Generates circuit that calculates outputs as original circuit with assigned inputs
-/// (if assume circuit input have specified value). An `inputs` iterator is list of
+/// (if assume circuit input have specified value). `inputs` iterator is list of
 /// circuit's input (input indices) to assign. The entry of list is pair of
 /// circit input index and its value to assign. Function while assigning values to inputs
 /// reduces circuit and their inputs and outputs if needed. A function doesn't optimize
@@ -1070,7 +1070,7 @@ where
 /// It optimize circuit by joining clauses with same type and resolving duplicates
 /// of literals in clauses and resolving values from that clauses.
 ///
-/// Function returns an optimized circuit, list of mapping of original circuit inputs and
+/// Function returns optimized circuit, list of mapping of original circuit inputs and
 /// list of mapping original circuit's outputs.
 /// First list contains entries as options of index `Option<T>`. If entry is None then
 /// original circuit input is not used, if entry is `Some(...)` then value is new circuit's
@@ -1264,7 +1264,7 @@ where
 /// WARNING: This function is not completely tested. It should be used enough carefully.
 ///
 /// Generates circuit that calculates outputs as original circuit with assigned inputs
-/// (if assume circuit input have specified value). An `inputs` iterator is list of
+/// (if assume circuit input have specified value). `inputs` iterator is list of
 /// circuit's input (input indices) to assign. The entry of list is pair of
 /// circit input index and its value to assign. Function while assigning values to inputs
 /// reduces circuit and their inputs and outputs if needed.
@@ -1309,7 +1309,7 @@ where
 
 /// Joins input/output maps from previous and next operation and returns joined input/output map.
 ///
-/// An `input_map` is first input map and `opt_input_map` is second map.
+/// `input_map` is first input map and `opt_input_map` is second map.
 pub fn join_input_entry_and_input_map<T>(
     input_map: &[OutputEntry<T>],
     opt_input_map: &[Option<T>],
@@ -1567,7 +1567,7 @@ where
 /// by single wire and evaluate trees of clauses to single value including same outputs and
 /// find duplicates of clauses and tree of clauses and remove them.
 ///
-/// Function returns an optimized circuit, list of mapping of original circuit inputs and
+/// Function returns optimized circuit, list of mapping of original circuit inputs and
 /// list of mapping original circuit's outputs.
 /// First list contains entries as options of index `Option<T>`. If entry is None then
 /// original circuit input is not used, if entry is `Some(...)` then value is new circuit's
@@ -1618,7 +1618,7 @@ where
 /// WARNING: This function is not completely tested. It should be used enough carefully.
 ///
 /// Generates circuit that calculates outputs as original circuit with assigned inputs
-/// (if assume circuit input have specified value). An `inputs` iterator is list of
+/// (if assume circuit input have specified value). `inputs` iterator is list of
 /// circuit's input (input indices) to assign. The entry of list is pair of
 /// circit input index and its value to assign. Function while asigning values to inputs
 /// reduces circuit and their inputs and outputs if needed. A function doesn't optimize
@@ -1781,12 +1781,12 @@ where
 /// Pipelined circuit have inputs in form:
 /// [stage1_state,stage2_state,..,stage(n-1)_state,original_inputs].
 /// A `stageX_state` is state for Xth stage (Xth execution of pipelined circuit).
-/// An `original_inputs` are original inputs.
+/// `original_inputs` are original inputs.
 ///
 /// Pipelined circuit have outputs in form:
 /// [stage1_state,stage2_state,..,stage(n-1)_state,original_outputs].
 /// A `stageX_state` is state for Xth stage (Xth execution of pipelined circuit).
-/// An `original_outputs` are original outputs.
+/// `original_outputs` are original outputs.
 ///
 /// The execution of pipelined circuit is simple. For every execution put to `original_inputs`
 /// next input data and after Nth execution before first execution get results
