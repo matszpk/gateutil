@@ -41,10 +41,10 @@ mod utils;
 
 // TODO: add optimization that uses database of circuits (firstly with 1 output).
 
-/// Translates circuit's inputs using translation table.
+/// Translates circuit inputs using translation table.
 ///
-/// A `trans` is translation table. In this table entry index is original circuit's input
-/// index and table entry value is destination circuit's input index.
+/// A `trans` is translation table. In this table entry index is original circuit input
+/// index and table entry value is destination circuit input index.
 /// Function returns circuit with translated inputs.
 pub fn translate_inputs<T, U>(circuit: Circuit<T>, trans: &[U]) -> Circuit<T>
 where
@@ -124,11 +124,11 @@ where
     out
 }
 
-/// Translates circuit's inputs using reversed translation table.
+/// Translates circuit inputs using reversed translation table.
 ///
 /// `trans` is reversed translation
-/// table. In this table entry index is destinaltion circuit's input index and
-/// table entry value is original circuit's input index.
+/// table. In this table entry index is destinaltion circuit input index and
+/// table entry value is original circuit input index.
 /// Function returns circuit with translated inputs.
 pub fn translate_inputs_rev<T, U>(
     circuit: Circuit<T>,
@@ -152,10 +152,10 @@ where
     translate_inputs(circuit, &out)
 }
 
-/// Translates circuit's outputs using translation table.
+/// Translates circuit outputs using translation table.
 ///
-/// A `trans` is translation table. In this table entry index is destination circuit's output
-/// index and table entry value is original circuit's output index.
+/// A `trans` is translation table. In this table entry index is destination circuit output
+/// index and table entry value is original circuit output index.
 /// Function returns circuit with translated outputs.
 pub fn translate_outputs<T, U>(circuit: Circuit<T>, trans: &[U]) -> Circuit<T>
 where
@@ -181,10 +181,10 @@ where
     .unwrap()
 }
 
-/// Translates circuit's outputs using reversed translation table.
+/// Translates circuit outputs using reversed translation table.
 ///
-/// A `trans` is translation table. In this table entry index is original circuit's output
-/// index and table entry value is destination circuit's output index.
+/// A `trans` is translation table. In this table entry index is original circuit output
+/// index and table entry value is destination circuit output index.
 /// Function returns circuit with translated outputs.
 pub fn translate_outputs_rev<T, U>(
     circuit: Circuit<T>,
@@ -206,10 +206,10 @@ where
 
 // TODO: add routines to join, split and separate subcircuit
 
-/// Generates circuit with negated original circuit's inputs from original circuit.
+/// Generates circuit with negated original circuit inputs from original circuit.
 ///
-/// A `to_neg` is iterator (list) of circuit's inputs to negate. Function returns
-/// new circuit that behaves same as original circuit if all circuit's inputs will have
+/// A `to_neg` is iterator (list) of circuit inputs to negate. Function returns
+/// new circuit that behaves same as original circuit if all circuit inputs will have
 /// negated values.
 pub fn negate_inputs<T>(circuit: Circuit<T>, to_neg: impl IntoIterator<Item = T>) -> Circuit<T>
 where
@@ -305,14 +305,14 @@ where
 ///
 /// A `seq` is iterator of entries of structure with fields:
 /// 1. The circuit to join.
-/// 2. List of connections between current circuit's outputs and next (from next entry or last)
-///    circuit's inputs. List entry index is next circuit input index.
+/// 2. List of connections between current circuit outputs and next (from next entry or last)
+///    circuit inputs. List entry index is next circuit input index.
 ///    Value is option of tuple of index of output from some previous circuit and negation of
-///    that output. This index of output is index of all list circuit's output from first
+///    that output. This index of output is index of all list circuit output from first
 ///    circuit to current circuit (from current entry). This index starts from 0.
 ///
-/// Any not connected circuit's input will be added as input to final circuit.
-/// Any not connected circuit's output will be added as output to final circuit.
+/// Any not connected circuit input will be added as input to final circuit.
+/// Any not connected circuit output will be added as output to final circuit.
 /// Function returns join of all circuits.
 ///
 /// Example with description of structure data:
@@ -322,24 +322,24 @@ where
 ///             (
 ///                 // first circuit with 6 inputs and 7 outputs
 ///                 first_circuit,
-///                 // connect first circuit's output 3 to second circuit's input 0.
-///                 // connect negated first circuit's output 1 to second circuit's input 1.
-///                 // connect negated first circuit's output 4 to second circuit's input 2.
+///                 // connect first circuit output 3 to second circuit input 0.
+///                 // connect negated first circuit output 1 to second circuit input 1.
+///                 // connect negated first circuit output 4 to second circuit input 2.
 ///                 vec![Some((3, false)), Some((1, true)), Some((4, true)),]
 ///             ),
 ///             (
 ///                 // second circuit with 3 inputs and 5 outputs
 ///                 second_circuit,
 ///                 vec![
-///                     // connect negated first circuit's output 5 to third circuit's input 0.
+///                     // connect negated first circuit output 5 to third circuit input 0.
 ///                     Some((5, true)),
-///                     // connect negated first circuit's output 6 to third circuit's input 1.
+///                     // connect negated first circuit output 6 to third circuit input 1.
 ///                     Some((6, true)),
-///                     // connect negated second circuit's output 1 (8-7)
-///                     //to third circuit's input 2.
+///                     // connect negated second circuit output 1 (8-7)
+///                     //to third circuit input 2.
 ///                     Some((8, true)),
-///                     // connect second circuit's output 3 (10-7)
-///                     //to third circuit's input 3.
+///                     // connect second circuit output 3 (10-7)
+///                     //to third circuit input 3.
 ///                     Some((10, false)),
 ///                 ]
 ///             ),
@@ -347,15 +347,15 @@ where
 ///                 // third circuit with 4 inputs and 6 outputs
 ///                 third_circuit,
 ///                 vec![
-///                     // connect second circuit's output 2 (9-7) to fourth circuit's input 0.
+///                     // connect second circuit output 2 (9-7) to fourth circuit input 0.
 ///                     Some((9, false)),
-///                     // fourth circuit's input 1 will be next input of final circuit.
+///                     // fourth circuit input 1 will be next input of final circuit.
 ///                     None,
-///                     // connect second circuit's output 4 (11-7) to fourth circuit's input 2.
+///                     // connect second circuit output 4 (11-7) to fourth circuit input 2.
 ///                     Some((11, false)),
-///                     // connect first circuit's output 6 to fourth circuit's input 3.
+///                     // connect first circuit output 6 to fourth circuit input 3.
 ///                     Some((6, false)),
-///                     // connect third circuit's output 1 (13-7-5) to fourth circuit's input 4.
+///                     // connect third circuit output 1 (13-7-5) to fourth circuit input 4.
 ///                     Some((13, false))
 ///                 ]
 ///             ),
@@ -363,24 +363,24 @@ where
 ///                 // fourth circuit with 5 inputs and 6 outputs
 ///                 fourth_circuit,
 ///                 vec![
-///                     // connect third circuit's output 3 (15-7-5) to fifth circuit's input 0.
+///                     // connect third circuit output 3 (15-7-5) to fifth circuit input 0.
 ///                     Some((15, false)),
-///                     // connect negated third circuit's output 4 (16-7-5) to
-///                     // fifth circuit's input 1.
+///                     // connect negated third circuit output 4 (16-7-5) to
+///                     // fifth circuit input 1.
 ///                     Some((16, true)),
-///                     // fifth circuit's input 2 will be next input of final circuit.
+///                     // fifth circuit input 2 will be next input of final circuit.
 ///                     None,
-///                     // connect first circuit's output 2 to fifth circuit's input 3.
+///                     // connect first circuit output 2 to fifth circuit input 3.
 ///                     Some((2, false)),
-///                     // connect fourth circuit's output 0 (18-7-5-6) to fifth circuit's input 4.
+///                     // connect fourth circuit output 0 (18-7-5-6) to fifth circuit input 4.
 ///                     Some((18, false)),
-///                     // connect negated fourth circuit's output 2 (20-7-5-6) to
-///                     // fifth circuit's input 5.
+///                     // connect negated fourth circuit output 2 (20-7-5-6) to
+///                     // fifth circuit input 5.
 ///                     Some((20, true)),
-///                     // connect third circuit's output 0 (12-7-5) to fifth circuit's input 6.
+///                     // connect third circuit output 0 (12-7-5) to fifth circuit input 6.
 ///                     Some((12, false)),
-///                     // connect negated fourth circuit's output 5 (23-7-5-6) to
-///                     // fifth circuit's input 6.
+///                     // connect negated fourth circuit output 5 (23-7-5-6) to
+///                     // fifth circuit input 6.
 ///                     Some((23, true))
 ///                 ]
 ///             ),
@@ -584,22 +584,22 @@ where
 /// Join two circuits sequentially.
 ///
 /// A `circuit1` is first circuit to join. A `from_list` is list of connections
-/// between first circuit's outputs and second circuit's inputs. A `circuit2` is second
+/// between first circuit outputs and second circuit inputs. A `circuit2` is second
 /// circuit to join.
 ///
-/// Any not connected circuit's input will be added as input to final circuit.
-/// Any not connected circuit's output will be added as output to final circuit.
+/// Any not connected circuit input will be added as input to final circuit.
+/// Any not connected circuit output will be added as output to final circuit.
 /// Function returns join of two circuits.
 ///
-/// List of connections between first circuit's outputs and second
-/// circuit's inputs. List entry index is next circuit input index.
+/// List of connections between first circuit outputs and second
+/// circuit inputs. List entry index is next circuit input index.
 /// Value is option of tuple of index of output from first circuit and negation of
 /// that output. Example of `from_first` list:
 ///
 /// ```text
-/// // connect first circuit's output 3 to second circuit's input 0.
-/// // connect negated first circuit's output 1 to second circuit's input 1.
-/// // connect negated first circuit's output 4 to second circuit's input 2.
+/// // connect first circuit output 3 to second circuit input 0.
+/// // connect negated first circuit output 1 to second circuit input 1.
+/// // connect negated first circuit output 4 to second circuit input 2.
 /// vec![Some((3, false)), Some((1, true)), Some((4, true)),]
 /// ```
 ///
@@ -688,12 +688,12 @@ pub enum OutputEntry<T> {
     Value(bool),
 }
 
-/// Fill circuit's outputs by zero or one wire based on output map given by assign_to_circuit.
+/// Fill circuit outputs by zero or one wire based on output map given by assign_to_circuit.
 ///
 /// `out_map` is map of new outputs. If `out_map` doesn't have entries with new index
 /// then this routine do nothing. Otherwise it adds new gate that returns correct value
-/// for particular circuit output and remap rest of circuit's output.
-/// The final circuit have all circuit's outputs given in `out_map` including assigned outputs.
+/// for particular circuit output and remap rest of circuit output.
+/// The final circuit have all circuit outputs given in `out_map` including assigned outputs.
 pub fn fill_outputs<T>(circuit: Circuit<T>, out_map: Vec<OutputEntry<T>>) -> Circuit<T>
 where
     T: Default + Clone + Copy + PartialEq + Eq + PartialOrd + Ord,
@@ -731,16 +731,16 @@ where
 ///
 /// Generates circuit that calculates outputs as original circuit with assigned inputs
 /// (if assume circuit input have specified value). `inputs` iterator is list of
-/// circuit's input (input indices) to assign. The entry of list is pair of
+/// circuit input (input indices) to assign. The entry of list is pair of
 /// circit input index and its value to assign. Function while assigning values to inputs
 /// reduces circuit and their inputs and outputs if needed. A function doesn't optimize
 /// circuit.
 ///
 /// Function returns assigned circuit, list of mapping of original circuit inputs and
-/// list of mapping original circuit's outputs. Both lists contains `OutputEntry`
-/// that it is `NewIndex` if circuit's input or circuit's output is stored in new index or
-/// have Value if circuit's input is assigned or circuit's outputs are calculated to value.
-/// An entry index from list is original index of circuit's input or circuit's output.
+/// list of mapping original circuit outputs. Both lists contains `OutputEntry`
+/// that it is `NewIndex` if circuit input or circuit output is stored in new index or
+/// have Value if circuit input is assigned or circuit outputs are calculated to value.
+/// An entry index from list is original index of circuit input or circuit output.
 pub fn assign_to_circuit<T>(
     circuit: &Circuit<T>,
     inputs: impl IntoIterator<Item = (T, bool)>,
@@ -1071,13 +1071,13 @@ where
 /// of literals in clauses and resolving values from that clauses.
 ///
 /// Function returns optimized circuit, list of mapping of original circuit inputs and
-/// list of mapping original circuit's outputs.
+/// list of mapping original circuit outputs.
 /// First list contains entries as options of index `Option<T>`. If entry is None then
 /// original circuit input is not used, if entry is `Some(...)` then value is new circuit's
 /// input index. Second list contains `OutputEntry`
-/// that it is `NewIndex` if circuit's output is stored in new index or
-/// have Value if circuit's outputs are calculated to value.
-/// An entry index from list is original index of circuit's input or circuit's output.
+/// that it is `NewIndex` if circuit output is stored in new index or
+/// have Value if circuit outputs are calculated to value.
+/// An entry index from list is original index of circuit input or circuit output.
 pub fn optimize_clause_circuit<T>(
     circuit: ClauseCircuit<T>,
 ) -> (ClauseCircuit<T>, Vec<Option<T>>, Vec<OutputEntry<T>>)
@@ -1265,7 +1265,7 @@ where
 ///
 /// Generates circuit that calculates outputs as original circuit with assigned inputs
 /// (if assume circuit input have specified value). `inputs` iterator is list of
-/// circuit's input (input indices) to assign. The entry of list is pair of
+/// circuit input (input indices) to assign. The entry of list is pair of
 /// circit input index and its value to assign. Function while assigning values to inputs
 /// reduces circuit and their inputs and outputs if needed.
 ///
@@ -1277,10 +1277,10 @@ where
 /// circuit into `ClauseCircuit` and call `optimize_clause_circuit`.
 ///
 /// Function returns assigned circuit, list of mapping of original circuit inputs and
-/// list of mapping original circuit's outputs. Both lists contains `OutputEntry`
-/// that it is `NewIndex` if circuit's input or circuit's output is stored in new index or
-/// have Value if circuit's input is assigned or circuit's outputs are calculated to value.
-/// An entry index from list is original index of circuit's input or circuit's output.
+/// list of mapping original circuit outputs. Both lists contains `OutputEntry`
+/// that it is `NewIndex` if circuit input or circuit output is stored in new index or
+/// have Value if circuit input is assigned or circuit outputs are calculated to value.
+/// An entry index from list is original index of circuit input or circuit output.
 pub fn assign_to_circuit_and_optimize<T>(
     circuit: &Circuit<T>,
     inputs: impl IntoIterator<Item = (T, bool)>,
@@ -1568,13 +1568,13 @@ where
 /// find duplicates of clauses and tree of clauses and remove them.
 ///
 /// Function returns optimized circuit, list of mapping of original circuit inputs and
-/// list of mapping original circuit's outputs.
+/// list of mapping original circuit outputs.
 /// First list contains entries as options of index `Option<T>`. If entry is None then
 /// original circuit input is not used, if entry is `Some(...)` then value is new circuit's
 /// input index. Second list contains `OutputEntry`
-/// that it is `NewIndex` if circuit's output is stored in new index or
-/// have Value if circuit's outputs are calculated to value.
-/// An entry index from list is original index of circuit's input or circuit's output.
+/// that it is `NewIndex` if circuit output is stored in new index or
+/// have Value if circuit outputs are calculated to value.
+/// An entry index from list is original index of circuit input or circuit output.
 pub fn optimize_and_dedup_clause_circuit<T>(
     circuit: ClauseCircuit<T>,
 ) -> (ClauseCircuit<T>, Vec<Option<T>>, Vec<OutputEntry<T>>)
@@ -1619,7 +1619,7 @@ where
 ///
 /// Generates circuit that calculates outputs as original circuit with assigned inputs
 /// (if assume circuit input have specified value). `inputs` iterator is list of
-/// circuit's input (input indices) to assign. The entry of list is pair of
+/// circuit input (input indices) to assign. The entry of list is pair of
 /// circit input index and its value to assign. Function while asigning values to inputs
 /// reduces circuit and their inputs and outputs if needed. A function doesn't optimize
 /// circuit.
@@ -1633,10 +1633,10 @@ where
 /// Function converts circuit into `ClauseCircuit` and call `optimize_and_dedup_clause_circuit`.
 ///
 /// Function returns assigned circuit, list of mapping of original circuit inputs and
-/// list of mapping original circuit's outputs. Both lists contains `OutputEntry`
-/// that it is `NewIndex` if circuit's input or circuit's output is stored in new index or
-/// have Value if circuit's input is assigned or circuit's outputs are calculated to value.
-/// An entry Index from list is original index of circuit's input or circuit's output.
+/// list of mapping original circuit outputs. Both lists contains `OutputEntry`
+/// that it is `NewIndex` if circuit input or circuit output is stored in new index or
+/// have Value if circuit input is assigned or circuit outputs are calculated to value.
+/// An entry Index from list is original index of circuit input or circuit output.
 pub fn assign_to_circuit_optimize_and_dedup<T>(
     circuit: &Circuit<T>,
     inputs: impl IntoIterator<Item = (T, bool)>,
@@ -1669,7 +1669,7 @@ where
 /// Calculates minimal and maximal depth of circuit and depth for all circuit wires.
 ///
 /// Function calculates minimal and maximal depth of circuit. A depth is length between
-/// circuit's input to circuit's output. Function additionally returns minimal and maximal
+/// circuit input to circuit output. Function additionally returns minimal and maximal
 /// depth for all circuit wires (inputs and gate outputs). It returns tuple with elements:
 /// * list of minimal and maximal depths for all circuit wires. Entry index is circuit wire
 ///   index, entry value is pair of minimal and maximal depth.
@@ -1754,7 +1754,7 @@ where
 /// Calculates minimal and maximal depth of circuit and depth for all circuit wires.
 ///
 /// It returns minimal and maximal depth of circuit. A depth is length between
-/// circuit's input to circuit's output.
+/// circuit input to circuit output.
 pub fn min_and_max_depth<T>(circuit: &Circuit<T>) -> (T, T)
 where
     T: Clone + Copy + PartialEq + PartialOrd + Ord + Eq + Debug,
