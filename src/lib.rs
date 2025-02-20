@@ -603,7 +603,7 @@ where
 /// vec![Some((3, false)), Some((1, true)), Some((4, true)),]
 /// ```
 ///
-/// If any circuit'a input is connected then will be used as input in output circuit.
+/// If any circuit input is connected then will be used as input in output circuit.
 /// Function returns join of all circuits.
 pub fn join_two_circuits<T>(
     circuit1: Circuit<T>,
@@ -1073,7 +1073,7 @@ where
 /// Function returns optimized circuit, list of mapping of original circuit inputs and
 /// list of mapping original circuit outputs.
 /// First list contains entries as options of index `Option<T>`. If entry is None then
-/// original circuit input is not used, if entry is `Some(...)` then value is new circuit's
+/// original circuit input is not used, if entry is `Some(...)` then value is new circuit
 /// input index. Second list contains `OutputEntry`
 /// that it is `NewIndex` if circuit output is stored in new index or
 /// have Value if circuit outputs are calculated to value.
@@ -1570,7 +1570,7 @@ where
 /// Function returns optimized circuit, list of mapping of original circuit inputs and
 /// list of mapping original circuit outputs.
 /// First list contains entries as options of index `Option<T>`. If entry is None then
-/// original circuit input is not used, if entry is `Some(...)` then value is new circuit's
+/// original circuit input is not used, if entry is `Some(...)` then value is new circuit
 /// input index. Second list contains `OutputEntry`
 /// that it is `NewIndex` if circuit output is stored in new index or
 /// have Value if circuit outputs are calculated to value.
