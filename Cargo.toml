@@ -12,7 +12,7 @@ categories = ["science", "mathematics"]
 
 
 [dependencies]
-gatesim = { version="0.1.0", path="../gatesim" }
+gatesim = "0.1.0"
 
 [package.metadata.docs.rs]
 all-features = true
