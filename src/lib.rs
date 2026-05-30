@@ -885,6 +885,244 @@ where
 // It creates circuit: O[k] = circuit(k,rest_of_inputs) for k=0..1<<n
 // where n is number of index inputs.
 
+/// Generates table circuit. Circuit that for given index inputs calculates outputs
+/// for all combinations of index inputs for this circuit. `index_inputs` is list of
+/// index inputs. Function reduces duplication circuits.
+///
+/// Function returns circuit, list of mapping old inputs to new inputs and
+/// list of all mappings of outputs for all index inputs combinations.
+pub fn table_circuit<T>(
+    circuit: &Circuit<T>,
+    index_inputs: impl IntoIterator<Item = T>,
+) -> (Circuit<T>, Vec<T>, Vec<Vec<OutputEntry<T>>>)
+where
+    T: Default + Clone + Copy + PartialEq + Eq + PartialOrd + Ord + Hash,
+    T: TryFrom<usize>,
+    <T as TryFrom<usize>>::Error: Debug,
+    usize: TryFrom<T> + TryFrom<u32>,
+    <usize as TryFrom<T>>::Error: Debug,
+{
+    // Idea of efficient deduplication.
+    // For every gate in circuit for every index input combination calculate required
+    // index input combination: (index_input_value, index_input_usage_mask)
+    // First value is index input combination, second is usage of index input by this
+    // circuit gate. If given index input is not used then index input value should be zero.
+    // While creating new circuit find required gate and get its mapping.
+    let input_len = usize::try_from(circuit.input_len()).unwrap();
+    let len = circuit.len();
+    #[derive(Default, Clone, Copy, Hash, PartialEq, Eq)]
+    struct CombGateKey<T> {
+        idx_value: usize,
+        idx_usage: usize,
+        wire_index: T,
+    }
+
+    let mut comb_gate_map = HashMap::<CombGateKey<T>, OutputEntry<T>>::new();
+    let mut rest_map = vec![true; input_len];
+    let index_usage_map = {
+        // generate usage input index usage
+        let mut index_usage_map = vec![0usize; input_len + len];
+        for i in 0..input_len {
+            index_usage_map[i] = 1 << i;
+        }
+        for (i, g) in circuit.gates().into_iter().enumerate() {
+            let ii = input_len + i;
+            let gi0 = usize::try_from(g.i0).unwrap();
+            let gi1 = usize::try_from(g.i1).unwrap();
+            index_usage_map[ii] = index_usage_map[gi0] | index_usage_map[gi1];
+        }
+        index_usage_map
+    };
+    // filter inputs
+    let mut index_inputs_copy = vec![];
+    let usize_bits_usize = usize::try_from(usize::BITS).unwrap();
+    for (ii, g) in index_inputs.into_iter().enumerate() {
+        assert!(ii < usize_bits_usize);
+        let g_u = usize::try_from(g).unwrap();
+        rest_map[g_u] = false;
+        // assign zeros for first combinations
+        index_inputs_copy[ii] = g;
+        comb_gate_map.insert(
+            CombGateKey {
+                idx_value: 0,
+                idx_usage: 1 << ii,
+                wire_index: g,
+            },
+            OutputEntry::Value(false),
+        );
+    }
+    let index_inputs_copy = index_inputs_copy;
+    // generate output inputs
+    let out_inputs = rest_map[0..input_len]
+        .iter()
+        .enumerate()
+        .filter_map(|(i, x)| {
+            if *x {
+                Some(T::try_from(i).unwrap())
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+    // make to_new_rest_map - conversion to new outputs
+    for (i, j) in out_inputs.iter().enumerate() {
+        comb_gate_map.insert(
+            CombGateKey {
+                idx_value: 0,
+                idx_usage: 0,
+                wire_index: *j,
+            },
+            OutputEntry::NewIndex(T::try_from(i).unwrap()),
+        );
+    }
+
+    let new_input_len = out_inputs.len();
+    let mut new_gates: Vec<Gate<T>> = vec![];
+    let mut oi = new_input_len;
+
+    let mut output_entries_set = vec![];
+    let mut new_outputs = vec![];
+    // generate for all index combinations
+    for index_value in 0..1 << index_inputs_copy.len() {
+        // set up new index input values
+        for (ii, idxinput) in index_inputs_copy.iter().enumerate() {
+            let ickey = CombGateKey {
+                idx_value: 0,
+                idx_usage: 1 << ii,
+                wire_index: *idxinput,
+            };
+            if !comb_gate_map.contains_key(&ickey) {
+                comb_gate_map.insert(ickey, OutputEntry::Value(((index_value >> ii) & 1) != 0));
+            }
+        }
+        // create for first assignment
+        for (i, g) in circuit.gates().into_iter().enumerate() {
+            let ii = input_len + i;
+            // let giusage = index_usage_map[ii];
+            let gi0 = usize::try_from(g.i0).unwrap();
+            let gi1 = usize::try_from(g.i1).unwrap();
+            let g_ckey = CombGateKey {
+                idx_value: index_value & index_usage_map[ii],
+                idx_usage: index_usage_map[ii],
+                wire_index: T::try_from(ii).unwrap(),
+            };
+            let gi0_cgkey = CombGateKey {
+                idx_value: index_value & index_usage_map[gi0],
+                idx_usage: index_usage_map[gi0],
+                wire_index: g.i0,
+            };
+            let gi1_cgkey = CombGateKey {
+                idx_value: index_value & index_usage_map[gi1],
+                idx_usage: index_usage_map[gi1],
+                wire_index: g.i1,
+            };
+            if comb_gate_map.contains_key(&g_ckey) {
+                // skip if exists
+                continue;
+            }
+            match *comb_gate_map.get(&gi0_cgkey).unwrap() {
+                OutputEntry::NewIndex(ni0) => {
+                    match *comb_gate_map.get(&gi1_cgkey).unwrap() {
+                        OutputEntry::NewIndex(ni1) => {
+                            comb_gate_map
+                                .insert(g_ckey, OutputEntry::NewIndex(T::try_from(oi).unwrap()));
+                            new_gates.push(Gate {
+                                i0: ni0,
+                                i1: ni1,
+                                func: g.func,
+                            });
+                            oi += 1;
+                        }
+                        OutputEntry::Value(v1) => {
+                            comb_gate_map
+                                .insert(g_ckey, OutputEntry::NewIndex(T::try_from(oi).unwrap()));
+                            let vv0 = g.eval_args(false, v1);
+                            let vv1 = g.eval_args(true, v1);
+                            new_gates.push(Gate {
+                                i0: ni0,
+                                i1: ni0,
+                                func: if !vv0 && vv1 {
+                                    // x
+                                    GateFunc::And
+                                } else if vv0 && !vv1 {
+                                    // !x
+                                    GateFunc::Nor
+                                } else if !vv0 && !vv1 {
+                                    // 0
+                                    GateFunc::Nimpl
+                                } else {
+                                    panic!("Unexpected case!");
+                                },
+                            });
+                            oi += 1;
+                        }
+                    }
+                }
+                OutputEntry::Value(v0) => {
+                    match *comb_gate_map.get(&gi1_cgkey).unwrap() {
+                        OutputEntry::NewIndex(ni1) => {
+                            comb_gate_map
+                                .insert(g_ckey, OutputEntry::NewIndex(T::try_from(oi).unwrap()));
+                            let vv0 = g.eval_args(v0, false);
+                            let vv1 = g.eval_args(v0, true);
+                            new_gates.push(Gate {
+                                i0: ni1,
+                                i1: ni1,
+                                func: if !vv0 && vv1 {
+                                    // x
+                                    GateFunc::And
+                                } else if vv0 && !vv1 {
+                                    // !x
+                                    GateFunc::Nor
+                                } else if !vv0 && !vv1 {
+                                    // 0
+                                    GateFunc::Nimpl
+                                } else {
+                                    panic!("Unexpected case!");
+                                },
+                            });
+                            oi += 1;
+                        }
+                        OutputEntry::Value(v1) => {
+                            let out = g.eval_args(v0, v1);
+                            comb_gate_map.insert(g_ckey, OutputEntry::Value(out));
+                        }
+                    }
+                }
+            }
+        }
+
+        // outputs
+        let mut output_entries = vec![];
+        for (o, n) in circuit.outputs().iter() {
+            let o_u = usize::try_from(*o).unwrap();
+            let g_ckey = CombGateKey {
+                idx_value: index_value & index_usage_map[o_u],
+                idx_usage: index_usage_map[o_u],
+                wire_index: *o,
+            };
+            match comb_gate_map.get(&g_ckey).unwrap() {
+                OutputEntry::NewIndex(no) => {
+                    output_entries.push(OutputEntry::NewIndex(
+                        T::try_from(new_outputs.len()).unwrap(),
+                    ));
+                    new_outputs.push((*no, *n));
+                }
+                OutputEntry::Value(v) => {
+                    output_entries.push(OutputEntry::Value(*v ^ n));
+                }
+            }
+        }
+        output_entries_set.push(output_entries);
+    }
+
+    (
+        Circuit::<T>::new(T::try_from(new_input_len).unwrap(), new_gates, new_outputs).unwrap(),
+        out_inputs,
+        output_entries_set,
+    )
+}
+
 // reduce chain clause - one-literal-clause - clause.
 // check whether all usages of clause only in other clause.
 // reduce clauses to zero or ones (constants).
