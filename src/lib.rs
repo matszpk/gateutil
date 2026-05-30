@@ -950,7 +950,7 @@ where
         index_usage_map
     };
 
-    // generate output inputs
+    // generate input map
     let input_map = {
         let mut input_map = vec![None; input_len];
         let mut count = 0;
@@ -962,6 +962,7 @@ where
         }
         input_map
     };
+    // generate output inputs
     let out_inputs = rest_map[0..input_len]
         .iter()
         .enumerate()
