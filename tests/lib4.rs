@@ -1706,7 +1706,7 @@ const FULLMUL5: &str = r##"    {
 #[test]
 fn test_circuit_table_2() {
     let fullmul5 = Circuit::<usize>::from_str(FULLMUL5).unwrap();
-    for (tci, index_map) in [vec![5, 3, 8, 2, 7], vec![7, 9, 5, 0, 2]]
+    for (tci, index_map) in [vec![5, 3, 8, 2, 7], vec![7, 9, 5, 0, 2], vec![6, 1, 0, 5]]
         .into_iter()
         .enumerate()
     {
@@ -1714,7 +1714,7 @@ fn test_circuit_table_2() {
         for b in 0u32..32 {
             for a in 0u32..32 {
                 let expected = (a * b) & 1023;
-                let mut circ_inputs = vec![false; 5];
+                let mut circ_inputs = vec![false; 10 - index_map.len()];
                 let mut index = 0;
                 for (i, bi) in input_map.iter().enumerate() {
                     let bv = if i < 5 {
