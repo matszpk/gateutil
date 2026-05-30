@@ -2,7 +2,7 @@
 name = "gateutil"
 authors = ["Mateusz Szpakowski"]
 license = "Apache-2.0"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "The library with basic utilities for GateSim."
 repository = "https://github.com/matszpk/gateutil"
@@ -12,7 +12,7 @@ categories = ["science", "mathematics"]
 
 
 [dependencies]
-gatesim = "0.1.0"
+gatesim = "0.1.1"
 
 [package.metadata.docs.rs]
 all-features = true
