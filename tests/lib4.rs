@@ -1279,4 +1279,219 @@ fn test_circuit_table() {
             [0]
         )
     );
+    assert_eq!(
+        (
+            Circuit::new(
+                2,
+                [
+                    Gate::new_and(0, 0),
+                    Gate::new_xor(1, 2),
+                    Gate::new_nimpl(0, 0),
+                    Gate::new_xor(1, 4),
+                ],
+                [(2, true), (3, false), (4, true), (5, false)]
+            )
+            .unwrap(),
+            vec![Some(0), None, Some(1)],
+            vec![
+                vec![OutputEntry::NewIndex(0), OutputEntry::NewIndex(1)],
+                vec![OutputEntry::NewIndex(2), OutputEntry::NewIndex(3)],
+            ],
+        ),
+        circuit_table(
+            &Circuit::new(
+                3,
+                [Gate::new_nimpl(0, 1), Gate::new_xor(2, 3)],
+                [(3, true), (4, false)]
+            )
+            .unwrap(),
+            [1]
+        )
+    );
+    assert_eq!(
+        (
+            Circuit::new(
+                2,
+                [
+                    Gate::new_nimpl(0, 1),
+                    Gate::new_and(2, 2),
+                    Gate::new_nor(2, 2),
+                ],
+                [(2, true), (3, false), (2, true), (4, false)]
+            )
+            .unwrap(),
+            vec![Some(0), Some(1), None],
+            vec![
+                vec![OutputEntry::NewIndex(0), OutputEntry::NewIndex(1)],
+                vec![OutputEntry::NewIndex(2), OutputEntry::NewIndex(3)],
+            ],
+        ),
+        circuit_table(
+            &Circuit::new(
+                3,
+                [Gate::new_nimpl(0, 1), Gate::new_xor(2, 3)],
+                [(3, true), (4, false)]
+            )
+            .unwrap(),
+            [2]
+        )
+    );
+    // with two index inputs
+    assert_eq!(
+        (
+            Circuit::new(
+                1,
+                [
+                    Gate::new_and(0, 0),
+                    Gate::new_nor(0, 0),
+                    Gate::new_and(0, 0),
+                    Gate::new_and(0, 0),
+                ],
+                [(1, false), (2, false), (3, false), (4, false)]
+            )
+            .unwrap(),
+            vec![None, None, Some(0)],
+            vec![
+                vec![OutputEntry::Value(true), OutputEntry::NewIndex(0)],
+                vec![OutputEntry::Value(false), OutputEntry::NewIndex(1)],
+                vec![OutputEntry::Value(true), OutputEntry::NewIndex(2)],
+                vec![OutputEntry::Value(true), OutputEntry::NewIndex(3)],
+            ],
+        ),
+        circuit_table(
+            &Circuit::new(
+                3,
+                [Gate::new_nimpl(0, 1), Gate::new_xor(2, 3)],
+                [(3, true), (4, false)]
+            )
+            .unwrap(),
+            [0, 1]
+        )
+    );
+    assert_eq!(
+        (
+            Circuit::new(
+                1,
+                [
+                    Gate::new_nimpl(0, 0),
+                    Gate::new_and(1, 1),
+                    Gate::new_nor(0, 0),
+                    Gate::new_and(3, 3),
+                    Gate::new_nor(1, 1),
+                    Gate::new_nor(3, 3),
+                ],
+                [
+                    (1, true),
+                    (2, false),
+                    (3, true),
+                    (4, false),
+                    (1, true),
+                    (5, false),
+                    (3, true),
+                    (6, false)
+                ]
+            )
+            .unwrap(),
+            vec![None, Some(0), None],
+            vec![
+                vec![OutputEntry::NewIndex(0), OutputEntry::NewIndex(1)],
+                vec![OutputEntry::NewIndex(2), OutputEntry::NewIndex(3)],
+                vec![OutputEntry::NewIndex(4), OutputEntry::NewIndex(5)],
+                vec![OutputEntry::NewIndex(6), OutputEntry::NewIndex(7)],
+            ],
+        ),
+        circuit_table(
+            &Circuit::new(
+                3,
+                [Gate::new_nimpl(0, 1), Gate::new_xor(2, 3)],
+                [(3, true), (4, false)]
+            )
+            .unwrap(),
+            [0, 2]
+        )
+    );
+    assert_eq!(
+        (
+            Circuit::new(
+                1,
+                [
+                    Gate::new_nimpl(0, 0),
+                    Gate::new_and(1, 1),
+                    Gate::new_nor(1, 1),
+                    Gate::new_nor(0, 0),
+                    Gate::new_and(4, 4),
+                    Gate::new_nor(4, 4),
+                ],
+                [
+                    (1, true),
+                    (2, false),
+                    (1, true),
+                    (3, false),
+                    (4, true),
+                    (5, false),
+                    (4, true),
+                    (6, false)
+                ]
+            )
+            .unwrap(),
+            vec![None, Some(0), None],
+            vec![
+                vec![OutputEntry::NewIndex(0), OutputEntry::NewIndex(1)],
+                vec![OutputEntry::NewIndex(2), OutputEntry::NewIndex(3)],
+                vec![OutputEntry::NewIndex(4), OutputEntry::NewIndex(5)],
+                vec![OutputEntry::NewIndex(6), OutputEntry::NewIndex(7)],
+            ],
+        ),
+        circuit_table(
+            &Circuit::new(
+                3,
+                [Gate::new_nimpl(0, 1), Gate::new_xor(2, 3)],
+                [(3, true), (4, false)]
+            )
+            .unwrap(),
+            [2, 0]
+        )
+    );
+    assert_eq!(
+        (
+            Circuit::new(
+                1,
+                [
+                    Gate::new_and(0, 0),
+                    Gate::new_and(1, 1),
+                    Gate::new_nimpl(0, 0),
+                    Gate::new_and(3, 3),
+                    Gate::new_nor(1, 1),
+                    Gate::new_nor(3, 3),
+                ],
+                [
+                    (1, true),
+                    (2, false),
+                    (3, true),
+                    (4, false),
+                    (1, true),
+                    (5, false),
+                    (3, true),
+                    (6, false)
+                ]
+            )
+            .unwrap(),
+            vec![Some(0), None, None],
+            vec![
+                vec![OutputEntry::NewIndex(0), OutputEntry::NewIndex(1)],
+                vec![OutputEntry::NewIndex(2), OutputEntry::NewIndex(3)],
+                vec![OutputEntry::NewIndex(4), OutputEntry::NewIndex(5)],
+                vec![OutputEntry::NewIndex(6), OutputEntry::NewIndex(7)],
+            ],
+        ),
+        circuit_table(
+            &Circuit::new(
+                3,
+                [Gate::new_nimpl(0, 1), Gate::new_xor(2, 3)],
+                [(3, true), (4, false)]
+            )
+            .unwrap(),
+            [1, 2]
+        )
+    );
 }
