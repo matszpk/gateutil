@@ -924,4 +924,90 @@ fn test_circuit_table() {
             []
         )
     );
+    assert_eq!(
+        (
+            Circuit::new(
+                2,
+                [
+                    Gate::new_and(0, 1),
+                    Gate::new_nor(0, 1),
+                    Gate::new_xor(2, 3),
+                ],
+                [(4, false)]
+            )
+            .unwrap(),
+            vec![0, 1],
+            vec![vec![OutputEntry::NewIndex(0)]],
+        ),
+        circuit_table(
+            &Circuit::new(
+                2,
+                [
+                    Gate::new_and(0, 1),
+                    Gate::new_nor(0, 1),
+                    Gate::new_xor(2, 3),
+                ],
+                [(4, false)]
+            )
+            .unwrap(),
+            []
+        )
+    );
+    assert_eq!(
+        (
+            Circuit::new(
+                6,
+                [
+                    Gate::new_and(0, 4),   // false
+                    Gate::new_nor(1, 5),   // 1
+                    Gate::new_nimpl(7, 6), // out0=5
+                    Gate::new_xor(2, 3),
+                    Gate::new_xor(1, 5),
+                    Gate::new_nor(9, 10),
+                    Gate::new_and(4, 11), // (out1=false,true)=true
+                    Gate::new_nimpl(0, 5),
+                    Gate::new_and(1, 4),   // false
+                    Gate::new_xor(13, 14), // out2=nimpl(0,5)
+                    Gate::new_nor(1, 4),
+                    Gate::new_xor(2, 4),
+                    Gate::new_and(0, 2),
+                    Gate::new_xor(17, 18), // out3=and(0,2)
+                ],
+                [(8, false), (12, true), (15, false), (16, false), (19, true)],
+            )
+            .unwrap(),
+            vec![0, 1, 2, 3, 4, 5],
+            vec![vec![
+                OutputEntry::NewIndex(0),
+                OutputEntry::NewIndex(1),
+                OutputEntry::NewIndex(2),
+                OutputEntry::NewIndex(3),
+                OutputEntry::NewIndex(4),
+            ]],
+        ),
+        circuit_table(
+            &Circuit::new(
+                6,
+                [
+                    Gate::new_and(0, 4),   // false
+                    Gate::new_nor(1, 5),   // 1
+                    Gate::new_nimpl(7, 6), // out0=5
+                    Gate::new_xor(2, 3),
+                    Gate::new_xor(1, 5),
+                    Gate::new_nor(9, 10),
+                    Gate::new_and(4, 11), // (out1=false,true)=true
+                    Gate::new_nimpl(0, 5),
+                    Gate::new_and(1, 4),   // false
+                    Gate::new_xor(13, 14), // out2=nimpl(0,5)
+                    Gate::new_nor(1, 4),
+                    Gate::new_xor(2, 4),
+                    Gate::new_and(0, 2),
+                    Gate::new_xor(17, 18), // out3=and(0,2)
+                ],
+                [(8, false), (12, true), (15, false), (16, false), (19, true)],
+            )
+            .unwrap(),
+            []
+        )
+    );
 }
