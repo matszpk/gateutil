@@ -956,6 +956,40 @@ fn test_circuit_table() {
     assert_eq!(
         (
             Circuit::new(
+                5,
+                [
+                    Gate::new_and(3, 0),
+                    Gate::new_nor(0, 2),
+                    Gate::new_xor(5, 6),
+                ],
+                [(4, false), (7, true), (1, true), (0, false)]
+            )
+            .unwrap(),
+            vec![0, 1, 2, 3, 4],
+            vec![vec![
+                OutputEntry::NewIndex(0),
+                OutputEntry::NewIndex(1),
+                OutputEntry::NewIndex(2),
+                OutputEntry::NewIndex(3)
+            ]],
+        ),
+        circuit_table(
+            &Circuit::new(
+                5,
+                [
+                    Gate::new_and(3, 0),
+                    Gate::new_nor(0, 2),
+                    Gate::new_xor(5, 6),
+                ],
+                [(4, false), (7, true), (1, true), (0, false)]
+            )
+            .unwrap(),
+            []
+        )
+    );
+    assert_eq!(
+        (
+            Circuit::new(
                 6,
                 [
                     Gate::new_and(0, 4),   // false
