@@ -919,20 +919,6 @@ where
 
     let mut comb_gate_map = HashMap::<CombGateKey<T>, OutputEntry<T>>::new();
     let mut rest_map = vec![true; input_len];
-    let index_usage_map = {
-        // generate usage input index usage
-        let mut index_usage_map = vec![0usize; input_len + len];
-        for i in 0..input_len {
-            index_usage_map[i] = 1 << i;
-        }
-        for (i, g) in circuit.gates().into_iter().enumerate() {
-            let ii = input_len + i;
-            let gi0 = usize::try_from(g.i0).unwrap();
-            let gi1 = usize::try_from(g.i1).unwrap();
-            index_usage_map[ii] = index_usage_map[gi0] | index_usage_map[gi1];
-        }
-        index_usage_map
-    };
     // filter inputs
     let mut index_inputs_copy = vec![];
     let usize_bits_usize = usize::try_from(usize::BITS).unwrap();
@@ -952,6 +938,22 @@ where
         );
     }
     let index_inputs_copy = index_inputs_copy;
+    let index_usage_map = {
+        // generate usage input index usage
+        let mut index_usage_map = vec![0usize; input_len + len];
+        for (ii, i) in index_inputs_copy.iter().enumerate() {
+            let i_u = usize::try_from(*i).unwrap();
+            index_usage_map[i_u] = 1 << ii;
+        }
+        for (i, g) in circuit.gates().into_iter().enumerate() {
+            let ii = input_len + i;
+            let gi0 = usize::try_from(g.i0).unwrap();
+            let gi1 = usize::try_from(g.i1).unwrap();
+            index_usage_map[ii] = index_usage_map[gi0] | index_usage_map[gi1];
+        }
+        index_usage_map
+    };
+
     // generate output inputs
     let out_inputs = rest_map[0..input_len]
         .iter()

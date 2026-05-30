@@ -904,3 +904,24 @@ fn test_simple_pipeliner() {
         )
     );
 }
+
+#[test]
+fn test_circuit_table() {
+    // assign 0 input to empty circuit
+    assert_eq!(
+        (Circuit::new(0, [], []).unwrap(), vec![], vec![vec![]],),
+        circuit_table(&Circuit::new(0, [], []).unwrap(), [])
+    );
+    // simple circuits without index inputs.
+    assert_eq!(
+        (
+            Circuit::new(2, [Gate::new_and(0, 1)], [(2, false)]).unwrap(),
+            vec![0, 1],
+            vec![vec![OutputEntry::NewIndex(0)]],
+        ),
+        circuit_table(
+            &Circuit::new(2, [Gate::new_and(0, 1)], [(2, false)]).unwrap(),
+            []
+        )
+    );
+}
