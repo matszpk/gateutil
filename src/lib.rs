@@ -881,6 +881,10 @@ where
     )
 }
 
+// TODO: Write table_circuit - table of circuit for given inputs that are index.
+// It creates circuit: O[k] = circuit(k,rest_of_inputs) for k=0..1<<n
+// where n is number of index inputs.
+
 // reduce chain clause - one-literal-clause - clause.
 // check whether all usages of clause only in other clause.
 // reduce clauses to zero or ones (constants).
