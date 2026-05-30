@@ -881,10 +881,6 @@ where
     )
 }
 
-// TODO: Write circuit_table - table of circuit for given inputs that are index.
-// It creates circuit: O[k] = circuit(k,rest_of_inputs) for k=0..1<<n
-// where n is number of index inputs.
-
 /// Generates circuit table. Circuit that for given index inputs calculates outputs
 /// for all combinations of index inputs for this circuit. `index_inputs` is list of
 /// index inputs. Function reduces duplication circuits.
