@@ -894,7 +894,7 @@ where
 pub fn circuit_table<T>(
     circuit: &Circuit<T>,
     index_inputs: impl IntoIterator<Item = T>,
-) -> (Circuit<T>, Vec<T>, Vec<Vec<OutputEntry<T>>>)
+) -> (Circuit<T>, Vec<Option<T>>, Vec<Vec<OutputEntry<T>>>)
 where
     T: Default + Clone + Copy + PartialEq + Eq + PartialOrd + Ord + Hash,
     T: TryFrom<usize>,
@@ -955,6 +955,17 @@ where
     };
 
     // generate output inputs
+    let input_map = {
+        let mut input_map = vec![None; input_len];
+        let mut count = 0;
+        for (x, out) in rest_map[0..input_len].iter().zip(input_map.iter_mut()) {
+            if *x {
+                *out = Some(T::try_from(count).unwrap());
+                count += 1;
+            }
+        }
+        input_map
+    };
     let out_inputs = rest_map[0..input_len]
         .iter()
         .enumerate()
@@ -1120,7 +1131,7 @@ where
 
     (
         Circuit::<T>::new(T::try_from(new_input_len).unwrap(), new_gates, new_outputs).unwrap(),
-        out_inputs,
+        input_map,
         output_entries_set,
     )
 }

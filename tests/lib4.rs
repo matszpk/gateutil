@@ -916,7 +916,7 @@ fn test_circuit_table() {
     assert_eq!(
         (
             Circuit::new(2, [Gate::new_and(0, 1)], [(2, false)]).unwrap(),
-            vec![0, 1],
+            vec![Some(0), Some(1)],
             vec![vec![OutputEntry::NewIndex(0)]],
         ),
         circuit_table(
@@ -936,7 +936,7 @@ fn test_circuit_table() {
                 [(4, false)]
             )
             .unwrap(),
-            vec![0, 1],
+            vec![Some(0), Some(1)],
             vec![vec![OutputEntry::NewIndex(0)]],
         ),
         circuit_table(
@@ -965,7 +965,7 @@ fn test_circuit_table() {
                 [(4, false), (7, true), (1, true), (0, false)]
             )
             .unwrap(),
-            vec![0, 1, 2, 3, 4],
+            vec![Some(0), Some(1), Some(2), Some(3), Some(4)],
             vec![vec![
                 OutputEntry::NewIndex(0),
                 OutputEntry::NewIndex(1),
@@ -1010,7 +1010,7 @@ fn test_circuit_table() {
                 [(8, false), (12, true), (15, false), (16, false), (19, true)],
             )
             .unwrap(),
-            vec![0, 1, 2, 3, 4, 5],
+            vec![Some(0), Some(1), Some(2), Some(3), Some(4), Some(5)],
             vec![vec![
                 OutputEntry::NewIndex(0),
                 OutputEntry::NewIndex(1),
@@ -1053,7 +1053,7 @@ fn test_circuit_table() {
                 [(1, false), (2, false)]
             )
             .unwrap(),
-            vec![1],
+            vec![None, Some(0)],
             vec![
                 vec![OutputEntry::NewIndex(0)],
                 vec![OutputEntry::NewIndex(1)],
@@ -1072,7 +1072,7 @@ fn test_circuit_table() {
                 [(1, false), (2, false)]
             )
             .unwrap(),
-            vec![0],
+            vec![Some(0), None],
             vec![
                 vec![OutputEntry::NewIndex(0)],
                 vec![OutputEntry::NewIndex(1)],
@@ -1091,7 +1091,7 @@ fn test_circuit_table() {
                 [(1, true), (2, true)]
             )
             .unwrap(),
-            vec![0],
+            vec![Some(0), None],
             vec![
                 vec![OutputEntry::NewIndex(0)],
                 vec![OutputEntry::NewIndex(1)],
@@ -1111,7 +1111,7 @@ fn test_circuit_table() {
                 [(1, false), (2, false)]
             )
             .unwrap(),
-            vec![1],
+            vec![None, Some(0)],
             vec![
                 vec![OutputEntry::NewIndex(0)],
                 vec![OutputEntry::NewIndex(1)],
@@ -1130,7 +1130,7 @@ fn test_circuit_table() {
                 [(1, false), (2, false)]
             )
             .unwrap(),
-            vec![0],
+            vec![Some(0), None],
             vec![
                 vec![OutputEntry::NewIndex(0)],
                 vec![OutputEntry::NewIndex(1)],
@@ -1150,7 +1150,7 @@ fn test_circuit_table() {
                 [(1, false), (2, false)]
             )
             .unwrap(),
-            vec![1],
+            vec![None, Some(0)],
             vec![
                 vec![OutputEntry::NewIndex(0)],
                 vec![OutputEntry::NewIndex(1)],
@@ -1169,7 +1169,7 @@ fn test_circuit_table() {
                 [(1, false), (2, false)]
             )
             .unwrap(),
-            vec![0],
+            vec![Some(0), None],
             vec![
                 vec![OutputEntry::NewIndex(0)],
                 vec![OutputEntry::NewIndex(1)],
@@ -1189,7 +1189,7 @@ fn test_circuit_table() {
                 [(1, false), (2, false)]
             )
             .unwrap(),
-            vec![1],
+            vec![None, Some(0)],
             vec![
                 vec![OutputEntry::NewIndex(0)],
                 vec![OutputEntry::NewIndex(1)],
@@ -1208,7 +1208,7 @@ fn test_circuit_table() {
                 [(1, false), (2, false)]
             )
             .unwrap(),
-            vec![0],
+            vec![Some(0), None],
             vec![
                 vec![OutputEntry::NewIndex(0)],
                 vec![OutputEntry::NewIndex(1)],
@@ -1217,6 +1217,66 @@ fn test_circuit_table() {
         circuit_table(
             &Circuit::new(2, [Gate::new_xor(0, 1)], [(2, false)]).unwrap(),
             [1]
+        )
+    );
+    // two gates
+    assert_eq!(
+        (
+            Circuit::new(
+                2,
+                [
+                    Gate::new_nimpl(0, 0),
+                    Gate::new_xor(1, 2),
+                    Gate::new_and(0, 0),
+                    Gate::new_xor(1, 4),
+                ],
+                [(2, true), (3, false), (4, true), (5, false)]
+            )
+            .unwrap(),
+            vec![None, Some(0), Some(1)],
+            vec![
+                vec![OutputEntry::NewIndex(0), OutputEntry::NewIndex(1)],
+                vec![OutputEntry::NewIndex(2), OutputEntry::NewIndex(3)],
+            ],
+        ),
+        circuit_table(
+            &Circuit::new(
+                3,
+                [Gate::new_and(0, 1), Gate::new_xor(2, 3)],
+                [(3, true), (4, false)]
+            )
+            .unwrap(),
+            [0]
+        )
+    );
+    // other two gates
+    assert_eq!(
+        (
+            Circuit::new(
+                2,
+                [
+                    Gate::new_nimpl(0, 0),
+                    Gate::new_xor(1, 2),
+                    Gate::new_nor(0, 0),
+                    Gate::new_xor(1, 4),
+                ],
+                [(2, true), (3, false), (4, true), (5, false)]
+            )
+            .unwrap(),
+            vec![None, Some(0), Some(1)],
+            vec![
+                vec![OutputEntry::NewIndex(0), OutputEntry::NewIndex(1)],
+                vec![OutputEntry::NewIndex(2), OutputEntry::NewIndex(3)],
+            ],
+        ),
+        circuit_table(
+            &Circuit::new(
+                3,
+                [Gate::new_nimpl(0, 1), Gate::new_xor(2, 3)],
+                [(3, true), (4, false)]
+            )
+            .unwrap(),
+            [0]
         )
     );
 }
