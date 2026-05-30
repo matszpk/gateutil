@@ -881,17 +881,17 @@ where
     )
 }
 
-// TODO: Write table_circuit - table of circuit for given inputs that are index.
+// TODO: Write circuit_table - table of circuit for given inputs that are index.
 // It creates circuit: O[k] = circuit(k,rest_of_inputs) for k=0..1<<n
 // where n is number of index inputs.
 
-/// Generates table circuit. Circuit that for given index inputs calculates outputs
+/// Generates circuit table. Circuit that for given index inputs calculates outputs
 /// for all combinations of index inputs for this circuit. `index_inputs` is list of
 /// index inputs. Function reduces duplication circuits.
 ///
 /// Function returns circuit, list of mapping old inputs to new inputs and
 /// list of all mappings of outputs for all index inputs combinations.
-pub fn table_circuit<T>(
+pub fn circuit_table<T>(
     circuit: &Circuit<T>,
     index_inputs: impl IntoIterator<Item = T>,
 ) -> (Circuit<T>, Vec<T>, Vec<Vec<OutputEntry<T>>>)
