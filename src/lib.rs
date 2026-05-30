@@ -927,7 +927,7 @@ where
         let g_u = usize::try_from(g).unwrap();
         rest_map[g_u] = false;
         // assign zeros for first combinations
-        index_inputs_copy[ii] = g;
+        index_inputs_copy.push(g);
         comb_gate_map.insert(
             CombGateKey {
                 idx_value: 0,
