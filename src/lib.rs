@@ -987,7 +987,7 @@ where
         // set up new index input values
         for (ii, idxinput) in index_inputs_copy.iter().enumerate() {
             let ickey = CombGateKey {
-                idx_value: 0,
+                idx_value: index_value & (1 << ii),
                 idx_usage: 1 << ii,
                 wire_index: *idxinput,
             };
