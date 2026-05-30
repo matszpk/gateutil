@@ -1578,3 +1578,170 @@ fn test_circuit_table() {
         )
     );
 }
+
+const FULLMUL5: &str = r##"    {
+        0
+        1
+        2
+        3
+        4
+        5
+        6
+        7
+        8
+        9
+        and(0,5):0
+        and(0,6)
+        and(1,5)
+        xor(11,12):1
+        and(0,7)
+        and(1,6)
+        and(2,5)
+        xor(15,16)
+        xor(14,17)
+        and(11,12)
+        xor(18,19):2
+        and(0,8)
+        and(1,7)
+        xor(21,22)
+        and(2,6)
+        and(3,5)
+        xor(24,25)
+        xor(23,26)
+        and(15,16)
+        xor(27,28)
+        and(18,19)
+        and(14,17)
+        nor(30,31)
+        xor(29,32):3n
+        and(0,9)
+        and(1,8)
+        and(2,7)
+        xor(35,36)
+        and(3,6)
+        and(4,5)
+        xor(38,39)
+        xor(37,40)
+        xor(34,41)
+        and(24,25)
+        xor(42,43)
+        and(23,26)
+        and(21,22)
+        nor(45,46)
+        xor(44,47)
+        nimpl(29,32)
+        and(27,28)
+        nor(49,50)
+        xor(48,51):4
+        and(1,9)
+        and(2,8)
+        and(3,7)
+        and(4,6)
+        xor(55,56)
+        xor(54,57)
+        and(38,39)
+        xor(58,59)
+        xor(53,60)
+        and(37,40)
+        and(35,36)
+        nor(62,63)
+        xor(61,64)
+        and(42,43)
+        and(34,41)
+        nor(66,67)
+        xor(65,68)
+        nor(48,51)
+        nimpl(44,47)
+        nor(70,71)
+        xor(69,72):5n
+        and(2,9)
+        and(3,8)
+        and(4,7)
+        xor(75,76)
+        and(55,56)
+        xor(77,78)
+        xor(74,79)
+        and(58,59)
+        and(54,57)
+        nor(81,82)
+        xor(80,83)
+        nimpl(61,64)
+        and(53,60)
+        nor(85,86)
+        xor(84,87)
+        nimpl(69,72)
+        nor(65,68)
+        nor(89,90)
+        xor(88,91):6n
+        and(3,9)
+        and(4,8)
+        xor(93,94)
+        and(77,78)
+        and(75,76)
+        nor(96,97)
+        xor(95,98)
+        nimpl(80,83)
+        and(74,79)
+        nor(100,101)
+        xor(99,102)
+        nimpl(88,91)
+        nor(84,87)
+        nor(104,105)
+        xor(103,106):7n
+        and(4,9)
+        nimpl(95,98)
+        and(93,94)
+        nor(109,110)
+        xor(108,111)
+        nimpl(103,106)
+        nor(99,102)
+        nor(113,114)
+        xor(112,115):8
+        nor(112,115)
+        nimpl(108,111)
+        nor(117,118):9n
+    }(10)
+"##;
+
+#[test]
+fn test_circuit_table_2() {
+    let fullmul5 = Circuit::<usize>::from_str(FULLMUL5).unwrap();
+    for (tci, index_map) in [vec![5, 3, 8, 2, 7], vec![7, 9, 5, 0, 2]]
+        .into_iter()
+        .enumerate()
+    {
+        let (fullmul5_table, input_map, output_maps) = circuit_table(&fullmul5, index_map.clone());
+        for b in 0u32..32 {
+            for a in 0u32..32 {
+                let expected = (a * b) & 1023;
+                let mut circ_inputs = vec![false; 5];
+                let mut index = 0;
+                for (i, bi) in input_map.iter().enumerate() {
+                    let bv = if i < 5 {
+                        ((a >> i) & 1) != 0
+                    } else {
+                        ((b >> (i - 5)) & 1) != 0
+                    };
+                    if let Some(bi) = *bi {
+                        // set circuit input
+                        circ_inputs[bi] = bv;
+                    } else {
+                        let p = index_map.iter().position(|x| *x == i).unwrap();
+                        index |= usize::from(bv) << p;
+                    }
+                }
+                // get results
+                let outputs = fullmul5_table.eval(circ_inputs);
+                let mut result = 0u32;
+                for (i, oe) in output_maps[index].iter().enumerate() {
+                    let v = match oe {
+                        OutputEntry::NewIndex(ni) => outputs[*ni],
+                        OutputEntry::Value(b) => *b,
+                    };
+                    result |= u32::from(v) << i;
+                }
+                assert_eq!(expected, result, "{}: {} {}", tci, a, b);
+            }
+        }
+    }
+}
