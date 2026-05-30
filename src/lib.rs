@@ -5,6 +5,8 @@
 //! This library provide set of functions that doing some operations on circuits.
 //! Routines provided to make following operations:
 //! * translate circuits inputs and circuit outputs.
+//! * assignment to circuits.
+//! * generate circuit table circuit (with all outputs for all index combinations).
 //! * fill outputs defined in output map.
 //! * generate circuits that have assigned values to original inputs.
 //! * generate optimized circuits that have assigned values to original inputs.
